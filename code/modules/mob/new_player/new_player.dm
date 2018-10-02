@@ -316,11 +316,10 @@
 	job_master.AssignRole(src, rank, 1)
 
 	var/mob/living/character = create_character()	//creates the human and transfers vars and mind
-
+	character = job_master.AssignRank(character, rank, 1)					//equips the human
 
 	// AIs don't need a spawnpoint, they must spawn at an empty core
 	if(character.mind.assigned_role == "AI")
-
 		var/mob/living/silicon/ai/ai_character = character.AIize() // AIize the character, but don't move them yet
 
 		// IsJobAvailable for AI checks that there is an empty core available in this list
@@ -434,9 +433,9 @@
 	var/dat = "<html><body><center>"
 	dat += "Round Duration: [round(hours)]h [round(mins)]m<br>"
 
-	if(shuttle_master.emergency.mode >= SHUTTLE_ESCAPE)
+	if(SSshuttle.emergency.mode >= SHUTTLE_ESCAPE)
 		dat += "<font color='red'><b>The station has been evacuated.</b></font><br>"
-	else if(shuttle_master.emergency.mode >= SHUTTLE_CALL)
+	else if(SSshuttle.emergency.mode >= SHUTTLE_CALL)
 		dat += "<font color='red'>The station is currently undergoing evacuation procedures.</font><br>"
 
 	if(length(job_master.prioritized_jobs))
