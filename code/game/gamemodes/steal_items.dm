@@ -12,6 +12,7 @@
 	var/list/altitems = list()
 	var/flags = 0
 	var/location_override
+	var/difficulty = 1 //Difficulty of the objective
 
 /datum/theft_objective/proc/check_completion(var/datum/mind/owner)
 	if(!owner.current)
@@ -31,26 +32,31 @@
 	name = "the captain's antique laser gun"
 	typepath = /obj/item/gun/energy/laser/captain
 	protected_jobs = list("Captain")
+	difficulty = 2
 
 /datum/theft_objective/captains_jetpack
 	name = "the captain's deluxe jetpack"
 	typepath = /obj/item/tank/jetpack/oxygen/captain
 	protected_jobs = list("Captain")
+	difficulty = 2
 
 /datum/theft_objective/hoslaser
 	name = "the head of security's recreated antique laser gun"
 	typepath = /obj/item/gun/energy/gun/hos
 	protected_jobs = list("Head Of Security")
+	difficulty = 2
 
 /datum/theft_objective/hand_tele
 	name = "a hand teleporter"
 	typepath = /obj/item/hand_tele
 	protected_jobs = list("Captain", "Research Director")
+	difficulty = 1
 
 /datum/theft_objective/ai
 	name = "a functional AI"
 	typepath = /obj/item/aicard
 	location_override = "AI Satellite. An intellicard for transportation can be found in Tech Storage, Science Department or manufactured"
+	difficulty = 3
 
 datum/theft_objective/ai/check_special_completion(var/obj/item/aicard/C)
 	if(..())
@@ -63,17 +69,20 @@ datum/theft_objective/ai/check_special_completion(var/obj/item/aicard/C)
 	name = "a compact defibrillator"
 	typepath = /obj/item/defibrillator/compact
 	protected_jobs = list("Chief Medical Officer")
+	difficulty = 1
 
 /datum/theft_objective/magboots
 	name = "the chief engineer's advanced magnetic boots"
 	typepath = /obj/item/clothing/shoes/magboots/advance
 	protected_jobs = list("Chief Engineer")
+	difficulty = 1
 
 /datum/theft_objective/blueprints
 	name = "the station blueprints"
 	typepath = /obj/item/areaeditor/blueprints
 	protected_jobs = list("Chief Engineer")
 	altitems = list(/obj/item/photo)
+	difficulty = 1
 
 /datum/objective_item/steal/blueprints/check_special_completion(obj/item/I)
 	if(istype(I, /obj/item/areaeditor/blueprints))
@@ -88,12 +97,14 @@ datum/theft_objective/ai/check_special_completion(var/obj/item/aicard/C)
 	name = "a nasa voidsuit"
 	typepath = /obj/item/clothing/suit/space/nasavoid
 	protected_jobs = list("Research Director")
+	difficulty = 1
 
 /datum/theft_objective/slime_extract
 	name = "a sample of unused slime extract"
 	typepath = /obj/item/slime_extract
 	protected_jobs = list("Research Director","Scientist")
 	location_override = "Xenobiology"
+	difficulty = 1
 
 /datum/theft_objective/slime_extract/check_special_completion(var/obj/item/slime_extract/E)
 	if(..())
@@ -105,35 +116,42 @@ datum/theft_objective/ai/check_special_completion(var/obj/item/aicard/C)
 	name = "the medal of captaincy"
 	typepath = /obj/item/clothing/accessory/medal/gold/captain
 	protected_jobs = list("Captain")
+	difficulty = 2
 
 /datum/theft_objective/nukedisc
 	name = "the nuclear authentication disk"
 	typepath = /obj/item/disk/nuclear
 	protected_jobs = list("Captain")
+	difficulty = 3
 
 /datum/theft_objective/reactive
 	name = "the reactive teleport armor"
 	typepath = /obj/item/clothing/suit/armor/reactive/teleport
 	protected_jobs = list("Research Director")
+	difficulty = 2
 
 /datum/theft_objective/steal/documents
 	name = "any set of secret documents of any organization"
 	typepath = /obj/item/documents //Any set of secret documents. Doesn't have to be NT's
+	difficulty = 1
 
 /datum/theft_objective/hypospray
 	name = "the Chief Medical Officer's hypospray"
 	typepath = /obj/item/reagent_containers/hypospray/CMO
 	protected_jobs = list("Chief Medical Officer")
+	difficulty = 1
 
 /datum/theft_objective/ablative
 	name = "an ablative armor vest"
 	typepath = /obj/item/clothing/suit/armor/laserproof
 	protected_jobs = list("Head of Security", "Warden")
+	difficulty = 2
 
 /datum/theft_objective/krav
 	name = "the warden's krav maga martial arts gloves"
 	typepath = /obj/item/clothing/gloves/color/black/krav_maga/sec
 	protected_jobs = list("Head Of Security", "Warden")
+	difficulty = 2
 
 /datum/theft_objective/number
 	var/min=0
@@ -173,6 +191,7 @@ datum/theft_objective/ai/check_special_completion(var/obj/item/aicard/C)
 	max=28
 	protected_jobs = list("Chief Engineer", "Station Engineer", "Scientist", "Research Director", "Life Support Specialist")
 	location_override = "Engineering or Toxin Mixing"
+	difficulty = 1
 
 /datum/theft_objective/number/plasma_gas/getAmountStolen(var/obj/item/I)
 	return I:air_contents:toxins

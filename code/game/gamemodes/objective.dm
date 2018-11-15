@@ -9,6 +9,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	var/target_amount = 0				//If they are focused on a particular number. Steal objectives have their own counter.
 	var/completed = 0					//currently only used for custom objectives.
 	var/martyr_compatible = 0			//If the objective is compatible with martyr objective, i.e. if you can still do it while dead.
+	var/difficulty = 1
 
 /datum/objective/New(var/text)
 	all_objectives |= src
@@ -32,23 +33,40 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	if(!possible_target.key)
 		return TARGET_INVALID_NOCKEY
 
-/datum/objective/proc/find_target()
+//Returns the difficulty of the made objective
+/datum/objective/proc/get_difficulty(datum/mind/possible_target)
+	if(possible_target.assigned_job.title in command_positions || possible_target.assigned_job.title in security_positions)
+		return 2 //Command/security is hard man
+	return 1
+
+/datum/objective/proc/find_target(max_difficulty = INFINITY)
 	var/list/possible_targets = list()
 	for(var/datum/mind/possible_target in ticker.minds)
 		if(is_invalid_target(possible_target))
 			continue
+		difficulty = get_difficulty(possible_target)
+		if(difficulty > max_difficulty)
+			continue //To hard
 
 		possible_targets += possible_target
 
 	if(possible_targets.len > 0)
 		target = pick(possible_targets)
 
+/datum/objective/proc/create(datum/mind/traitor, max_difficulty = INFINITY)
+	owner = traitor
+	find_target(max_difficulty)
+	traitor.objectives += src
 
 /datum/objective/assassinate
 	martyr_compatible = 1
+	difficulty = 2
 
-/datum/objective/assassinate/find_target()
-	..()
+/datum/objective/assassinate/get_difficulty()
+	return ..() + 1 // Bit harder than the default one
+
+/datum/objective/assassinate/find_target(max_difficulty = INFINITY)
+	..(max_difficulty)
 	if(target && target.current)
 		explanation_text = "Assassinate [target.current.real_name], the [target.assigned_role]."
 	else
@@ -68,8 +86,12 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 
 /datum/objective/mutiny
 	martyr_compatible = 1
+	difficulty = 2
 
-/datum/objective/mutiny/find_target()
+/datum/objective/mutiny/get_difficulty()
+	return ..() + 1 // Bit harder than the default one
+
+/datum/objective/mutiny/find_target(max_difficulty = INFINITY)
 	..()
 	if(target && target.current)
 		explanation_text = "Assassinate [target.current.real_name], the [target.assigned_role]."
@@ -90,7 +112,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/maroon
 	martyr_compatible = 1
 
-/datum/objective/maroon/find_target()
+/datum/objective/maroon/find_target(max_difficulty = INFINITY)
 	..()
 	if(target && target.current)
 		explanation_text = "Prevent [target.current.real_name], the [target.assigned_role] from escaping alive."
@@ -117,8 +139,12 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 
 /datum/objective/debrain //I want braaaainssss
 	martyr_compatible = 0
+	difficulty = 2
 
-/datum/objective/debrain/find_target()
+/datum/objective/debrain/get_difficulty()
+	return ..() + 1 // Bit harder than the default one
+
+/datum/objective/debrain/find_target(max_difficulty = INFINITY)
 	..()
 	if(target && target.current)
 		explanation_text = "Steal the brain of [target.current.real_name] the [target.assigned_role]."
@@ -145,7 +171,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/protect //The opposite of killing a dude.
 	martyr_compatible = 1
 
-/datum/objective/protect/find_target()
+/datum/objective/protect/find_target(max_difficulty = INFINITY)
 	..()
 	if(target && target.current)
 		explanation_text = "Protect [target.current.real_name], the [target.assigned_role]."
@@ -173,6 +199,10 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	martyr_compatible = 0 //Technically you won't get both anyway.
 	explanation_text = "Hijack the shuttle by escaping on it with no loyalist Nanotrasen crew on board and alive. \
 	Syndicate agents, other enemies of Nanotrasen, cyborgs, and pets may be allowed to escape alive."
+	difficulty = 2
+
+/datum/objective/hijack/find_target(max_difficulty = INFINITY)
+	return
 
 /datum/objective/hijack/check_completion()
 	if(!owner.current || owner.current.stat)
@@ -191,6 +221,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/hijackclone
 	explanation_text = "Hijack the shuttle by ensuring only you (or your copies) escape."
 	martyr_compatible = 0
+	difficulty = 2
 
 /datum/objective/hijackclone/check_completion()
 	if(!owner.current)
@@ -222,6 +253,10 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/block
 	explanation_text = "Do not allow any lifeforms, be it organic or synthetic to escape on the shuttle alive. AIs, Cyborgs, and pAIs are not considered alive."
 	martyr_compatible = 1
+	difficulty = 2
+
+/datum/objective/block/find_target(max_difficulty = INFINITY)
+	return
 
 /datum/objective/block/check_completion()
 	if(!istype(owner.current, /mob/living/silicon))
@@ -246,6 +281,10 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 
 /datum/objective/escape
 	explanation_text = "Escape on the shuttle or an escape pod alive and free."
+	difficulty = 0
+
+/datum/objective/escape/find_target(max_difficulty = INFINITY)
+	return
 
 /datum/objective/escape/check_completion()
 	if(issilicon(owner.current))
@@ -275,20 +314,24 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 
 /datum/objective/escape/escape_with_identity
 	var/target_real_name // Has to be stored because the target's real_name can change over the course of the round
+	difficulty = 1
 
-/datum/objective/escape/escape_with_identity/find_target()
+/datum/objective/escape/escape_with_identity/find_target(max_difficulty = INFINITY)
 	var/list/possible_targets = list() //Copypasta because NO_DNA races, yay for snowflakes.
 	for(var/datum/mind/possible_target in ticker.minds)
 		if(possible_target != owner && ishuman(possible_target.current) && (possible_target.current.stat != DEAD) && possible_target.current.client)
 			var/mob/living/carbon/human/H = possible_target.current
 			if(!(NO_DNA in H.dna.species.species_traits))
+				difficulty = get_difficulty(possible_target)
 				possible_targets += possible_target
 	if(possible_targets.len > 0)
 		target = pick(possible_targets)
 	if(target && target.current)
 		target_real_name = target.current.real_name
+		difficulty = get_difficulty(target) //Get the real difficulty
 		explanation_text = "Escape on the shuttle or an escape pod with the identity of [target_real_name], the [target.assigned_role] while wearing [target.p_their()] identification card."
 	else
+		difficulty = 0
 		explanation_text = "Free Objective"
 
 /datum/objective/escape/escape_with_identity/check_completion()
@@ -305,6 +348,10 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 
 /datum/objective/die
 	explanation_text = "Die a glorious death."
+	difficulty = 0
+
+/datum/objective/die/find_target(max_difficulty = INFINITY)
+	return //Yourself
 
 /datum/objective/die/check_completion()
 	if(!owner.current || owner.current.stat == DEAD || isbrain(owner.current))
@@ -313,10 +360,12 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 		return 1
 	return 0
 
-
-
 /datum/objective/survive
 	explanation_text = "Stay alive until the end."
+	difficulty = 0
+
+/datum/objective/survive/find_target(max_difficulty = INFINITY)
+	return
 
 /datum/objective/survive/check_completion()
 	if(!owner.current || owner.current.stat == DEAD || isbrain(owner.current))
@@ -334,6 +383,9 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	martyr_compatible = 0
 	var/theft_area
 
+/datum/objective/steal/get_difficulty(datum/theft_object/possible_target)
+
+
 /datum/objective/steal/proc/get_location()
     if(steal_target.location_override)
         return steal_target.location_override
@@ -341,7 +393,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
     theft_area = get_area(T.loc)
     return "[theft_area]"
 
-/datum/objective/steal/find_target()
+/datum/objective/steal/find_target(max_difficulty = INFINITY)
 	var/loop=50
 	while(!steal_target && loop > 0)
 		loop--
@@ -351,11 +403,15 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 			continue
 		if(O.flags & 2)
 			continue
-		steal_target=O
+		difficulty = get_difficulty(O)
+		if(get_difficulty(O) > max_difficulty)
+			continue //To hard
+		steal_target = O
 		explanation_text = "Steal [steal_target]. One was last seen in [get_location()]. "
 		if(islist(O.protected_jobs) && O.protected_jobs.len)
 			explanation_text += "It may also be in the possession of the [jointext(O.protected_jobs, ", ")]."
 		return
+	difficulty = 0
 	explanation_text = "Free Objective."
 
 
@@ -395,6 +451,9 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/steal/exchange
 	martyr_compatible = 0
 
+/datum/objective/steal/echange/find_target(max_difficulty = INFINITY)
+	return
+
 /datum/objective/steal/exchange/proc/set_faction(var/faction,var/otheragent)
 	target = otheragent
 	var/datum/theft_objective/unique/targetinfo
@@ -405,7 +464,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	explanation_text = "Acquire [targetinfo.name] held by [target.current.real_name], the [target.assigned_role] and syndicate agent"
 	steal_target = targetinfo
 
-/datum/objective/steal/exchange/backstab
+/datum/objective/steal/exchange/backstab // No need for a difficulty adjustment. Keeping yours and getting theirs is 2
 /datum/objective/steal/exchange/backstab/set_faction(var/faction)
 	var/datum/theft_objective/unique/targetinfo
 	if(faction == "red")
@@ -421,6 +480,9 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	explanation_text = "Download [target_amount] research levels."
 	return target_amount
 
+/datum/objective/download/find_target(max_difficulty = INFINITY)
+	return
+
 
 /datum/objective/download/check_completion()
 	return 0
@@ -433,6 +495,8 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	explanation_text = "Accumulate [target_amount] capture points."
 	return target_amount
 
+/datum/objective/capture/find_target(max_difficulty = INFINITY)
+	return
 
 /datum/objective/capture/check_completion()//Basically runs through all the mobs in the area to determine how much they are worth.
 	return 0
@@ -441,6 +505,15 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 
 
 /datum/objective/absorb
+	difficulty = 2
+
+/datum/objective/absorb/find_target(max_difficulty = INFINITY)
+	return
+
+/datum/objective/absorb/create(datum/mind/traitor, max_difficulty)
+	. = ..()
+	gen_amount_goal(6,8)
+
 /datum/objective/absorb/proc/gen_amount_goal(var/lowbound = 4, var/highbound = 6)
 	target_amount = rand (lowbound,highbound)
 	if(ticker)
@@ -471,8 +544,9 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/destroy
 	martyr_compatible = 1
 	var/target_real_name
+	difficulty = 2
 
-/datum/objective/destroy/find_target()
+/datum/objective/destroy/find_target(max_difficulty = INFINITY)
 	var/list/possible_targets = active_ais(1)
 	var/mob/living/silicon/ai/target_ai = pick(possible_targets)
 	target = target_ai.mind
@@ -480,6 +554,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 		target_real_name = target.current.real_name
 		explanation_text = "Destroy [target_real_name], the AI."
 	else
+		difficulty = 0
 		explanation_text = "Free Objective"
 	return target
 
@@ -496,6 +571,9 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	target_amount = round(round(target_amount/5)*5)
 	explanation_text = "Accumulate at least [target_amount] total units of blood."
 	return target_amount
+
+/datum/objective/blood/find_target(max_difficulty = INFINITY)
+	return
 
 /datum/objective/blood/check_completion()
 	if(owner && owner.vampire && owner.vampire.bloodtotal && owner.vampire.bloodtotal >= target_amount)
