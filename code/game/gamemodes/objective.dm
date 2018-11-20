@@ -20,10 +20,15 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	all_objectives -= src
 	return ..()
 
+/datum/objective/proc/create(datum/mind/traitor, max_difficulty = INFINITY, list/objectives = list())
+	owner = traitor
+	find_target(max_difficulty, objectives)
+	traitor.objectives += src
+
 /datum/objective/proc/check_completion()
 	return completed
 
-/datum/objective/proc/is_invalid_target(datum/mind/possible_target)
+/datum/objective/proc/is_invalid_target(datum/mind/possible_target, list/objectives)
 	if(possible_target == owner)
 		return TARGET_INVALID_IS_OWNER
 	if(!ishuman(possible_target.current))
@@ -33,16 +38,19 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	if(!possible_target.key)
 		return TARGET_INVALID_NOCKEY
 
+/datum/objective/proc/compatible(datum/objective/O)
+
+
 //Returns the difficulty of the made objective
 /datum/objective/proc/get_difficulty(datum/mind/possible_target)
 	if(possible_target.assigned_job.title in command_positions || possible_target.assigned_job.title in security_positions)
 		return 2 //Command/security is hard man
 	return 1
 
-/datum/objective/proc/find_target(max_difficulty = INFINITY)
+/datum/objective/proc/find_target(max_difficulty = INFINITY, list/objective)
 	var/list/possible_targets = list()
 	for(var/datum/mind/possible_target in ticker.minds)
-		if(is_invalid_target(possible_target))
+		if(is_invalid_target(possible_target, objectives))
 			continue
 		difficulty = get_difficulty(possible_target)
 		if(difficulty > max_difficulty)
@@ -53,11 +61,6 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	if(possible_targets.len > 0)
 		target = pick(possible_targets)
 
-/datum/objective/proc/create(datum/mind/traitor, max_difficulty = INFINITY)
-	owner = traitor
-	find_target(max_difficulty)
-	traitor.objectives += src
-
 /datum/objective/assassinate
 	martyr_compatible = 1
 	difficulty = 2
@@ -65,8 +68,8 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/assassinate/get_difficulty()
 	return ..() + 1 // Bit harder than the default one
 
-/datum/objective/assassinate/find_target(max_difficulty = INFINITY)
-	..(max_difficulty)
+/datum/objective/assassinate/find_target(max_difficulty = INFINITY, list/objectives)
+	..()
 	if(target && target.current)
 		explanation_text = "Assassinate [target.current.real_name], the [target.assigned_role]."
 	else
@@ -91,7 +94,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/mutiny/get_difficulty()
 	return ..() + 1 // Bit harder than the default one
 
-/datum/objective/mutiny/find_target(max_difficulty = INFINITY)
+/datum/objective/mutiny/find_target(max_difficulty = INFINITY, list/objectives)
 	..()
 	if(target && target.current)
 		explanation_text = "Assassinate [target.current.real_name], the [target.assigned_role]."
@@ -112,7 +115,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/maroon
 	martyr_compatible = 1
 
-/datum/objective/maroon/find_target(max_difficulty = INFINITY)
+/datum/objective/maroon/find_target(max_difficulty = INFINITY, list/objectives)
 	..()
 	if(target && target.current)
 		explanation_text = "Prevent [target.current.real_name], the [target.assigned_role] from escaping alive."
@@ -144,7 +147,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/debrain/get_difficulty()
 	return ..() + 1 // Bit harder than the default one
 
-/datum/objective/debrain/find_target(max_difficulty = INFINITY)
+/datum/objective/debrain/find_target(max_difficulty = INFINITY, list/objectives)
 	..()
 	if(target && target.current)
 		explanation_text = "Steal the brain of [target.current.real_name] the [target.assigned_role]."
@@ -171,7 +174,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/protect //The opposite of killing a dude.
 	martyr_compatible = 1
 
-/datum/objective/protect/find_target(max_difficulty = INFINITY)
+/datum/objective/protect/find_target(max_difficulty = INFINITY, list/objectives)
 	..()
 	if(target && target.current)
 		explanation_text = "Protect [target.current.real_name], the [target.assigned_role]."
@@ -201,7 +204,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	Syndicate agents, other enemies of Nanotrasen, cyborgs, and pets may be allowed to escape alive."
 	difficulty = 2
 
-/datum/objective/hijack/find_target(max_difficulty = INFINITY)
+/datum/objective/hijack/find_target(max_difficulty = INFINITY, list/objectives)
 	return
 
 /datum/objective/hijack/check_completion()
@@ -255,7 +258,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	martyr_compatible = 1
 	difficulty = 2
 
-/datum/objective/block/find_target(max_difficulty = INFINITY)
+/datum/objective/block/find_target(max_difficulty = INFINITY, list/objectives)
 	return
 
 /datum/objective/block/check_completion()
@@ -283,7 +286,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	explanation_text = "Escape on the shuttle or an escape pod alive and free."
 	difficulty = 0
 
-/datum/objective/escape/find_target(max_difficulty = INFINITY)
+/datum/objective/escape/find_target(max_difficulty = INFINITY, list/objectives)
 	return
 
 /datum/objective/escape/check_completion()
@@ -316,7 +319,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	var/target_real_name // Has to be stored because the target's real_name can change over the course of the round
 	difficulty = 1
 
-/datum/objective/escape/escape_with_identity/find_target(max_difficulty = INFINITY)
+/datum/objective/escape/escape_with_identity/find_target(max_difficulty = INFINITY, list/objectives)
 	var/list/possible_targets = list() //Copypasta because NO_DNA races, yay for snowflakes.
 	for(var/datum/mind/possible_target in ticker.minds)
 		if(possible_target != owner && ishuman(possible_target.current) && (possible_target.current.stat != DEAD) && possible_target.current.client)
@@ -350,7 +353,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	explanation_text = "Die a glorious death."
 	difficulty = 0
 
-/datum/objective/die/find_target(max_difficulty = INFINITY)
+/datum/objective/die/find_target(max_difficulty = INFINITY, list/objectives)
 	return //Yourself
 
 /datum/objective/die/check_completion()
@@ -364,7 +367,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	explanation_text = "Stay alive until the end."
 	difficulty = 0
 
-/datum/objective/survive/find_target(max_difficulty = INFINITY)
+/datum/objective/survive/find_target(max_difficulty = INFINITY, list/objectives)
 	return
 
 /datum/objective/survive/check_completion()
@@ -383,7 +386,10 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	martyr_compatible = 0
 	var/theft_area
 
-/datum/objective/steal/get_difficulty(datum/theft_object/possible_target)
+/datum/objective/steal/get_difficulty(datum/theft_objective/possible_target)
+	return possible_target.difficulty
+
+/datum/objective/steal/is_invalid_target(datum/theft_objective/possible_target, list/objectives)
 
 
 /datum/objective/steal/proc/get_location()
@@ -393,7 +399,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
     theft_area = get_area(T.loc)
     return "[theft_area]"
 
-/datum/objective/steal/find_target(max_difficulty = INFINITY)
+/datum/objective/steal/find_target(max_difficulty = INFINITY, list/objectives)
 	var/loop=50
 	while(!steal_target && loop > 0)
 		loop--
@@ -451,10 +457,14 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/steal/exchange
 	martyr_compatible = 0
 
-/datum/objective/steal/echange/find_target(max_difficulty = INFINITY)
+/datum/objective/steal/exchange/create(datum/mind/traitor, max_difficulty = INFINITY, faction, other_faction)
+	. = ..()
+	set_faction(faction, other_faction)
+
+/datum/objective/steal/echange/find_target(max_difficulty = INFINITY, list/objectives)
 	return
 
-/datum/objective/steal/exchange/proc/set_faction(var/faction,var/otheragent)
+/datum/objective/steal/exchange/proc/set_faction(var/faction, var/otheragent)
 	target = otheragent
 	var/datum/theft_objective/unique/targetinfo
 	if(faction == "red")
@@ -465,6 +475,11 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	steal_target = targetinfo
 
 /datum/objective/steal/exchange/backstab // No need for a difficulty adjustment. Keeping yours and getting theirs is 2
+
+/datum/objective/steal/exchange/backstab/create(datum/mind/traitor, max_difficulty = INFINITY, faction)
+	. = ...() //Lynch me
+	set_faction(faction)
+
 /datum/objective/steal/exchange/backstab/set_faction(var/faction)
 	var/datum/theft_objective/unique/targetinfo
 	if(faction == "red")
@@ -507,12 +522,12 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 /datum/objective/absorb
 	difficulty = 2
 
-/datum/objective/absorb/find_target(max_difficulty = INFINITY)
+/datum/objective/absorb/find_target(max_difficulty = INFINITY, list/objectives)
 	return
 
-/datum/objective/absorb/create(datum/mind/traitor, max_difficulty)
+/datum/objective/absorb/create(datum/mind/traitor, max_difficulty = INFINITY, lowbound = 6, highbound = 8)
 	. = ..()
-	gen_amount_goal(6,8)
+	gen_amount_goal(lowbound, highbound)
 
 /datum/objective/absorb/proc/gen_amount_goal(var/lowbound = 4, var/highbound = 6)
 	target_amount = rand (lowbound,highbound)
@@ -546,7 +561,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	var/target_real_name
 	difficulty = 2
 
-/datum/objective/destroy/find_target(max_difficulty = INFINITY)
+/datum/objective/destroy/find_target(max_difficulty = INFINITY, list/objectives)
 	var/list/possible_targets = active_ais(1)
 	var/mob/living/silicon/ai/target_ai = pick(possible_targets)
 	target = target_ai.mind

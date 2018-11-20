@@ -83,30 +83,22 @@
 			switch(special_pick)
 				if(1)
 					var/datum/objective/block/block_objective = new
-					block_objective.owner = traitor
-					traitor.objectives += block_objective
+					block_objective.create(traitor)
 					objective_count++
 				if(2) //Protect and strand a target
 					var/datum/objective/protect/yandere_one = new
-					yandere_one.owner = traitor
-					traitor.objectives += yandere_one
-					yandere_one.find_target()
+					yandere_one.create(traitor)
 					objective_count++
 					var/datum/objective/maroon/yandere_two = new
-					yandere_two.owner = traitor
-					yandere_two.target = yandere_one.target
-					traitor.objectives += yandere_two
+					yandere_two.create(traitor)
 					objective_count++
 
 		for(var/i = objective_count, i < config.traitor_objectives_amount, i++)
 			var/datum/objective/assassinate/kill_objective = new
-			kill_objective.owner = traitor
-			kill_objective.find_target()
-			traitor.objectives += kill_objective
+			kill_objective.create(traitor)
 
 		var/datum/objective/survive/survive_objective = new
-		survive_objective.owner = traitor
-		traitor.objectives += survive_objective
+		survive_objective.create(traitor)
 
 	else
 		var/is_hijacker = prob(10)
@@ -125,35 +117,23 @@
 			if(prob(50))
 				if(active_ais.len && prob(100/GLOB.player_list.len))
 					var/datum/objective/destroy/destroy_objective = new
-					destroy_objective.owner = traitor
-					destroy_objective.find_target()
-					traitor.objectives += destroy_objective
+					destroy_objective.create(traitor)
 				else if(prob(5))
 					var/datum/objective/debrain/debrain_objective = new
-					debrain_objective.owner = traitor
-					debrain_objective.find_target()
-					traitor.objectives += debrain_objective
+					debrain_objective.create(traitor)
 				else if(prob(30))
 					var/datum/objective/maroon/maroon_objective = new
-					maroon_objective.owner = traitor
-					maroon_objective.find_target()
-					traitor.objectives += maroon_objective
+					maroon_objective.create(traitor)
 				else
 					var/datum/objective/assassinate/kill_objective = new
-					kill_objective.owner = traitor
-					kill_objective.find_target()
-					traitor.objectives += kill_objective
+					kill_objective.create(traitor)
 			else
 				var/datum/objective/steal/steal_objective = new
-				steal_objective.owner = traitor
-				steal_objective.find_target()
-				traitor.objectives += steal_objective
-
+				steal_objective.create(traitor)
 		if(is_hijacker && objective_count <= config.traitor_objectives_amount) //Don't assign hijack if it would exceed the number of objectives set in config.traitor_objectives_amount
 			if(!(locate(/datum/objective/hijack) in traitor.objectives))
 				var/datum/objective/hijack/hijack_objective = new
-				hijack_objective.owner = traitor
-				traitor.objectives += hijack_objective
+				hijack_objective.create(traitor)
 				return
 
 
@@ -165,15 +145,13 @@
 
 		if(martyr_compatibility && martyr_chance)
 			var/datum/objective/die/martyr_objective = new
-			martyr_objective.owner = traitor
-			traitor.objectives += martyr_objective
+			martyr_objective.create(traitor)
 			return
 
 		else
 			if(!(locate(/datum/objective/escape) in traitor.objectives))
 				var/datum/objective/escape/escape_objective = new
-				escape_objective.owner = traitor
-				traitor.objectives += escape_objective
+				escape_objective.create(traitor)
 				return
 
 
@@ -405,20 +383,18 @@
 /datum/game_mode/proc/assign_exchange_role(var/datum/mind/owner)
 	//set faction
 	var/faction = "red"
+	var/other_faction = "blue"
 	if(owner == exchange_blue)
 		faction = "blue"
+		other_faction = "red"
 
 	//Assign objectives
 	var/datum/objective/steal/exchange/exchange_objective = new
-	exchange_objective.set_faction(faction,((faction == "red") ? exchange_blue : exchange_red))
-	exchange_objective.owner = owner
-	owner.objectives += exchange_objective
+	exchange_objective.create(owner, INFINITY, faction, other_faction)
 
 	if(prob(20))
 		var/datum/objective/steal/exchange/backstab/backstab_objective = new
-		backstab_objective.set_faction(faction)
-		backstab_objective.owner = owner
-		owner.objectives += backstab_objective
+		backstab_objective.create(owner, INFINITY, faction)
 
 	//Spawn and equip documents
 	var/mob/living/carbon/human/mob = owner.current

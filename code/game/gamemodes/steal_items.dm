@@ -10,9 +10,16 @@
 	var/typepath=/obj/effect/debugging
 	var/list/protected_jobs = list()
 	var/list/altitems = list()
+	var/list/incompatable_items = list()
 	var/flags = 0
 	var/location_override
 	var/difficulty = 1 //Difficulty of the objective
+
+/datum/theft_objective/proc/check_compatable(list/objectives)
+	for(O in objectives)
+		if(P.type != type || O.type in incompatable_items)
+			return FALSE
+	return TRUE
 
 /datum/theft_objective/proc/check_completion(var/datum/mind/owner)
 	if(!owner.current)
@@ -32,6 +39,7 @@
 	name = "the captain's antique laser gun"
 	typepath = /obj/item/gun/energy/laser/captain
 	protected_jobs = list("Captain")
+	incompatable_items = list(/datum/theft_objective/captains_jetpack, /datum/theft_objective/capmedal)
 	difficulty = 2
 
 /datum/theft_objective/captains_jetpack
@@ -39,6 +47,7 @@
 	typepath = /obj/item/tank/jetpack/oxygen/captain
 	protected_jobs = list("Captain")
 	difficulty = 2
+	incompatable_items = list(/datum/theft_objective/antique_laser_gun, /datum/theft_objective/capmedal)
 
 /datum/theft_objective/hoslaser
 	name = "the head of security's recreated antique laser gun"
@@ -70,12 +79,14 @@ datum/theft_objective/ai/check_special_completion(var/obj/item/aicard/C)
 	typepath = /obj/item/defibrillator/compact
 	protected_jobs = list("Chief Medical Officer")
 	difficulty = 1
+	incompatable_items = list(/datum/theft_objective/hypospray)
 
 /datum/theft_objective/magboots
 	name = "the chief engineer's advanced magnetic boots"
 	typepath = /obj/item/clothing/shoes/magboots/advance
 	protected_jobs = list("Chief Engineer")
 	difficulty = 1
+	incompatable_items = list(/datum/theft_objective/blueprints)
 
 /datum/theft_objective/blueprints
 	name = "the station blueprints"
@@ -83,6 +94,7 @@ datum/theft_objective/ai/check_special_completion(var/obj/item/aicard/C)
 	protected_jobs = list("Chief Engineer")
 	altitems = list(/obj/item/photo)
 	difficulty = 1
+	incompatable_items = list(/datum/theft_objective/magboots)
 
 /datum/objective_item/steal/blueprints/check_special_completion(obj/item/I)
 	if(istype(I, /obj/item/areaeditor/blueprints))
@@ -117,6 +129,7 @@ datum/theft_objective/ai/check_special_completion(var/obj/item/aicard/C)
 	typepath = /obj/item/clothing/accessory/medal/gold/captain
 	protected_jobs = list("Captain")
 	difficulty = 2
+	incompatable_items = list(/datum/theft_objective/antique_laser_gun, /datum/theft_objective/captains_jetpack)
 
 /datum/theft_objective/nukedisc
 	name = "the nuclear authentication disk"
@@ -134,12 +147,14 @@ datum/theft_objective/ai/check_special_completion(var/obj/item/aicard/C)
 	name = "any set of secret documents of any organization"
 	typepath = /obj/item/documents //Any set of secret documents. Doesn't have to be NT's
 	difficulty = 1
+	incompatable_items = list(/datum/theft_objective/unique/docs_blue, /datum/theft_objective/unique/docs_red)
 
 /datum/theft_objective/hypospray
 	name = "the Chief Medical Officer's hypospray"
 	typepath = /obj/item/reagent_containers/hypospray/CMO
 	protected_jobs = list("Chief Medical Officer")
 	difficulty = 1
+	incompatable_items = list(/datum/theft_objective/defib)
 
 /datum/theft_objective/ablative
 	name = "an ablative armor vest"
