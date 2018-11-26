@@ -15,11 +15,8 @@
 	var/location_override
 	var/difficulty = 1 //Difficulty of the objective
 
-/datum/theft_objective/proc/check_compatable(list/objectives)
-	for(O in objectives)
-		if(P.type != type || O.type in incompatable_items)
-			return FALSE
-	return TRUE
+/datum/theft_objective/proc/check_compatable(datum/theft_objective/O)
+	return !(O.type != type || O.type in incompatable_items)
 
 /datum/theft_objective/proc/check_completion(var/datum/mind/owner)
 	if(!owner.current)

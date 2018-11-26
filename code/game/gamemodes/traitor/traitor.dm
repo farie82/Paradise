@@ -113,6 +113,13 @@
 				assign_exchange_role(exchange_blue)
 			objective_count += 1					//Exchange counts towards number of objectives
 		var/list/active_ais = active_ais()
+		var/possible_objectives = list(datum/objective/destroy/destroy_objective, datum/objective/debrain/debrain_objective, 
+			datum/objective/maroon/maroon_objective, datum/objective/assassinate/kill_objective,
+			datum/objective/steal/steal_objective)
+		
+		for(var/D = 4, i>0)
+			
+		
 		for(var/i = objective_count, i < config.traitor_objectives_amount, i++)
 			if(prob(50))
 				if(active_ais.len && prob(100/GLOB.player_list.len))

@@ -9,7 +9,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	var/target_amount = 0				//If they are focused on a particular number. Steal objectives have their own counter.
 	var/completed = 0					//currently only used for custom objectives.
 	var/martyr_compatible = 0			//If the objective is compatible with martyr objective, i.e. if you can still do it while dead.
-	var/difficulty = 1
+	var/difficulty = 1					//Difficulty of the objective
 
 /datum/objective/New(var/text)
 	all_objectives |= src
@@ -37,14 +37,21 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 		return TARGET_INVALID_DEAD
 	if(!possible_target.key)
 		return TARGET_INVALID_NOCKEY
+	for(O in objectives) // Check if the objectives conflict with the current target
+		if(!compatible(possible_target, O))
+			return TARGET_INCOMPATIBLE
 
-/datum/objective/proc/compatible(datum/objective/O)
+// Checks if the target is compatible with a given objective
+/datum/objective/proc/compatible(datum/mind/possible_target, datum/objective/O)
+	if(O.target == possible_target) // Same target
+		return FALSE
 
 
-//Returns the difficulty of the made objective
+
+// Returns the difficulty of the made objective
 /datum/objective/proc/get_difficulty(datum/mind/possible_target)
 	if(possible_target.assigned_job.title in command_positions || possible_target.assigned_job.title in security_positions)
-		return 2 //Command/security is hard man
+		return 2 // Command/security is hard man
 	return 1
 
 /datum/objective/proc/find_target(max_difficulty = INFINITY, list/objective)
@@ -54,8 +61,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 			continue
 		difficulty = get_difficulty(possible_target)
 		if(difficulty > max_difficulty)
-			continue //To hard
-
+			continue // To hard
 		possible_targets += possible_target
 
 	if(possible_targets.len > 0)
@@ -85,7 +91,6 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 			return 1
 		return 0
 	return 1
-
 
 /datum/objective/mutiny
 	martyr_compatible = 1
@@ -139,7 +144,6 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 		return 1
 	return 1
 
-
 /datum/objective/debrain //I want braaaainssss
 	martyr_compatible = 0
 	difficulty = 2
@@ -155,7 +159,6 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 		explanation_text = "Free Objective"
 	return target
 
-
 /datum/objective/debrain/check_completion()
 	if(!target)//If it's a free objective.
 		return 1
@@ -169,7 +172,6 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 		if(A == owner.current)
 			return 1
 	return 0
-
 
 /datum/objective/protect //The opposite of killing a dude.
 	martyr_compatible = 1
@@ -390,7 +392,15 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	return possible_target.difficulty
 
 /datum/objective/steal/is_invalid_target(datum/theft_objective/possible_target, list/objectives)
+	for(O in objectives)
+		if(!compatible(possible_target, O))
+			return TRUE
 
+/datum/objective/proc/compatible(datum/theft_objective/possible_target, datum/objective/O)
+	if(istype(O, datum/objective/steal))
+		var/datum/objective/steal/S = O
+		return S.steal_target.check_compatable(S.target)
+	return !(O.target in possible_target.protected_jobs) // Other objectives target probably has this. To easy
 
 /datum/objective/steal/proc/get_location()
     if(steal_target.location_override)
@@ -407,7 +417,9 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 		var/datum/theft_objective/O = new thefttype
 		if(owner.assigned_role in O.protected_jobs)
 			continue
-		if(O.flags & 2)
+		if(O.flags & THEFT_FLAG_UNIQUE)
+			continue
+		if(is_invalid_target(O, objectives))
 			continue
 		difficulty = get_difficulty(O)
 		if(get_difficulty(O) > max_difficulty)
