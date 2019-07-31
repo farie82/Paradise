@@ -27,7 +27,7 @@
 		var/fuck_you_dir = get_dir(user, target)
 		var/turf/general_direction = get_edge_target_turf(target, fuck_you_dir)
 		target.visible_message("<span class='warning'>[target] gets thrown out of nowhere!</span>'", "<span class='warning'>You suddenly start flying!</span>")
-		playsound(target, 'sound/weapons/thudswoosh.ogg', 50, 1, -1)
+		playsound(target, 'sound/weapons/thudswoosh.ogg', 100, 1, -1)
 		target.throw_at(general_direction, 4, 2, user)
 		last_use = start_watch()
 	else

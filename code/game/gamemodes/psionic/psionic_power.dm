@@ -11,6 +11,7 @@
 	var/active = FALSE // used by a few powers that toggle
 	var/cooldown = 0 // Cooldown before the ability can be used again in seconds
 	var/last_use = 0
+	var/activation_messages = list("puts one hand on his temples", "looks like he's really focusing", "closes his eyes.")
 
 /datum/action/psionic/proc/on_purchase(var/mob/user)
 	if(needs_button)
@@ -23,19 +24,19 @@
 	if(!user || !user.mind) //|| !user.mind.changeling)
 		return
 
-	activation_message(user)
 	if(activate(user))
 		last_use = start_watch()
 
 // Override this to implement functionality
 /datum/action/psionic/proc/activation_message(mob/living/carbon/human/user)
-	to_chat(user, "<span class='notice'>You cast [src].</span>")
+	user.visible_message("<span class='notice'>[user] [pick(activation_messages)].</span>", "<span class='notice'>You cast [src].</span>")
 
 /datum/action/psionic/IsAvailable()
 	return ..() && (stop_watch(last_use) >= cooldown)
 
 // Override this to implement functionality. If it returns true it'll set the cooldown
 /datum/action/psionic/proc/activate(mob/living/carbon/human/user)
+	activation_message(user)
 	return TRUE
 
 /datum/action/psionic/proc/danger_mob_check(mob/living/carbon/human/user, thing)
