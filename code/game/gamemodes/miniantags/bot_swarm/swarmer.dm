@@ -406,23 +406,14 @@
 			to_chat(src, "<span class='warning'>Our bluespace transceiver cannot locate a viable bluespace link, our teleportation abilities are useless in this area.</span>")
 			return
 		if(do_mob(src, target, 30))
-			var/cycle
-			for(cycle=0,cycle<100,cycle++)
-				var/random_location = locate(rand(37,202),rand(75,192),level_name_to_num(MAIN_STATION))//Drunk dial a turf in the general ballpark of the station
-				if(istype(random_location, /turf/simulated/floor))
-					var/turf/simulated/floor/F = random_location
-					if(F.air)
-						var/datum/gas_mixture/A = F.air
-						if(A.oxygen >= 16 && !A.toxins && A.carbon_dioxide < 10 && !A.trace_gases.len)//Can most things breathe in this location?
-							if((A.temperature > 270) && (A.temperature < 360))//Not too hot, not too cold
-								var/pressure = A.return_pressure()
-								if((pressure > 20) && (pressure < 550))//Account for crushing pressure or vaccuums
-									if(ishuman(target))//If we're getting rid of a human, slap some zipties on them to keep them away from us a little longer
-										var/obj/item/restraints/handcuffs/energy/used/Z = new /obj/item/restraints/handcuffs/energy/used(src)
-										Z.apply_cuffs(target, src)
-									do_teleport(target, F, 0)
-									playsound(src,'sound/effects/sparks4.ogg',50,1)
-									break
+			var/turf/simulated/floor/F = find_safe_place_to_teleport()
+			if(F)
+				if(ishuman(target))//If we're getting rid of a human, slap some zipties on them to keep them away from us a little longer
+					var/obj/item/restraints/handcuffs/energy/used/Z = new /obj/item/restraints/handcuffs/energy/used(src)
+					Z.apply_cuffs(target, src)
+				do_teleport(target, F, 0)
+				playsound(src,'sound/effects/sparks4.ogg',50,1)
+				
 			return
 
 /mob/living/simple_animal/hostile/swarmer/electrocute_act(shock_damage, obj/source, siemens_coeff = 1, safety = FALSE, override = FALSE, tesla_shock = FALSE, illusion = FALSE, stun = TRUE)

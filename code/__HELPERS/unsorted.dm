@@ -166,6 +166,22 @@ Turf and target are seperate in case you want to teleport some distance from a t
 
 	return destination
 
+// Finds a safe(ish) place to teleport a humanoid to
+/proc/find_safe_place_to_teleport(tries = 100, datum/callback/extra_checks = null)
+	var/cycle
+	for(cycle=0,cycle<tries,cycle++)
+		var/random_location = locate(rand(37,202),rand(75,192),level_name_to_num(MAIN_STATION))//Drunk dial a turf in the general ballpark of the station
+		if(istype(random_location, /turf/simulated/floor))
+			var/turf/simulated/floor/F = random_location
+			if(F.air)
+				var/datum/gas_mixture/A = F.air
+				if(A.oxygen >= 16 && !A.toxins && A.carbon_dioxide < 10 && !A.trace_gases.len)//Can most things breathe in this location?
+					if((A.temperature > 270) && (A.temperature < 360))//Not too hot, not too cold
+						var/pressure = A.return_pressure()
+						if((pressure > 20) && (pressure < 550))//Account for crushing pressure or vaccuums
+							if(!extra_checks || extra_checks.Invoke(F))
+								return F
+
 // Returns true if direction is blocked from loc
 // Checks if doors are open
 /proc/DirBlocked(turf/loc,var/dir)

@@ -1,0 +1,46 @@
+/datum/action/psionic/teleport
+	name = "Teleport"
+	desc = "Teleport to a place safe and out of sight. Has limited charges"
+	var/charges = 2
+
+/datum/action/psionic/teleport/activate(mob/living/carbon/human/user)
+	var/turf/simulated/floor/F = find_safe_place_to_teleport(200, CALLBACK(src, .proc/nobody_nearby_check, user))
+	if(F)
+		playsound(user,'sound/effects/sparks4.ogg', 50, 1)
+		do_teleport(user, F, 0)
+	else
+		to_chat(user, "<span class='danger'>Could not find a suitable location! Try again!</span>")
+	
+/datum/action/psionic/teleport/proc/nobody_nearby_check(mob/living/carbon/human/user, turf/simulated/floor/F)
+	for(var/atom/thing in F.contents) // orange will exclude the center
+		if(danger_mob_check(user, thing) || danger_camera_check(user, thing) || thing.density)
+			return FALSE
+	
+	for(var/atom/thing in orange(world.view, F))
+		if(danger_mob_check(user, thing) || danger_camera_check(user, thing))
+			return FALSE
+	
+	return TRUE
+
+
+/datum/action/psionic/teleport/proc/danger_camera_check(mob/living/carbon/human/user, thing)
+	. = FALSE
+	if(istype(thing, /obj/machinery/camera))
+		var/obj/machinery/camera/C = thing
+		return C.status // Active cams are bad
+
+/datum/action/psionic/teleport/proc/danger_mob_check(mob/living/carbon/human/user, thing)
+	. = FALSE
+	if(isliving(thing))
+		var/mob/living/L = thing
+		if(L.stat != DEAD) // Dead things can't hurt you
+			if(L.mind) // TODO: Check if mindslaved
+				return TRUE
+			if(isanimal(L))
+				var/mob/living/simple_animal/hostile/S = L
+				if(!("neutral" in S.faction)) // Hostile check
+					return TRUE
+				if(istype(S, /mob/living/simple_animal/hostile/retaliate))
+					var/mob/living/simple_animal/hostile/retaliate/R = S
+					if(user in R.enemies)
+						return TRUE

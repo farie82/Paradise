@@ -54,6 +54,7 @@
 	var/datum/vampire/vampire			//vampire holder
 	var/datum/abductor/abductor			//abductor holder
 	var/datum/devilinfo/devilinfo 		//devil holder
+	var/datum/psionic/psionic 			//psionic holder
 
 	var/antag_hud_icon_state = null //this mind's ANTAG_HUD should have this icon_state
 	var/datum/atom_hud/antag/antag_hud = null //this mind's antag HUD
