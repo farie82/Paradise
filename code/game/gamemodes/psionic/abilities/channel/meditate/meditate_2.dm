@@ -3,9 +3,9 @@
 	able_to_move = FALSE
 
 /datum/psionic/channel_stage/meditate_2/success(mob/living/carbon/psionic, target, datum/psionic/channel/channel_ability)
-	//psionic.SetEyeBlind(0)
+	psionic.SetEyeBlind(0)
 	psionic.visible_message("<span class='notice'>[psionic] opens his eyes again.</span>", "<span class='notice'>You come out of your trance.</span>")
-	psionic.mind.psionic.regen_focus(TRUE) // Maybe heal damage?
+	psionic.mind.psionic.regen_focus(psionic, TRUE) // Maybe heal damage?
 	return TRUE
 
 /datum/psionic/channel_stage/meditate_2/start_channeling(mob/living/carbon/psionic, target, datum/psionic/channel/channel_ability)

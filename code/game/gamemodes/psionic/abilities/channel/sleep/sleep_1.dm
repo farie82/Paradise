@@ -7,7 +7,7 @@
 		//Target is not human.
 		return FALSE // TODO: Make AOE for upgrade
 	H.emote("yawn")
-	H.Drowsy(20)
+	H.AdjustEyeBlurry(2)
 	return TRUE
 
 /datum/psionic/channel_stage/sleep_1/start_channeling(mob/living/carbon/psionic, target, datum/psionic/channel/channel_ability)

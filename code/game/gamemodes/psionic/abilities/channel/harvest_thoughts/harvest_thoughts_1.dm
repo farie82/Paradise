@@ -6,8 +6,7 @@
 	if(!H)
 		return FALSE
 	
-	H.Drowsy(10)
-	H.Paralyse(10)
+	H.AdjustSleeping(4)
 	return TRUE
 
 /datum/psionic/channel_stage/harvest_thoughts_1/start_channeling(mob/living/carbon/psionic, target, datum/psionic/channel/channel_ability)

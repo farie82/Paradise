@@ -11,6 +11,14 @@
 
 	silent_steps = TRUE
 
+/datum/species/psionic/on_species_gain(mob/living/carbon/human/H) //Handles anything not already covered by basic species assignment.
+	H.equip_to_slot_or_del(new /obj/item/clothing/under/shadowling/psionic(H), slot_w_uniform)
+	H.equip_to_slot_or_del(new /obj/item/clothing/shoes/shadowling/psionic(H), slot_shoes)
+	H.equip_to_slot_or_del(new /obj/item/clothing/suit/space/shadowling/psionic(H), slot_wear_suit)
+	H.equip_to_slot_or_del(new /obj/item/clothing/head/shadowling/psionic(H), slot_head)
+	H.equip_to_slot_or_del(new /obj/item/clothing/gloves/shadowling/psionic(H), slot_gloves)
+	H.equip_to_slot_or_del(new /obj/item/clothing/mask/gas/shadowling/psionic(H), slot_wear_mask)
+	H.equip_to_slot_or_del(new /obj/item/clothing/glasses/shadowling/psionic(H), slot_glasses)
 
 //TODO: TEMP REMOVE LATER
 /mob/living/carbon/human/psionic/Initialize(mapload)
@@ -25,6 +33,8 @@
 	H.on_purchase(src)
 	var/datum/action/psionic/meditate/M = new 
 	M.on_purchase(src)
+	var/datum/action/psionic/active/targeted/break_mindshield/B = new 
+	B.on_purchase(src)
 
 /mob/living/carbon/human/proc/give_psionic()
 	if(mind)

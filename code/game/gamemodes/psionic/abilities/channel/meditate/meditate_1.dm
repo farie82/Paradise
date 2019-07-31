@@ -2,7 +2,7 @@
 	duration = 1.0 SECONDS
 
 /datum/psionic/channel_stage/meditate_1/success(mob/living/carbon/psionic, target, datum/psionic/channel/channel_ability)
-	//psionic.SetEyeBlind(4)
+	psionic.SetEyeBlind(4)
 	return TRUE
 
 /datum/psionic/channel_stage/meditate_1/start_channeling(mob/living/carbon/psionic, target, datum/psionic/channel/channel_ability)

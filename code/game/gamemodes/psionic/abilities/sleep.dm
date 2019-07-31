@@ -7,4 +7,5 @@
 
 /datum/action/psionic/active/targeted/sleep/use_ability_on(atom/target, mob/living/user)
 	..()
-	return S.start_channeling(user, target)
+	if(ishuman(target))
+		return S.start_channeling(user, target)

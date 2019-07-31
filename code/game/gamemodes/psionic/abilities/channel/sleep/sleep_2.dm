@@ -7,8 +7,8 @@
 		//Target is not human.
 		return FALSE // TODO: Make AOE for upgrade
 	
-	H.Drowsy(20)
-	H.Weaken(10)
+	H.Drowsy(2)
+	H.adjustStaminaLoss(50)
 	if(prob(30))
 		H.emote("faint")
 	

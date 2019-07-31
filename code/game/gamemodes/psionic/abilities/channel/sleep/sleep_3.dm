@@ -6,8 +6,7 @@
 	if(!H)
 		//Target is not human.
 		return FALSE // TODO: Make AOE for upgrade
-		
-	H.Drowsy(30)
-	H.Paralyse(30)
+	
+	H.AdjustSleeping(30)
 	
 	return TRUE

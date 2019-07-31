@@ -19,7 +19,15 @@
 	harvested_thoughts_usable++
 	to_chat(psionic, "<span class='notice'>You harvested another set of thoughts. You have a total of [harvested_thoughts_total] from which you can use [harvested_thoughts_usable].")
 
-/datum/antag/psionic/proc/regen_focus(meditating = FALSE)
+/datum/antag/psionic/proc/use_focus(mob/living/carbon/psionic, amount)
+	if(amount > focus_amount)
+		focus_amount = 0
+		to_chat(psionic, "<span class='danger'>You are fully drained of focus!</span>")
+		psionic.AdjustWeaken(3)
+	else
+		focus_amount -= amount
+
+/datum/antag/psionic/proc/regen_focus(mob/living/carbon/psionic, meditating = FALSE)
 	if(!meditating)
 		focus_amount = min(focus_max * 0.5, focus_amount + focus_recharge_rate_passive) // Max is halved and slower regen.
 	else
@@ -37,4 +45,4 @@
 
 /datum/component/psionic_focus_regen/proc/Life(mob/living/carbon/C)
 	if(C.stat != DEAD)
-		psionic.regen_focus()
+		psionic.regen_focus(parent)

@@ -25,6 +25,7 @@
 		return
 
 	if(activate(user))
+		user.mind.psionic.use_focus(focus_cost)
 		last_use = start_watch()
 
 // Override this to implement functionality

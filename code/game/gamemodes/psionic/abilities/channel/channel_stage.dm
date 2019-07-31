@@ -14,7 +14,7 @@
 	
 	start_channeling(psionic, target, channel_ability)
 	
-	if(do_after(psionic, duration, target = psionic, extra_checks = (interaction_breaks ? CALLBACK(src, .proc/concentration_check, psionic) : null )))
+	if(do_after(psionic, duration, target = psionic, extra_checks = (interaction_breaks ? CALLBACK(src, .proc/concentration_check, psionic, target) : CALLBACK(src, .proc/distance_check, psionic, target ))))
 		psionic.visible_message("<span class='warning'>You feel a sharp sting in your head!</span>", "<span class='notice'>You channel your focus into [target].</span>")
 		. = success(psionic, target, channel_ability)
 	else
@@ -24,8 +24,13 @@
 		no_move_component.RemoveComponent()
 		psionic.canmove = TRUE
 
-/datum/psionic/channel_stage/proc/concentration_check(mob/living/carbon/psionic)
-	return TRUE
+/datum/psionic/channel_stage/proc/distance_check(mob/living/carbon/psionic, target)
+	if(target == psionic)
+		return TRUE
+	return (target in range(world.view, psionic)) // range not view due to xray being viable
+
+/datum/psionic/channel_stage/proc/concentration_check(mob/living/carbon/psionic, target)
+	return distance_check(psionic, target)
 	//TODO: make a way to check if the person is interacted with. Component?
 
 /datum/psionic/channel_stage/proc/start_channeling(mob/living/carbon/psionic, target, datum/psionic/channel/channel_ability)

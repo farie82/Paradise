@@ -6,4 +6,4 @@
 
 /datum/action/psionic/meditate/activate(mob/living/carbon/user)
 	..()
-	return M.start_channeling(user, target)
+	return M.start_channeling(user, user)
