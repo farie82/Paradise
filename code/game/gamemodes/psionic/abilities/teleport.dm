@@ -2,6 +2,7 @@
 	name = "Teleport"
 	desc = "Teleport to a place safe and out of sight. Has limited charges"
 	var/charges = 2
+	cooldown = 120
 
 /datum/action/psionic/teleport/activate(mob/living/carbon/user)
 	var/turf/simulated/floor/F = find_safe_place_to_teleport(200, CALLBACK(src, .proc/nobody_nearby_check, user))
@@ -21,7 +22,6 @@
 			return FALSE
 	
 	return TRUE
-
 
 /datum/action/psionic/teleport/proc/danger_camera_check(mob/living/carbon/user, thing)
 	. = FALSE

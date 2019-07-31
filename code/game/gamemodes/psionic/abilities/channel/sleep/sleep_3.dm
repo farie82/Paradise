@@ -7,7 +7,7 @@
 		//Target is not human.
 		return FALSE // TODO: Make AOE for upgrade
 		
-	H.Drowsy(60)
-	H.Paralyse(50)
+	H.Drowsy(30)
+	H.Paralyse(30)
 	
 	return TRUE

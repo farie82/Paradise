@@ -3,7 +3,8 @@
 	desc = "Throw somebody away from you. Alt + middle mousebutton to use. Selects the closest target from where you target"
 	needs_button = FALSE
 	var/datum/component/listening_component
-	cooldown = 10
+	cooldown = 30
+	focus_cost = 10
 
 /datum/action/psionic/force_push/on_purchase(mob/user)
 	..()
