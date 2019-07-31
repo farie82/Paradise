@@ -7,10 +7,10 @@
 
 /datum/action/psionic/force_push/on_purchase(mob/user)
 	..()
-	listening_component = user.AddComponent(/datum/component/force_push, src, user)
+	listening_component = user.AddComponent(/datum/component/force_push, src)
 	to_chat(user, "<span class='info'>Press both alt and middle mouse button near a target to use the 'Force push' ability</span>")
 
-/datum/action/psionic/force_push/proc/target(mob/living/carbon/human/user, atom/A)
+/datum/action/psionic/force_push/proc/target(mob/living/carbon/user, atom/A)
 	if(!IsAvailable())
 		to_chat(user, "<span class='warning'>[src] is not available yet!</span>")
 		return
@@ -38,7 +38,7 @@
 
 /datum/component/force_push/Initialize(datum/action/psionic/force_push/psionic_ability)
 	var/mob/living/M = parent
-	if(!istype(M) || !M.mind || !psionic_ability) //Something went wrong
+	if(!istype(M) || !psionic_ability) //Something went wrong
 		return COMPONENT_INCOMPATIBLE
 	ability = psionic_ability
 	RegisterSignal(M, COMSIG_MIDDLE_CLICK_ALT, .proc/target)

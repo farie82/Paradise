@@ -5,6 +5,9 @@
 	cooldown = 10
 
 /datum/action/psionic/active/targeted/harvest_thoughts/use_ability_on(atom/target, mob/living/user)
+	if(target == user)
+		to_chat(user, "<span class='warning'>Are you mad? We need a humanoid to harvest!</span>")
+		return FALSE
 	if(!target.Adjacent(user))
 		to_chat(user, "<span class='warning'>You have to be standing next to them to start harvesting.</span>")
 		return FALSE

@@ -20,7 +20,7 @@
 		owner = user // manually set it
 
 /datum/action/psionic/Trigger()
-	var/mob/living/carbon/human/user = owner
+	var/mob/living/carbon/user = owner
 	if(!user || !user.mind) //|| !user.mind.changeling)
 		return
 
@@ -35,11 +35,11 @@
 	return ..() && (stop_watch(last_use) >= cooldown)
 
 // Override this to implement functionality. If it returns true it'll set the cooldown
-/datum/action/psionic/proc/activate(mob/living/carbon/human/user)
+/datum/action/psionic/proc/activate(mob/living/carbon/user)
 	activation_message(user)
 	return TRUE
 
-/datum/action/psionic/proc/danger_mob_check(mob/living/carbon/human/user, thing)
+/datum/action/psionic/proc/danger_mob_check(mob/living/carbon/user, thing)
 	. = FALSE
 	if(isliving(thing))
 		var/mob/living/L = thing

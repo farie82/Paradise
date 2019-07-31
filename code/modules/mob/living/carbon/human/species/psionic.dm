@@ -19,10 +19,13 @@
 	S.on_purchase(src)
 	var/datum/action/psionic/teleport/T = new 
 	T.on_purchase(src)
-	//Can't give force push yet without a mind
+	var/datum/action/psionic/force_push/F = new 
+	F.on_purchase(src)
 	var/datum/action/psionic/active/targeted/harvest_thoughts/H = new 
 	H.on_purchase(src)
+	var/datum/action/psionic/meditate/M = new 
+	M.on_purchase(src)
 
 /mob/living/carbon/human/proc/give_psionic()
 	if(mind)
-		mind.psionic = new
+		mind.psionic = new(src)

@@ -1,14 +1,14 @@
 /datum/action/psionic/active/targeted
 
-/datum/action/psionic/active/targeted/activation_message(mob/living/carbon/human/user)
+/datum/action/psionic/active/targeted/activation_message(mob/living/carbon/user)
 	to_chat(user, "<span class='notice'>You start preparing [src].</span>")
 
-/datum/action/psionic/active/targeted/activate(mob/living/carbon/human/user)
+/datum/action/psionic/active/targeted/activate(mob/living/carbon/user)
 	..()
 	user.middleClickOverride = new /datum/middleClickOverride/psionic(src)
 	return FALSE // Don't go on cooldown
 
-/datum/action/psionic/active/targeted/deactivation_message(mob/living/carbon/human/user)
+/datum/action/psionic/active/targeted/deactivation_message(mob/living/carbon/user)
 	to_chat(user, "<span class='notice'>You stop preparing [src].</span>")
 
 
