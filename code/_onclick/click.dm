@@ -80,6 +80,9 @@
 	if(modifiers["middle"] && modifiers["shift"])
 		MiddleShiftClickOn(A)
 		return
+	if(modifiers["middle"] && modifiers["alt"])
+		MiddleAltClickOn(A)
+		return
 	if(modifiers["shift"] && modifiers["ctrl"])
 		CtrlShiftClickOn(A)
 		return
@@ -238,6 +241,13 @@
 		mind.changeling.chosen_sting.try_to_sting(src, A)
 	else
 		..()
+
+/*
+	Middle alt-click
+*/
+/mob/proc/MiddleAltClickOn(var/atom/A)
+	SEND_SIGNAL(src, COMSIG_MIDDLE_CLICK_ALT, A)
+	return
 
 /*
 	Middle shift-click

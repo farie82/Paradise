@@ -28,19 +28,3 @@
 	if(istype(thing, /obj/machinery/camera))
 		var/obj/machinery/camera/C = thing
 		return C.status // Active cams are bad
-
-/datum/action/psionic/teleport/proc/danger_mob_check(mob/living/carbon/human/user, thing)
-	. = FALSE
-	if(isliving(thing))
-		var/mob/living/L = thing
-		if(L.stat != DEAD) // Dead things can't hurt you
-			if(L.mind) // TODO: Check if mindslaved
-				return TRUE
-			if(isanimal(L))
-				var/mob/living/simple_animal/hostile/S = L
-				if(!("neutral" in S.faction)) // Hostile check
-					return TRUE
-				if(istype(S, /mob/living/simple_animal/hostile/retaliate))
-					var/mob/living/simple_animal/hostile/retaliate/R = S
-					if(user in R.enemies)
-						return TRUE

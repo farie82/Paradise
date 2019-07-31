@@ -6,6 +6,7 @@
 		user.mind.psionic.active_ability.deactivate()
 	active = TRUE
 	user.mind.psionic.active_ability = src
+	return TRUE
 
 /datum/action/psionic/active/activation_message(mob/living/carbon/human/user)
 	to_chat(user, "<span class='notice'>You start focusing on keeping '[src]' up.</span>")

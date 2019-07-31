@@ -6,10 +6,12 @@
 	if(!H)
 		//Target is not human.
 		return FALSE // TODO: Make AOE for upgrade
-	H.emote("faint")
 	
 	H.Drowsy(20)
 	H.Weaken(10)
+	if(prob(30))
+		H.emote("faint")
+	
 	return TRUE
 
 /datum/psionic/channel_stage/sleep_2/start_channeling(mob/living/carbon/human/psionic, target, datum/psionic/channel/channel_ability)

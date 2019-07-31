@@ -16,9 +16,11 @@
 /mob/living/carbon/human/psionic/Initialize(mapload)
 	..(mapload, /datum/species/psionic)
 	var/datum/action/psionic/active/targeted/sleep/S = new 
-	S.Grant(src)
+	S.on_purchase(src)
 	var/datum/action/psionic/teleport/T = new 
-	T.Grant(src)
+	T.on_purchase(src)
+	var/datum/action/psionic/force_push/F = new 
+	F.on_purchase(src)
 
 /mob/living/carbon/human/proc/give_psionic()
 	if(mind)
