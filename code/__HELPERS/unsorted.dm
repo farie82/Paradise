@@ -182,6 +182,14 @@ Turf and target are seperate in case you want to teleport some distance from a t
 							if(!extra_checks || extra_checks.Invoke(F))
 								return F
 
+/proc/human_to_icon_snapshot(mob/living/carbon/human/target) // maybe
+	var/datum/icon_snapshot/entry = new
+	entry.name = target.name
+	entry.icon = target.icon
+	entry.icon_state = target.icon_state
+	entry.overlays = target.get_overlays_copy(list(L_HAND_LAYER,R_HAND_LAYER))
+	return entry
+
 // Returns true if direction is blocked from loc
 // Checks if doors are open
 /proc/DirBlocked(turf/loc,var/dir)

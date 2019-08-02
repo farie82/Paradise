@@ -9,6 +9,8 @@
 	var/datum/psionic/channel/channeling
 	var/list/active_abilities = list() // Which ability is selected/active. Can have multiple "active" such as sleep on the ready and invisibility on
 	var/datum/component/psionic_focus_regen/psionic_focus_regen_comp
+	var/mob/living/carbon/human/selected_disguise
+	
 
 /datum/antagonist/psionic/New(mob/living/carbon/C)
 	. = ..()
@@ -29,6 +31,8 @@
 			ability.deactivate(psionic)
 	else
 		focus_amount -= amount
+		if(focus_amount <= amount)
+			to_chat(psionic, "<span class='userdanger'>You're almost out of focus!</span>")
 
 /datum/antagonist/psionic/proc/regen_focus(mob/living/carbon/psionic, meditating = FALSE)
 	if(!meditating && focus_amount < focus_max * 0.5)

@@ -22,12 +22,37 @@
 	H.equip_to_slot_or_del(new /obj/item/clothing/mask/gas/shadowling/psionic(H), slot_wear_mask)
 	H.equip_to_slot_or_del(new /obj/item/clothing/glasses/shadowling/psionic(H), slot_glasses)
 
-/mob/living/carbon/human/proc/give_psionic()
+/mob/living/carbon/human/psionic/Initialize(mapload)
+	..(mapload, /datum/species/psionic)
+
+/mob/living/carbon/human/psionic/examine(mob/user)
+	if(mind && mind.psionic)
+		var/found = FALSE
+		for(var/datum/action/psionic/active/disguise_self/D in mind.psionic.active_abilities)
+			found = TRUE
+			break // Should not be needed but hey
+		if(found)
+			. = mind.psionic.selected_disguise.examine(user)
+			if(get_dist(user,src) <= 3) // Add upgraded version
+				to_chat(user, "<span class='warning'>It doesn't look quite right...</span>")
+			return .
+	
+	. = ..() // Not disguised
+
+/mob/living/carbon/human/proc/make_psionic()
 	if(mind)
-		set_species(/datum/species/psionic, "#222222")
-		mind.psionic = new(src)
+		for(var/obj/item/I in contents - (bodyparts | internal_organs)) //drops all items except organs
+			unEquip(I)
+		var/mob/living/carbon/human/psionic/psi = new(loc)
+		var/datum/mind/oldmind = mind
+		psi.ckey = ckey
+		oldmind.transfer_to(psi)
+		oldmind.psionic = new(psi)
 		for(var/path in typesof(/datum/action/psionic))
 			var/datum/action/psionic/P = new path
 			if(!P.name || P.name == "Base psionic ability")
 				continue
-			P.on_purchase(src)
+			P.on_purchase(psi)
+		
+		spawn(0)
+			qdel(src)
