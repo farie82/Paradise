@@ -587,6 +587,8 @@
 #include "code\game\gamemodes\psionic\abilities\terror.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\channel.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\channel_stage.dm"
+#include "code\game\gamemodes\psionic\abilities\channel\become_ethereal\become_ethereal_1.dm"
+#include "code\game\gamemodes\psionic\abilities\channel\become_ethereal\become_ethereal_channel.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\break_mindshield\break_mindshield_1.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\break_mindshield\break_mindshield_2.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\break_mindshield\break_mindshield_3.dm"

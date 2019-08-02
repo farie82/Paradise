@@ -25,8 +25,7 @@
 		return
 
 	if(activate(user))
-		user.mind.psionic.use_focus(focus_cost)
-		last_use = start_watch()
+		used(user)
 
 // Override this to implement functionality
 /datum/action/psionic/proc/activation_message(mob/living/carbon/human/user)
@@ -34,6 +33,10 @@
 
 /datum/action/psionic/IsAvailable()
 	return ..() && (stop_watch(last_use) >= cooldown) && owner.mind.psionic.focus_amount >= focus_cost
+
+/datum/action/psionic/proc/used(mob/living/carbon/user)
+	last_use = start_watch()
+	user.mind.psionic.use_focus(focus_cost)
 
 // Override this to implement functionality. If it returns true it'll set the cooldown
 /datum/action/psionic/proc/activate(mob/living/carbon/user)

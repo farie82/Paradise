@@ -15,16 +15,16 @@
 				A.deactivate(user)
 	
 	activation_message(user)
-	active = TRUE
-	user.mind.psionic.active_abilities += src
 	
 	return TRUE
 
 /datum/action/psionic/active/activation_message(mob/living/carbon/user)
-	to_chat(user, "<span class='notice'>You start focusing on keeping '[src]' up.</span>")
+	return
 
 // should be called when the ability is actually activated (after a channel etc)
 /datum/action/psionic/active/proc/activated(mob/living/carbon/user)
+	user.mind.psionic.active_abilities += src
+	active = TRUE
 	if(maintain_focus_cost > 0)
 		maintain_component = new(user, src, user.mind.psionic)
 

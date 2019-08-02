@@ -24,17 +24,16 @@
 /datum/action/psionic/active/invisibility/proc/become_invisible(mob/living/carbon/user)
 	var/originalloc = get_turf(user.loc)
 	animation = new /atom/movable/overlay(originalloc)
-	animation.name = "water"
 	animation.density = 0
 	animation.anchored = 1
 	animation.icon = 'icons/mob/mob.dmi'
-	animation.icon_state = "liquify"
+	animation.icon_state = "cloak"
 	animation.layer = 5
 	animation.master = user
 	user.ExtinguishMob()
 	if(user.buckled)
 		user.buckled.unbuckle_mob()
-	flick("liquify", animation)
+	flick("cloak", animation)
 	prior_invis = user.invisibility
 	user.invisibility = INVISIBILITY_OBSERVER
 	steam = new /datum/effect_system/steam_spread()
@@ -51,7 +50,7 @@
 	steam.start()
 	user.canmove = 0
 	sleep(20)
-	flick("reappear", animation)
+	flick("uncloak", animation)
 	sleep(5)
 	user.invisibility = prior_invis
 	user.canmove = 1

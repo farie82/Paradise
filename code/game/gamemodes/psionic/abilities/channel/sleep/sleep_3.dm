@@ -1,7 +1,7 @@
 /datum/psionic/channel_stage/sleep_3
 	duration = 5 SECONDS
 
-/datum/psionic/channel_stage/sleep_3/success(mob/living/carbon/psionic, target, datum/psionic/channel/channel_ability)
+/datum/psionic/channel_stage/sleep_3/success(mob/living/carbon/psionic, target)
 	var/mob/living/carbon/human/H = target
 	if(!H)
 		//Target is not human.
