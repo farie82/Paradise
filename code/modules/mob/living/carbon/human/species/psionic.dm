@@ -12,6 +12,8 @@
 	silent_steps = TRUE
 
 /datum/species/psionic/on_species_gain(mob/living/carbon/human/H) //Handles anything not already covered by basic species assignment.
+	for(var/obj/item/I in H.contents - (H.bodyparts | H.internal_organs)) //drops all items except organs
+		H.unEquip(I)
 	H.equip_to_slot_or_del(new /obj/item/clothing/under/shadowling/psionic(H), slot_w_uniform)
 	H.equip_to_slot_or_del(new /obj/item/clothing/shoes/shadowling/psionic(H), slot_shoes)
 	H.equip_to_slot_or_del(new /obj/item/clothing/suit/space/shadowling/psionic(H), slot_wear_suit)
@@ -20,22 +22,12 @@
 	H.equip_to_slot_or_del(new /obj/item/clothing/mask/gas/shadowling/psionic(H), slot_wear_mask)
 	H.equip_to_slot_or_del(new /obj/item/clothing/glasses/shadowling/psionic(H), slot_glasses)
 
-//TODO: TEMP REMOVE LATER
-/mob/living/carbon/human/psionic/Initialize(mapload)
-	..(mapload, /datum/species/psionic)
-	var/datum/action/psionic/active/targeted/sleep/S = new 
-	S.on_purchase(src)
-	var/datum/action/psionic/teleport/T = new 
-	T.on_purchase(src)
-	var/datum/action/psionic/force_push/F = new 
-	F.on_purchase(src)
-	var/datum/action/psionic/active/targeted/harvest_thoughts/H = new 
-	H.on_purchase(src)
-	var/datum/action/psionic/meditate/M = new 
-	M.on_purchase(src)
-	var/datum/action/psionic/active/targeted/break_mindshield/B = new 
-	B.on_purchase(src)
-
 /mob/living/carbon/human/proc/give_psionic()
 	if(mind)
+		set_species(/datum/species/psionic, "#222222")
 		mind.psionic = new(src)
+		for(var/path in typesof(/datum/action/psionic))
+			var/datum/action/psionic/P = new path
+			if(!P.name || P.name == "Base psionic ability")
+				continue
+			P.on_purchase(src)

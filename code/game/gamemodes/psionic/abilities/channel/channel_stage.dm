@@ -21,7 +21,7 @@
 		psionic.visible_message("<span class='warning'>You get a light headache.</span>", "<span class='warning'>Your focus was broken!</span>")
 		. = failed(psionic, target, channel_ability)
 	if(!able_to_move)
-		no_move_component.RemoveComponent()
+		qdel(no_move_component)
 		psionic.canmove = TRUE
 
 /datum/psionic/channel_stage/proc/distance_check(mob/living/carbon/psionic, target)
@@ -56,6 +56,9 @@
 /datum/component/psionic_channel/no_move/Initialize(...)
 	. = ..()
 	RegisterSignal(parent, COMSIG_LIVING_UPDATE_CAN_MOVE, .proc/update_canmove)
+
+/datum/component/psionic_channel/no_move/UnregisterFromParent()
+	UnregisterSignal(parent, COMSIG_LIVING_UPDATE_CAN_MOVE)
 
 /datum/component/psionic_channel/no_move/proc/update_canmove()
 	var/mob/living/M = parent

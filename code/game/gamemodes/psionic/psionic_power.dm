@@ -10,7 +10,7 @@
 	var/needs_button = TRUE // for passive abilities like hivemind that dont need a button
 	var/active = FALSE // used by a few powers that toggle
 	var/cooldown = 0 // Cooldown before the ability can be used again in seconds
-	var/last_use = 0
+	var/last_use = -INFINITY
 	var/activation_messages = list("puts one hand on his temples", "looks like he's really focusing", "closes his eyes.")
 
 /datum/action/psionic/proc/on_purchase(var/mob/user)
@@ -21,7 +21,7 @@
 
 /datum/action/psionic/Trigger()
 	var/mob/living/carbon/user = owner
-	if(!user || !user.mind) //|| !user.mind.changeling)
+	if(!user || !user.mind || !user.mind.psionic)
 		return
 
 	if(activate(user))
@@ -33,7 +33,7 @@
 	user.visible_message("<span class='notice'>[user] [pick(activation_messages)].</span>", "<span class='notice'>You cast [src].</span>")
 
 /datum/action/psionic/IsAvailable()
-	return ..() && (stop_watch(last_use) >= cooldown)
+	return ..() && (stop_watch(last_use) >= cooldown) && owner.mind.psionic.focus_amount >= focus_cost
 
 // Override this to implement functionality. If it returns true it'll set the cooldown
 /datum/action/psionic/proc/activate(mob/living/carbon/user)

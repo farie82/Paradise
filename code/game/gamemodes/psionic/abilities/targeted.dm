@@ -1,4 +1,5 @@
 /datum/action/psionic/active/targeted
+	var/ranged = TRUE
 
 /datum/action/psionic/active/targeted/activation_message(mob/living/carbon/user)
 	to_chat(user, "<span class='notice'>You start preparing [src].</span>")
@@ -13,6 +14,12 @@
 
 
 /datum/action/psionic/active/targeted/proc/target(atom/target, mob/living/user)
+	if(!IsAvailable())
+		to_chat(user, "<span class='warning'>You this ability now.</span>")
+		return FALSE
+	if(!ranged && !target.Adjacent(user))
+		to_chat(user, "<span class='warning'>You have to be standing next to them to start this ability.</span>")
+		return FALSE
 	if(use_ability_on(target, user))
 		last_use = start_watch()
 		return TRUE
@@ -32,5 +39,6 @@
 /datum/middleClickOverride/psionic/onClick(atom/A, mob/living/user)
 	if(ability.target(A, user))
 		// Will unset itself from the middle mouse button once used successfully
-		ability.deactivate()
+		ability.last_use = start_watch()
+		ability.deactivate(user)
 		..()

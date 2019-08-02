@@ -9,6 +9,9 @@
 	if(F)
 		playsound(user,'sound/effects/sparks4.ogg', 50, 1)
 		do_teleport(user, F, 0)
+		charges--
+		to_chat(user, "<span 'warning'>You have [charges] charges left.</span>")
+		return TRUE
 	else
 		to_chat(user, "<span class='danger'>Could not find a suitable location! Try again!</span>")
 	

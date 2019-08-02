@@ -16,10 +16,10 @@
 		to_chat(user, "<span class='warning'>[src] is not available yet!</span>")
 		return
 	var/mob/living/target
-	if(user != A && isliving(A))
+	if(user != A && isliving(A)) // They selected a mob in special. So just use that
 		target = A
 	if(!target || target == user || !danger_mob_check(user, target))
-		for(var/mob/living/L in orange(2, A))
+		for(var/mob/living/L in range(2, A))
 			if(L != user && danger_mob_check(user, L))
 				target = L
 				break
@@ -43,6 +43,9 @@
 		return COMPONENT_INCOMPATIBLE
 	ability = psionic_ability
 	RegisterSignal(M, COMSIG_MIDDLE_CLICK_ALT, .proc/target)
+
+/datum/component/force_push/UnregisterFromParent()
+	UnregisterSignal(parent, COMSIG_MIDDLE_CLICK_ALT)
 
 /datum/component/force_push/proc/target(mob/living/user, atom/A)
 	ability.target(user, A)
