@@ -22,8 +22,7 @@
 		become_visible(user)
 
 /datum/action/psionic/active/invisibility/proc/become_invisible(mob/living/carbon/user)
-	var/mob/living/U = user
-	var/originalloc = get_turf(U.loc)
+	var/originalloc = get_turf(user.loc)
 	animation = new /atom/movable/overlay(originalloc)
 	animation.name = "water"
 	animation.density = 0
@@ -32,27 +31,32 @@
 	animation.icon_state = "liquify"
 	animation.layer = 5
 	animation.master = user
-	U.ExtinguishMob()
-	if(U.buckled)
-		U.buckled.unbuckle_mob()
+	user.ExtinguishMob()
+	if(user.buckled)
+		user.buckled.unbuckle_mob()
 	flick("liquify", animation)
-	prior_invis = U.invisibility
-	U.invisibility = INVISIBILITY_OBSERVER
+	prior_invis = user.invisibility
+	user.invisibility = INVISIBILITY_OBSERVER
 	steam = new /datum/effect_system/steam_spread()
 	steam.set_up(4, 0, originalloc)
 	steam.start()
+	if(ishuman(user))
+		var/mob/living/carbon/human/H = user
+		H.dna.species.slowdown = 2
 
 /datum/action/psionic/active/invisibility/proc/become_visible(mob/living/carbon/user)
-	var/mob/living/U = user
-	var/mobloc = get_turf(U.loc)
+	var/mobloc = get_turf(user.loc)
 	animation.loc = mobloc
 	steam.location = mobloc
 	steam.start()
-	U.canmove = 0
+	user.canmove = 0
 	sleep(20)
 	flick("reappear", animation)
 	sleep(5)
-	U.invisibility = prior_invis
-	U.canmove = 1
+	user.invisibility = prior_invis
+	user.canmove = 1
 	qdel(animation)
 	qdel(steam)
+	if(ishuman(user))
+		var/mob/living/carbon/human/H = user
+		H.dna.species.slowdown = 0
