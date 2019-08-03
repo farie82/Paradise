@@ -60,6 +60,7 @@
 	var/just_spawned = 1
 	var/bypassing = 0
 	var/fake = FALSE
+	var/burn_on_crossing = TRUE
 	var/burn_time = 0
 
 /obj/effect/hotspot/New()
@@ -191,7 +192,7 @@
 
 /obj/effect/hotspot/Crossed(mob/living/L)
 	..()
-	if(isliving(L))
+	if(burn_on_crossing && isliving(L))
 		L.fire_act()
 
 /obj/effect/hotspot/fake // Largely for the fireflash procs below
@@ -202,6 +203,13 @@
 	..()
 	if(burn_time)
 		QDEL_IN(src, burn_time)
+
+/obj/effect/hotspot/fake/faker
+	burn_on_crossing = FALSE
+
+/obj/effect/hotspot/fake/New(burntime = 30)
+	burn_time = burntime
+	..()
 
 /proc/fireflash(atom/center, radius, temp)
 	if(!temp)

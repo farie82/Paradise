@@ -3,9 +3,13 @@
 	var/able_to_move = TRUE // If the psionic is able to move during this stage
 	var/interaction_breaks = FALSE // If the channel breaks if the psionic is interacted with
 	var/interacted_with = FALSE
+	var/requires_upgraded = FALSE // If this stage requires the upgraded version of the ability. Make sure only bonus stages are marked as this
 	
 	
-/datum/psionic/channel_stage/proc/channel(mob/living/carbon/psionic, target, datum/psionic/channel/ability_channel)
+/datum/psionic/channel_stage/proc/channel(mob/living/carbon/psionic, target, datum/psionic/channel/ability_channel, upgraded)
+	if(requires_upgraded && !upgraded)
+		return FALSE
+	
 	psionic.visible_message("<span class='warning'>[psionic] puts his fingers on his temples.</span>", "<span class='notice'>You start focusing. This will take [duration/10] seconds.</span>")
 	var/datum/component/psionic_channel/no_move/no_move_component
 	if(!able_to_move)
@@ -16,10 +20,10 @@
 	
 	if(do_after(psionic, duration, target = psionic, extra_checks = CALLBACK(src, .proc/callback_checks, psionic, target, src, ability_channel)))
 		psionic.visible_message("<span class='warning'>You feel a sharp sting in your head!</span>", "<span class='notice'>You channel your focus into [target].</span>")
-		. = success(psionic, target)
+		. = success(psionic, target, upgraded)
 	else
 		psionic.visible_message("<span class='warning'>You get a light headache.</span>", "<span class='warning'>Your focus was broken!</span>")
-		. = failed(psionic, target)
+		. = failed(psionic, target, upgraded)
 	if(!able_to_move)
 		qdel(no_move_component)
 		psionic.canmove = TRUE
@@ -39,10 +43,10 @@
 /datum/psionic/channel_stage/proc/start_channeling(mob/living/carbon/psionic, target)
 	return
 
-/datum/psionic/channel_stage/proc/success(mob/living/carbon/psionic, target)
+/datum/psionic/channel_stage/proc/success(mob/living/carbon/psionic, target, upgraded)
 	return TRUE
 
-/datum/psionic/channel_stage/proc/failed(mob/living/carbon/psionic, target)
+/datum/psionic/channel_stage/proc/failed(mob/living/carbon/psionic, target, upgraded)
 	return FALSE
 
 /datum/component/psionic_channel

@@ -599,6 +599,8 @@
 #include "code\game\gamemodes\psionic\abilities\channel\harvest_thoughts\harvest_thoughts_1.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\harvest_thoughts\harvest_thoughts_2.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\harvest_thoughts\harvest_thougths_channel.dm"
+#include "code\game\gamemodes\psionic\abilities\channel\illusion\illusion_1.dm"
+#include "code\game\gamemodes\psionic\abilities\channel\illusion\illusion_channel.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\invisibility\invisibility_channel.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\invisibility\invisiblity_1.dm"
 #include "code\game\gamemodes\psionic\abilities\channel\meditate\meditate_1.dm"
