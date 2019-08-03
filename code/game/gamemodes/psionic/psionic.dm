@@ -11,7 +11,8 @@
 	var/datum/psionic/channel/channeling // Which ability is currently channeling
 	var/obj/illusion/active_illusion // Which illusion is currently active
 	var/atom/selected_illusion
-	
+
+	var/list/datum/mind/mind_slaves = list() // Who are enslaved to this psionic?
 	
 	var/datum/component/psionic_focus_regen/psionic_focus_regen_comp
 	var/mob/living/carbon/human/selected_disguise
@@ -20,6 +21,8 @@
 
 /datum/antagonist/psionic/New(mob/living/carbon/C)
 	. = ..()
+	C.mind.som = new()
+	C.mind.som.masters += C.mind
 	psionic_focus_regen_comp = C.AddComponent(/datum/component/psionic_focus_regen, src)
 
 /datum/antagonist/psionic/proc/harvest_thought(mob/living/carbon/human/victim, mob/living/carbon/psionic)

@@ -6,23 +6,21 @@
 	var/list/types_to_pick = list("Wall" = /obj/structure/falsewall, "Grille" = /obj/structure/grille, "Airlock" = /obj/machinery/door/airlock, "Fake fire" = /obj/effect/hotspot/fake/faker)
 	var/list/upgraded_to_pick = list("Fire" = /obj/effect/hotspot/fake)
 
-/datum/action/psionic/active/targeted/illusion/target(atom/target, mob/living/user)
-	. = ..()
-	if(.)
-		if(target == user)
-			//select illusion
-			var/list/all = types_to_pick
-			if(upgraded)
-				all += upgraded_to_pick
-			var/name = input("Choose an illusion.", "Illusion") as null|anything in all
-			to_chat(user, "<span class='notice'>Selected [name].</span>")
-			user.mind.psionic.selected_illusion = all[name]
+/datum/action/psionic/active/targeted/illusion/use_ability_on(atom/target, mob/living/user)
+	if(target == user)
+		//select illusion
+		var/list/all = types_to_pick
+		if(upgraded)
+			all += upgraded_to_pick
+		var/name = input("Choose an illusion.", "Illusion") as null|anything in all
+		to_chat(user, "<span class='notice'>Selected [name].</span>")
+		user.mind.psionic.selected_illusion = all[name]
+		return FALSE
+	else
+		if(!user.mind.psionic.selected_illusion)
+			to_chat(user, "<span class='warning'>You have to select an illusion first! Target yourself first!</span>")
 			return FALSE
-		else
-			if(!user.mind.psionic.selected_illusion)
-				to_chat(user, "<span class='warning'>You have to select an illusion first! Target yourself first!</span>")
-				return FALSE
-			. = channel.start_channeling(user, target, upgraded)
+		. = channel.start_channeling(user, target, upgraded)
 
 /obj/illusion
 	var/mob/living/carbon/caster
@@ -36,7 +34,7 @@
 	src.upgraded = upgraded
 	src.caster = caster
 	
-	illusion_object = new type(loc)
+	illusion_object = new type(loc) // Make it spawn yet make it invisible. Use this object to simulate the real effect. Since it's actually there!
 	smooth_icon(illusion_object)
 	icon = illusion_object.icon
 	icon_state = illusion_object.icon_state
