@@ -11,7 +11,9 @@
 	if(.)
 		if(target == user)
 			//select illusion
-			var/list/all = types_to_pick + upgraded_to_pick // upgraded check
+			var/list/all = types_to_pick
+			if(upgraded)
+				all += upgraded_to_pick
 			var/name = input("Choose an illusion.", "Illusion") as null|anything in all
 			to_chat(user, "<span class='notice'>Selected [name].</span>")
 			user.mind.psionic.selected_illusion = all[name]
@@ -20,7 +22,7 @@
 			if(!user.mind.psionic.selected_illusion)
 				to_chat(user, "<span class='warning'>You have to select an illusion first! Target yourself first!</span>")
 				return FALSE
-			. = channel.start_channeling(user, target, TRUE)
+			. = channel.start_channeling(user, target, upgraded)
 
 /obj/illusion
 	var/mob/living/carbon/caster

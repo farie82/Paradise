@@ -8,4 +8,4 @@
 /datum/action/psionic/active/targeted/break_mindshield/use_ability_on(atom/target, mob/living/user)
 	..()
 	if(ishuman(target))
-		return B.start_channeling(user, target)
+		return B.start_channeling(user, target, upgraded)

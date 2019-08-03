@@ -7,4 +7,4 @@
 	if(!ishuman(target))
 		to_chat(user, "<span class='warning'>You cannot disguise yourself as something non human.</span>")
 		return FALSE
-	return channel.start_channeling(user, target)
+	return channel.start_channeling(user, target, upgraded)

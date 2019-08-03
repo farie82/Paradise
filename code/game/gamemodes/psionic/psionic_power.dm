@@ -12,6 +12,7 @@
 	var/cooldown = 0 // Cooldown before the ability can be used again in seconds
 	var/last_use = -INFINITY
 	var/activation_messages = list("puts one hand on his temples", "looks like he's really focusing", "closes his eyes.")
+	var/upgraded = FALSE
 
 /datum/action/psionic/proc/on_purchase(var/mob/user)
 	if(needs_button)
