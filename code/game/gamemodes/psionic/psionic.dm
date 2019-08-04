@@ -9,15 +9,11 @@
 
 	var/list/active_abilities = list() // Which ability is selected/active. Can have multiple "active" such as sleep on the ready and invisibility on
 	var/datum/psionic/channel/channeling // Which ability is currently channeling
-	var/obj/illusion/active_illusion // Which illusion is currently active
-	var/atom/selected_illusion
 
 	var/list/datum/mind/mind_slaves = list() // Who are enslaved to this psionic?
 	
 	var/datum/component/psionic_focus_regen/psionic_focus_regen_comp
 	var/mob/living/carbon/human/selected_disguise
-	
-	
 
 /datum/antagonist/psionic/New(mob/living/carbon/C)
 	. = ..()
@@ -48,6 +44,12 @@
 		focus_amount = min(focus_max * 0.5, focus_amount + focus_recharge_rate_passive) // Max is halved and slower regen.
 	else
 		focus_amount = min(focus_max, focus_amount + focus_recharge_rate_meditate)
+
+/datum/antagonist/psionic/proc/get_active_ability_by_type(type)
+	for(var/datum/action/psionic/active/A in active_abilities)
+		if(istype(A, type))
+			return A
+	return null
 
 /datum/component/psionic_focus_regen
 	var/datum/antagonist/psionic/psionic

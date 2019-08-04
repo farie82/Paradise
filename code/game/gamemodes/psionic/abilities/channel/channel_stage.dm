@@ -10,7 +10,7 @@
 	if(requires_upgraded && !upgraded)
 		return FALSE
 	
-	psionic.visible_message("<span class='warning'>[psionic] puts his fingers on his temples.</span>", "<span class='notice'>You start focusing. This will take [duration/10] seconds.</span>")
+	to_chat(psionic, "<span class='notice'>You start focusing. This will take [duration/10] seconds.</span>")
 	var/datum/component/psionic_channel/no_move/no_move_component
 	if(!able_to_move)
 		psionic.canmove = FALSE
@@ -19,10 +19,8 @@
 	start_channeling(psionic, target)
 	
 	if(do_after(psionic, duration, target = psionic, extra_checks = CALLBACK(src, .proc/callback_checks, psionic, target, src, ability_channel)))
-		psionic.visible_message("<span class='warning'>You feel a sharp sting in your head!</span>", "<span class='notice'>You channel your focus into [target].</span>")
 		. = success(psionic, target, upgraded)
 	else
-		psionic.visible_message("<span class='warning'>You get a light headache.</span>", "<span class='warning'>Your focus was broken!</span>")
 		. = failed(psionic, target, upgraded)
 	if(!able_to_move)
 		qdel(no_move_component)

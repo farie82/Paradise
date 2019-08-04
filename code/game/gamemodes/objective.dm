@@ -176,7 +176,7 @@ var/list/potential_theft_objectives = subtypesof(/datum/theft_objective) - /datu
 	return 0
 
 /datum/objective/protect/mindslave //subytpe for mindslave implants
-
+	var/prior_special_role // role before setting the slave to their new role
 
 /datum/objective/hijack
 	martyr_compatible = 0 //Technically you won't get both anyway.

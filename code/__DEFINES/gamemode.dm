@@ -35,6 +35,7 @@
 #define SPECIAL_ROLE_MULTIVERSE "Multiverse Traveller"
 #define SPECIAL_ROLE_PSIONIC "Psionic"
 #define SPECIAL_ROLE_PSIONIC_THRALL "Psionic Thrall"
+#define SPECIAL_ROLE_PSIONIC_SUGGESTION "Psionic Suggestion victim"
 #define SPECIAL_ROLE_NUKEOPS "Syndicate"
 #define SPECIAL_ROLE_RAIDER "Vox Raider"
 #define SPECIAL_ROLE_REVENANT "Revenant"

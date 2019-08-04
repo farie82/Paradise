@@ -6,6 +6,9 @@
 	var/list/types_to_pick = list("Wall" = /obj/structure/falsewall, "Grille" = /obj/structure/grille, "Airlock" = /obj/machinery/door/airlock, "Fake fire" = /obj/effect/hotspot/fake/faker)
 	var/list/upgraded_to_pick = list("Fire" = /obj/effect/hotspot/fake)
 
+	var/obj/illusion/active_illusion // Which illusion is currently active
+	var/atom/selected_illusion
+
 /datum/action/psionic/active/targeted/illusion/use_ability_on(atom/target, mob/living/user)
 	if(target == user)
 		//select illusion
@@ -14,10 +17,10 @@
 			all += upgraded_to_pick
 		var/name = input("Choose an illusion.", "Illusion") as null|anything in all
 		to_chat(user, "<span class='notice'>Selected [name].</span>")
-		user.mind.psionic.selected_illusion = all[name]
+		selected_illusion = all[name]
 		return FALSE
 	else
-		if(!user.mind.psionic.selected_illusion)
+		if(!selected_illusion)
 			to_chat(user, "<span class='warning'>You have to select an illusion first! Target yourself first!</span>")
 			return FALSE
 		. = channel.start_channeling(user, target, upgraded)
