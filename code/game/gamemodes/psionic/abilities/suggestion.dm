@@ -9,7 +9,7 @@
 		"Get security" = new /datum/objective/suggestion("You have something to show security. Ensure they come to this room right now!"), \
 		"Lure security away" = new /datum/objective/suggestion("You have something you don't want security to find. Make sure they will be on the other side of the station!"), \
 		"Block security" = new /datum/objective/suggestion("You are done with the system! Make sure no security member enters this room, ensure you do this without harm since you are protesting peacefully."), \
-		"Seek sollitude" = new /datum/objective/suggestion("You need some time alone. The nearest maintenance looks like a fitting place to take a small break. You need some time alone."))
+		"Seek sollitude" = new /datum/objective/suggestion("You need some time alone. The nearest maintenance looks like a fitting place to take a small break. You need some time alone so don't bring others."))
 	var/datum/objective/suggestion/selected_suggestion
 
 /datum/action/psionic/active/targeted/suggestion/use_ability_on(atom/target, mob/living/user)
