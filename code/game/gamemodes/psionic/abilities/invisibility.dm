@@ -2,6 +2,7 @@
 	name = "Invisibility"
 	desc = "Makes yourself invisible. Keeping this up costs a lot of focus. Casting an ability in this form will break concentration."
 	maintain_focus_cost = 5
+	button_icon_state = "psionic_invisibility"
 
 	var/datum/psionic/channel/invisible/channel = new
 	var/atom/movable/overlay/animation

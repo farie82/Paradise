@@ -1,6 +1,8 @@
 /datum/action/psionic/confusion
 	name = "Confusion"
 	desc = "Makes a the nearest target confused. They won't be able to walk straight and might start puking and fall down."
+	button_icon_state = "psionic_confusion"
+	
 	var/target_max = 2 // 2 Targets get influenced at first
 	cooldown = 20
 	focus_cost = 15

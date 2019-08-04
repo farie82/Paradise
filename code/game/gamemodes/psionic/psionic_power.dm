@@ -1,8 +1,9 @@
 /datum/action/psionic
 	name = "Base psionic ability"
 	desc = "" // Fluff
-	background_icon_state = "bg_default" //TODO: change this
+	background_icon_state = "bg_psionic"
 	check_flags = AB_CHECK_CONSCIOUS
+	
 	var/helptext = "" // Details
 	var/focus_cost = 0 // negative focus cost is for passive abilities (Invisible)
 	var/thoughts_cost = -1 //cost of the ability in harvested thoughts. 0 = auto-purchase, -1 = cannot be purchased

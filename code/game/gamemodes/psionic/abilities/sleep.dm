@@ -1,6 +1,8 @@
 /datum/action/psionic/active/targeted/sleep
 	name = "Sleep"
 	desc = "Puts a target to sleep. The channeling has 3 stages. A drowsy effect, a weakening effect and finally it'll put the target to sleep."
+	button_icon_state = "psionic_sleep"
+	
 	cooldown = 30
 	focus_cost = 20
 	var/datum/psionic/channel/sleep/S = new

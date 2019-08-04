@@ -3,6 +3,7 @@
 	desc = "Teleport to a place safe and out of sight. Has limited charges"
 	var/charges = 2
 	cooldown = 120
+	button_icon_state = "psionic_teleport"
 
 /datum/action/psionic/teleport/activate(mob/living/carbon/user)
 	var/turf/simulated/floor/F = find_safe_place_to_teleport(200, CALLBACK(src, .proc/nobody_nearby_check, user))
