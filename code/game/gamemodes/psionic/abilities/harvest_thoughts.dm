@@ -1,9 +1,9 @@
 /datum/action/psionic/active/targeted/harvest_thoughts
-	var/datum/psionic/channel/harvest_thoughts/channel = new
 	name = "Harvest thoughts"
 	desc = "Harvest the thoughts of a sleeping humanoid. Won't work on humanoids that already harvested. Have to stand in melee range of the victim"
 	button_icon_state = "psionic_harvest_thoughts"
 
+	channel = new /datum/psionic/channel/harvest_thoughts
 	cooldown = 10
 	ranged = FALSE
 

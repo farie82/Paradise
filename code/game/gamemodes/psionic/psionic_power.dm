@@ -14,6 +14,8 @@
 	var/last_use = -INFINITY
 	var/activation_messages = list("puts one hand on his temples", "looks like he's really focusing", "closes his eyes.")
 	var/upgraded = FALSE
+	
+	var/datum/psionic/channel/channel // Channel if the ability requires it
 
 /datum/action/psionic/proc/on_purchase(var/mob/user)
 	if(needs_button)
@@ -25,7 +27,15 @@
 	var/mob/living/carbon/user = owner
 	if(!user || !user.mind || !user.mind.psionic)
 		return
-
+	if(!IsAvailable())
+		to_chat(user, "<span class='warning'>You can't use this ability yet.</span>")
+	
+	if(channel && user.mind.psionic.channeling)
+		if(!user.mind.psionic.channeling.cancellable)
+			to_chat(user, "<span class='warning'>You are channeling something you cannot stop.</span>")
+			return
+		user.mind.psionic.channeling.stop_channeling(user)
+	
 	if(activate(user))
 		used(user)
 
@@ -38,7 +48,21 @@
 
 /datum/action/psionic/proc/used(mob/living/carbon/user)
 	last_use = start_watch()
-	user.mind.psionic.use_focus(focus_cost)
+	user.mind.psionic.use_focus(user, focus_cost)
+	START_PROCESSING(SSfastprocess, src) // Update the button
+
+/datum/action/psionic/process()
+	UpdateButtonIcon()
+	if(IsAvailable())
+		return PROCESS_KILL // We're done here
+
+/datum/action/psionic/UpdateButtonIcon()
+	if(button && !..() && cooldown > 0) // It's not yet available
+		if(owner.mind.psionic.focus_amount >= focus_cost) // Only do the slow fade in when you have enough focus
+			var/progress = stop_watch(last_use) / cooldown
+			var/half = progress * 72 // Make it noticeable when the ability is ready or still charging but almost done
+			var/full = progress * 200
+			button.color = rgb(128 + half, full, full, 128 + half) // Make it slowly get back to form
 
 // Override this to implement functionality. If it returns true it'll set the cooldown
 /datum/action/psionic/proc/activate(mob/living/carbon/user)

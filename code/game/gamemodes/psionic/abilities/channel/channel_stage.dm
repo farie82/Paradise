@@ -4,7 +4,7 @@
 	var/interaction_breaks = FALSE // If the channel breaks if the psionic is interacted with
 	var/interacted_with = FALSE
 	var/requires_upgraded = FALSE // If this stage requires the upgraded version of the ability. Make sure only bonus stages are marked as this
-	
+	var/cancellable = TRUE // If you can cancel the channeling by stopping the ability or by selecting another.
 	
 /datum/psionic/channel_stage/proc/channel(mob/living/carbon/psionic, target, datum/psionic/channel/ability_channel, upgraded)
 	if(requires_upgraded && !upgraded)

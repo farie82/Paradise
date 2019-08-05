@@ -4,7 +4,7 @@
 	maintain_focus_cost = 5
 	button_icon_state = "psionic_invisibility"
 
-	var/datum/psionic/channel/invisible/channel = new
+	channel = new /datum/psionic/channel/invisible
 	var/atom/movable/overlay/animation
 	var/datum/effect_system/steam_spread/steam
 	var/prior_invis

@@ -3,6 +3,7 @@
 	var/list/channel_stages_repeating = list() // Stages that will keep cycling till interupted
 	var/fail_on_repeating_interupt = FALSE
 	var/stop_channeling_var = FALSE // Used to stop channeling if you try to channel again. Or if you try to channel another channeling ability
+	var/cancellable = TRUE // If you can cancel this channeling by stopping the ability or by selecting another. Will be set by stages
 
 // This returning TRUE means it started the first channeling step successfully
 /datum/psionic/channel/proc/start_channeling(mob/living/carbon/psionic, target, upgraded)
@@ -13,11 +14,14 @@
 		psionic.mind.psionic.channeling.stop_channeling_var = TRUE //Ensure that one stops
 		if(psionic.mind.psionic.channeling == src)
 			return FALSE
+	
 	stop_channeling_var = FALSE // Reset it to FALSE
 	psionic.mind.psionic.channeling = src // Make sure to let the psionic know we're channeling this ability
 	psionic.visible_message("<span class='notice'>[psionic] puts his fingers on his temples.</span>", "<span class='notice'>You start focusing on channeling.</span> ")
 	var/first_stage_done = FALSE
+	
 	for(var/datum/psionic/channel_stage/stage in channel_stages)
+		cancellable = stage.cancellable
 		if(!stage.channel(psionic, target, src, upgraded))
 			psionic.visible_message("<span class='warning'>You get a light headache.</span>", "<span class='warning'>Your focus was broken!</span>")
 			stop_channeling(psionic)
@@ -29,6 +33,7 @@
 		to_chat(psionic, "<span class='info'>You can safely stop channeling the ability now to cast it. Extra channeling will give extra effects.</span>")
 		while(!interupted)
 			for(var/datum/psionic/channel_stage/stage in channel_stages_repeating) // Keep doing the bonus channels
+				cancellable = stage.cancellable
 				if(!stage.channel(psionic, target, src, upgraded))
 					interupted = TRUE
 					break

@@ -1,6 +1,7 @@
 /datum/psionic/channel_stage/select_disguise_2
 	duration = 3 SECONDS
 	able_to_move = FALSE
+	cancellable = FALSE
 
 /datum/psionic/channel_stage/select_disguise_2/success(mob/living/carbon/psionic, target)
 	if(!target || !ishuman(target))

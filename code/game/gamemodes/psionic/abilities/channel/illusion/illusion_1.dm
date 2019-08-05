@@ -8,7 +8,7 @@
 	
 	var/datum/action/psionic/active/targeted/illusion/ability = psionic.mind.psionic.get_active_ability_by_type(/datum/action/psionic/active/targeted/illusion)
 
-	if(!ability.selected_illusion)
+	if(!ability || !ability.selected_illusion)
 		return FALSE
 	
 	ability.active_illusion = new /obj/illusion(T, ability.selected_illusion, psionic, upgraded)

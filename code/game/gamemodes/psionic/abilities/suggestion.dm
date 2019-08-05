@@ -2,7 +2,7 @@
 	name = "Suggestion"
 	desc = "Implants an idea into your targets brain. You get to pick from a selection of preset ideas which will usually lead to isolation of targets or distractions."
 
-	var/datum/psionic/channel/suggestion/channel = new
+	channel = new /datum/psionic/channel/suggestion
 	var/list/datum/objective/suggestion/suggestions = list( \
 		"Lure other" = new /datum/objective/suggestion("You have a surprise for a coworker. Lure one into this room. Make sure he's alone since the suprise is only for that person!"), \
 		"Clear room" = new /datum/objective/suggestion("This room is to crowded. Make the other people leave to let you focus again."), \

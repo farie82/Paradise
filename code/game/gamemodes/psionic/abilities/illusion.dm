@@ -1,8 +1,10 @@
 /datum/action/psionic/active/targeted/illusion
 	name = "Illusion"
 	desc = "Creates an illusion of choice at a location of choice. Keeping this illusion up takes focus."
-	require_concentration = FALSE
-	var/datum/psionic/channel/illusion/channel = new
+	cooldown = 30
+	focus_cost = 20
+
+	channel = new /datum/psionic/channel/illusion
 	var/list/types_to_pick = list("Wall" = /obj/structure/falsewall, "Grille" = /obj/structure/grille, "Airlock" = /obj/machinery/door/airlock, "Fake fire" = /obj/effect/hotspot/fake/faker)
 	var/list/upgraded_to_pick = list("Fire" = /obj/effect/hotspot/fake)
 

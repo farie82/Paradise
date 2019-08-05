@@ -38,6 +38,9 @@
 		focus_amount -= amount
 		if(focus_amount <= amount)
 			to_chat(psionic, "<span class='userdanger'>You're almost out of focus!</span>")
+	for(var/datum/action/psionic/P in psionic.abilities)
+		if(!P.IsAvailable())
+			START_PROCESSING(SSfastprocess, P)
 
 /datum/antagonist/psionic/proc/regen_focus(mob/living/carbon/psionic, meditating = FALSE)
 	if(!meditating && focus_amount < focus_max * 0.5)

@@ -1,6 +1,7 @@
 /datum/psionic/channel_stage/mind_slave/mind_slave_1
 	duration = 7 SECONDS
 	able_to_move = FALSE
+	cancellable = FALSE
 
 /datum/psionic/channel_stage/mind_slave/callback_checks(mob/living/carbon/psionic, target, datum/psionic/channel_stage/stage, datum/psionic/channel/ability_channel)
 	return !ismindshielded(target) && ..()

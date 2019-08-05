@@ -11,6 +11,11 @@
 		activated(user)
 		return FALSE // Don't go on cooldown
 
+/datum/action/psionic/active/targeted/deactivate(mob/living/carbon/user)
+	if(active)
+		user.middleClickOverride = null
+	. = ..()
+
 /datum/action/psionic/active/targeted/deactivation_message(mob/living/carbon/user)
 	to_chat(user, "<span class='notice'>You stop preparing [src].</span>")
 
@@ -22,7 +27,6 @@
 		to_chat(user, "<span class='warning'>You have to be standing next to them to start this ability.</span>")
 		return FALSE
 	if(use_ability_on(target, user))
-		last_use = start_watch()
 		return TRUE
 	return FALSE
 

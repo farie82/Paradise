@@ -5,7 +5,7 @@
 	
 	maintain_focus_cost = 3
 
-	var/datum/psionic/channel/become_ethereal/channel = new
+	channel = new /datum/psionic/channel/become_ethereal
 	var/atom/movable/overlay/animation
 	var/obj/effect/dummy/spell_jaunt/holder
 

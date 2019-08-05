@@ -1,6 +1,7 @@
 /datum/psionic/channel_stage/meditate_2
 	duration = 5.0 SECONDS
 	able_to_move = FALSE
+	cancellable = FALSE
 
 /datum/psionic/channel_stage/meditate_2/success(mob/living/carbon/psionic, target)
 	psionic.SetEyeBlind(0)

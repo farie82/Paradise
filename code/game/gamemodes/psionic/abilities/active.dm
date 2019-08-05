@@ -35,6 +35,8 @@
 /datum/action/psionic/active/proc/deactivate(mob/living/carbon/user)
 	. = active // Only really deactivate when it was active to begin with
 	if(active)
+		if(channel)
+			channel.stop_channeling(user)
 		deactivation_message(user)
 		user.mind.psionic.active_abilities -= src
 		active = FALSE
