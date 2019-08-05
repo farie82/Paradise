@@ -2087,3 +2087,72 @@ var/mob/dview/dview_mob = new
 	tX = Clamp(origin.x + text2num(tX) - round(actual_view[1] / 2) - 1, 1, world.maxx)
 	tY = Clamp(origin.y + text2num(tY) - round(actual_view[2] / 2) - 1, 1, world.maxy)
 	return locate(tX, tY, tZ)
+
+/proc/mind_control(mob/living/victim, mob/living/controller)
+	var/controller_key = controller.key
+	// Save the victims computer_id and lastKnownIP
+	var/victim_to_brain_id = victim.computer_id
+	var/victim_to_brain_ip= victim.lastKnownIP
+	victim.computer_id = null
+	victim.lastKnownIP = null
+
+	// Make the prison for the victim to stay in
+	var/mob/living/captive_brain/victim_brain = new(victim)
+	victim_brain.ckey = victim.ckey
+	victim_brain.name = victim.name
+
+	if(!victim_brain.computer_id)
+		victim_brain.computer_id = victim_to_brain_id
+
+	if(!victim_brain.lastKnownIP)
+		victim_brain.lastKnownIP = victim_to_brain_ip
+	
+	// Save the controllers computer_id and lastKnownIP
+	var/controller_to_victim_id = controller.computer_id
+	var/controller_to_victim_ip= controller.lastKnownIP
+	controller.computer_id = null
+	controller.lastKnownIP = null
+
+	victim.ckey = controller.ckey
+
+	if(!victim.computer_id)
+		victim.computer_id = controller_to_victim_id
+
+	if(!victim.lastKnownIP)
+		victim.lastKnownIP = controller_to_victim_ip
+	
+	victim.med_hud_set_status()
+	if(controller && !controller.key)
+		controller.key = "@[controller_key]"
+	return victim_brain
+
+/proc/release_mind_control(mob/living/victim, mob/living/controller, mob/living/captive_brain/victim_brain)
+	// victim -> controller
+	var/h2s_id = victim.computer_id
+	var/h2s_ip= victim.lastKnownIP
+	victim.computer_id = null
+	victim.lastKnownIP = null
+
+	controller.ckey = victim.ckey
+
+	if(!controller.computer_id)
+		controller.computer_id = h2s_id
+
+	if(!victim_brain.lastKnownIP)
+		controller.lastKnownIP = h2s_ip
+
+	// brain -> victim
+	var/b2h_id = victim_brain.computer_id
+	var/b2h_ip= victim_brain.lastKnownIP
+	victim_brain.computer_id = null
+	victim_brain.lastKnownIP = null
+
+	victim.ckey = victim_brain.ckey
+
+	if(!victim.computer_id)
+		victim.computer_id = b2h_id
+
+	if(!victim.lastKnownIP)
+		victim.lastKnownIP = b2h_ip
+	qdel(victim_brain)
+

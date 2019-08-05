@@ -652,40 +652,9 @@
 	else
 		to_chat(src, "<span class='danger'>You plunge your probosci deep into the cortex of the host brain, interfacing directly with [host.p_their()] nervous system.</span>")
 		to_chat(host, "<span class='danger'>You feel a strange shifting sensation behind your eyes as an alien consciousness displaces yours.</span>")
-		var/borer_key = src.key
+		
 		add_attack_logs(src, host, "Assumed control of (borer)")
-		// host -> brain
-		var/h2b_id = host.computer_id
-		var/h2b_ip= host.lastKnownIP
-		host.computer_id = null
-		host.lastKnownIP = null
-
-		qdel(host_brain)
-		host_brain = new(src)
-
-		host_brain.ckey = host.ckey
-
-		host_brain.name = host.name
-
-		if(!host_brain.computer_id)
-			host_brain.computer_id = h2b_id
-
-		if(!host_brain.lastKnownIP)
-			host_brain.lastKnownIP = h2b_ip
-
-		// self -> host
-		var/s2h_id = src.computer_id
-		var/s2h_ip= src.lastKnownIP
-		src.computer_id = null
-		src.lastKnownIP = null
-
-		host.ckey = src.ckey
-
-		if(!host.computer_id)
-			host.computer_id = s2h_id
-
-		if(!host.lastKnownIP)
-			host.lastKnownIP = s2h_ip
+		host_brain = mind_control(host, src)
 
 		bonding = FALSE
 		controlling = TRUE
@@ -698,10 +667,7 @@
 
 		GrantControlActions()
 		talk_to_borer_action.Remove(host)
-		host.med_hud_set_status()
 
-		if(src && !src.key)
-			src.key = "@[borer_key]"
 		return
 
 /mob/living/carbon/proc/punish_host()
@@ -790,37 +756,7 @@
 
 	if(host_brain)
 		add_attack_logs(host, src, "Took control back (borer)")
-		// host -> self
-		var/h2s_id = host.computer_id
-		var/h2s_ip= host.lastKnownIP
-		host.computer_id = null
-		host.lastKnownIP = null
-
-		src.ckey = host.ckey
-
-		if(!src.computer_id)
-			src.computer_id = h2s_id
-
-		if(!host_brain.lastKnownIP)
-			src.lastKnownIP = h2s_ip
-
-		// brain -> host
-		var/b2h_id = host_brain.computer_id
-		var/b2h_ip= host_brain.lastKnownIP
-		host_brain.computer_id = null
-		host_brain.lastKnownIP = null
-
-		host.ckey = host_brain.ckey
-
-		if(!host.computer_id)
-			host.computer_id = b2h_id
-
-		if(!host.lastKnownIP)
-			host.lastKnownIP = b2h_ip
-
-	qdel(host_brain)
-
-	return
+		release_mind_control(host, src, host_brain)
 
 /mob/living/simple_animal/borer/can_use_vents()
 	return
