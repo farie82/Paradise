@@ -23,7 +23,7 @@
 		if(!selected_suggestion)
 			to_chat(user, "<span class='warning'>You have to select an suggestion first! Target yourself first!</span>")
 			return FALSE
-		. = channel.start_channeling(user, target, upgraded)
+		. = channel.start_channeling(user, target, psionic_datum, upgraded)
 
 /datum/objective/suggestion
 	completed = TRUE // Muh GREENTEXT

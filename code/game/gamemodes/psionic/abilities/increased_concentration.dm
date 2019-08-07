@@ -5,4 +5,4 @@
 
 /datum/action/psionic/increase_concentration/on_purchase(mob/user)
 	. = ..()
-	user.mind.psionic.focus_max *= 2 // TODO: Balance it later
+	psionic_datum.focus_max *= 2 // TODO: Balance it later

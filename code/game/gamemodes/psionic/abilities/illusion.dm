@@ -25,7 +25,7 @@
 		if(!selected_illusion)
 			to_chat(user, "<span class='warning'>You have to select an illusion first! Target yourself first!</span>")
 			return FALSE
-		. = channel.start_channeling(user, target, upgraded)
+		. = channel.start_channeling(user, target, psionic_datum, upgraded)
 
 /obj/illusion
 	var/mob/living/carbon/caster

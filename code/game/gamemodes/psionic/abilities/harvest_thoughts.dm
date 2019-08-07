@@ -19,4 +19,4 @@
 		to_chat(user, "<span class='warning'>The victim needs to be asleep for us to harvest his thoughts.</span>")
 		return FALSE
 	
-	return channel.start_channeling(user, H)
+	return channel.start_channeling(user, H, psionic_datum, upgraded)

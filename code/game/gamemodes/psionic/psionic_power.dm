@@ -4,6 +4,7 @@
 	background_icon_state = "bg_psionic"
 	check_flags = AB_CHECK_CONSCIOUS
 	
+	var/datum/antagonist/psionic/psionic_datum // The psionic using these abilities.
 	var/helptext = "" // Details
 	var/focus_cost = 0 // negative focus cost is for passive abilities (Invisible)
 	var/thoughts_cost = -1 //cost of the ability in harvested thoughts. 0 = auto-purchase, -1 = cannot be purchased
@@ -18,23 +19,24 @@
 	var/datum/psionic/channel/channel // Channel if the ability requires it
 
 /datum/action/psionic/proc/on_purchase(var/mob/user)
+	psionic_datum = user.mind.psionic
 	if(needs_button)
 		Grant(user)
 	else
 		owner = user // manually set it
 
 /datum/action/psionic/Trigger()
-	var/mob/living/carbon/user = owner
-	if(!user || !user.mind || !user.mind.psionic)
+	var/mob/living/carbon/user = usr // "user" can be a mindcontrolled victim
+	if(!user)
 		return
 	if(!IsAvailable())
 		to_chat(user, "<span class='warning'>You can't use this ability yet.</span>")
 	
-	if(channel && user.mind.psionic.channeling)
-		if(!user.mind.psionic.channeling.cancellable)
+	if(channel && psionic_datum.channeling)
+		if(!psionic_datum.channeling.cancellable)
 			to_chat(user, "<span class='warning'>You are channeling something you cannot stop.</span>")
 			return
-		user.mind.psionic.channeling.stop_channeling(user)
+		psionic_datum.channeling.stop_channeling(psionic_datum)
 	
 	if(activate(user))
 		used(user)
@@ -44,11 +46,11 @@
 	user.visible_message("<span class='notice'>[user] [pick(activation_messages)].</span>", "<span class='notice'>You cast [src].</span>")
 
 /datum/action/psionic/IsAvailable()
-	return ..() && (stop_watch(last_use) >= cooldown) && owner.mind.psionic.focus_amount >= focus_cost
+	return ..() && (stop_watch(last_use) >= cooldown) && psionic_datum.focus_amount >= focus_cost
 
 /datum/action/psionic/proc/used(mob/living/carbon/user)
 	last_use = start_watch()
-	user.mind.psionic.use_focus(user, focus_cost)
+	psionic_datum.use_focus(user, focus_cost)
 	START_PROCESSING(SSfastprocess, src) // Update the button
 
 /datum/action/psionic/process()
@@ -58,7 +60,7 @@
 
 /datum/action/psionic/UpdateButtonIcon()
 	if(button && !..() && cooldown > 0) // It's not yet available
-		if(owner.mind.psionic.focus_amount >= focus_cost) // Only do the slow fade in when you have enough focus
+		if(psionic_datum.focus_amount >= focus_cost) // Only do the slow fade in when you have enough focus
 			var/progress = stop_watch(last_use) / cooldown
 			var/half = progress * 72 // Make it noticeable when the ability is ready or still charging but almost done
 			var/full = progress * 200

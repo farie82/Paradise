@@ -10,6 +10,8 @@
 	var/list/active_abilities = list() // Which ability is selected/active. Can have multiple "active" such as sleep on the ready and invisibility on
 	var/datum/psionic/channel/channeling // Which ability is currently channeling
 
+	var/datum/mind/mind
+
 	var/list/datum/mind/mind_slaves = list() // Who are enslaved to this psionic?
 	
 	var/datum/component/psionic_focus_regen/psionic_focus_regen_comp
@@ -17,6 +19,7 @@
 
 /datum/antagonist/psionic/New(mob/living/carbon/C)
 	. = ..()
+	mind = C.mind
 	C.mind.som = new()
 	C.mind.som.masters += C.mind
 	psionic_focus_regen_comp = C.AddComponent(/datum/component/psionic_focus_regen, src)

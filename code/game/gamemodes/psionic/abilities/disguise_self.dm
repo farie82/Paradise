@@ -8,7 +8,7 @@
 /datum/action/psionic/active/disguise_self/activate(mob/living/carbon/user)
 	. = ..()
 	if(.)
-		if(channel.start_channeling(user, user))
+		if(channel.start_channeling(user, user, psionic_datum, upgraded))
 			disguise(user)
 			activated(user)
 
@@ -17,7 +17,7 @@
 	un_disguise(user)
 
 /datum/action/psionic/active/disguise_self/proc/disguise(mob/living/carbon/user)
-	var/mob/living/carbon/human/selected_disguise = user.mind.psionic.selected_disguise
+	var/mob/living/carbon/human/selected_disguise = psionic_datum.selected_disguise
 	old_name = user.name
 	//Todo: make animations
 	user.appearance = selected_disguise.appearance

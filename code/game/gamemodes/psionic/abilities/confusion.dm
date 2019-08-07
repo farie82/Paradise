@@ -16,10 +16,12 @@
 
 	if(LAZYLEN(targets) == 0)
 		return FALSE
-
+	var/length = LAZYLEN(targets)
 	if(LAZYLEN(targets) > target_max) // Randomise the targets
 		targets = shuffle(targets)
-	for(var/i = 1, i <= target_max, i++)
+		length = target_max 
+	
+	for(var/i = 1, i <= length, i++)
 		var/mob/living/carbon/target = targets[i]
 		target.adjustStaminaLoss(40)
 		target.AdjustConfused(10, bound_lower = 0, bound_upper = 20)

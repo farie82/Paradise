@@ -1,7 +1,7 @@
 /datum/psionic/channel_stage/sleep_2
 	duration = 4 SECONDS
 
-/datum/psionic/channel_stage/sleep_2/success(mob/living/carbon/psionic, target)
+/datum/psionic/channel_stage/sleep_2/success(mob/living/carbon/user, target, datum/antagonist/psionic/psionic_datum)
 	var/mob/living/carbon/human/H = target
 	if(!H)
 		//Target is not human.
@@ -14,6 +14,6 @@
 	
 	return TRUE
 
-/datum/psionic/channel_stage/sleep_2/start_channeling(mob/living/carbon/psionic, target)
+/datum/psionic/channel_stage/sleep_2/start_channeling(mob/living/carbon/user, target, datum/antagonist/psionic/psionic_datum)
 	if(prob(70))
 		to_chat(target, "<span class='warning'>You are almost falling asleep!</span>")

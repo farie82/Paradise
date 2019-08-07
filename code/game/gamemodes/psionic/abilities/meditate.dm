@@ -6,4 +6,4 @@
 
 /datum/action/psionic/meditate/activate(mob/living/carbon/user)
 	..()
-	return channel.start_channeling(user, user)
+	return channel.start_channeling(user, user, psionic_datum, upgraded)

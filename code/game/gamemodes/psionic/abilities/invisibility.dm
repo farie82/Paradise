@@ -12,7 +12,7 @@
 /datum/action/psionic/active/invisibility/activate(mob/living/carbon/user)
 	. = ..()
 	if(.)
-		. = channel.start_channeling(user, user) // Only one stage
+		. = channel.start_channeling(user, user, psionic_datum, upgraded) // Only one stage
 		if(.)
 			become_invisible(user) // Handled here due to the deactivation
 			activated(user)

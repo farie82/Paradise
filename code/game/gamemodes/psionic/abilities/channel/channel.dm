@@ -6,44 +6,44 @@
 	var/cancellable = TRUE // If you can cancel this channeling by stopping the ability or by selecting another. Will be set by stages
 
 // This returning TRUE means it started the first channeling step successfully
-/datum/psionic/channel/proc/start_channeling(mob/living/carbon/psionic, target, upgraded)
-	if(!psionic || !psionic.mind || !psionic.mind.psionic)
+/datum/psionic/channel/proc/start_channeling(mob/living/carbon/user, target, datum/antagonist/psionic/psionic_datum, upgraded)
+	if(!user || !psionic_datum)
 		return FALSE
 	
-	if(psionic.mind.psionic.channeling) // Another is being channeled
-		psionic.mind.psionic.channeling.stop_channeling_var = TRUE //Ensure that one stops
-		if(psionic.mind.psionic.channeling == src)
+	if(psionic_datum.channeling) // Another is being channeled
+		psionic_datum.channeling.stop_channeling_var = TRUE //Ensure that one stops
+		if(psionic_datum.channeling == src)
 			return FALSE
 	
 	stop_channeling_var = FALSE // Reset it to FALSE
-	psionic.mind.psionic.channeling = src // Make sure to let the psionic know we're channeling this ability
-	psionic.visible_message("<span class='notice'>[psionic] puts his fingers on his temples.</span>", "<span class='notice'>You start focusing on channeling.</span> ")
+	psionic_datum.channeling = src // Make sure to let the psionic know we're channeling this ability
+	user.visible_message("<span class='notice'>[user] puts his fingers on his temples.</span>", "<span class='notice'>You start focusing on channeling.</span> ")
 	var/first_stage_done = FALSE
 	
 	for(var/datum/psionic/channel_stage/stage in channel_stages)
 		cancellable = stage.cancellable
-		if(!stage.channel(psionic, target, src, upgraded))
-			psionic.visible_message("<span class='warning'>You get a light headache.</span>", "<span class='warning'>Your focus was broken!</span>")
-			stop_channeling(psionic)
+		if(!stage.channel(user, target, psionic_datum, src, upgraded))
+			user.visible_message("<span class='warning'>You get a light headache.</span>", "<span class='warning'>Your focus was broken!</span>")
+			stop_channeling(psionic_datum)
 			return first_stage_done
 		first_stage_done = TRUE // First stage done means it sets the ability on cooldown and it costs focus
 	
 	var/interupted = LAZYLEN(channel_stages_repeating) == 0 // Don't do a while if nothing is there to do
 	if(!interupted)
-		to_chat(psionic, "<span class='info'>You can safely stop channeling the ability now to cast it. Extra channeling will give extra effects.</span>")
+		to_chat(user, "<span class='info'>You can safely stop channeling the ability now to cast it. Extra channeling will give extra effects.</span>")
 		while(!interupted)
 			for(var/datum/psionic/channel_stage/stage in channel_stages_repeating) // Keep doing the bonus channels
 				cancellable = stage.cancellable
-				if(!stage.channel(psionic, target, src, upgraded))
+				if(!stage.channel(user, target, psionic_datum, src, upgraded))
 					interupted = TRUE
 					break
 	
-	psionic.visible_message("<span class='warning'>You feel a sharp sting in your head!</span>", "<span class='notice'>You channel your focus into [target].</span>")
+	user.visible_message("<span class='warning'>You feel a sharp sting in your head!</span>", "<span class='notice'>You channel your focus into [target].</span>")
 
-	stop_channeling(psionic)
+	stop_channeling(psionic_datum)
 	return TRUE
 	
-/datum/psionic/channel/proc/stop_channeling(mob/living/carbon/psionic)
-	if(psionic.mind.psionic.channeling == src)
-		psionic.mind.psionic.channeling = null
+/datum/psionic/channel/proc/stop_channeling(datum/antagonist/psionic/psionic_datum)
+	if(psionic_datum.channeling == src)
+		psionic_datum.channeling = null
 	stop_channeling_var = TRUE

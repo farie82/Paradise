@@ -22,4 +22,4 @@
 		to_chat(user, "<span class='warning'>We already have this one as our slave.</span>")
 		return FALSE
 	
-	return channel.start_channeling(user, target, upgraded)
+	return channel.start_channeling(user, target, psionic_datum, upgraded)

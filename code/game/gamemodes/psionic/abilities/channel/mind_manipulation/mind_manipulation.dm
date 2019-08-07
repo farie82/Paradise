@@ -1,0 +1,2 @@
+/datum/psionic/channel_stage/mind_manipulation/callback_checks(mob/living/carbon/user, target, datum/antagonist/psionic/psionic_datum, datum/psionic/channel_stage/stage, datum/psionic/channel/ability_channel)
+	return !ismindshielded(target) && ..()
