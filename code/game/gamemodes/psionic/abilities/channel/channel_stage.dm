@@ -12,10 +12,10 @@
 		return FALSE
 	
 	to_chat(user, "<span class='notice'>You start focusing. This will take [duration/10] seconds.</span>")
-	var/datum/component/psionic_channel/no_move/no_move_component
+	var/datum/component/no_move/no_move_component
 	if(!able_to_move)
 		user.canmove = FALSE
-		no_move_component = user.AddComponent(/datum/component/psionic_channel/no_move, src)
+		no_move_component = user.AddComponent(/datum/component/no_move, src)
 	
 	start_channeling(user, target, psionic_datum, upgraded)
 	
@@ -49,25 +49,3 @@
 
 /datum/psionic/channel_stage/proc/failed(mob/living/carbon/user, target, datum/antagonist/psionic/psionic_datum, upgraded)
 	return FALSE
-
-/datum/component/psionic_channel
-	var/datum/psionic/channel_stage/stage
-
-/datum/component/psionic_channel/Initialize(var/datum/psionic/channel_stage/channel_stage)
-	var/mob/living/M = parent
-	if(!istype(M) || !channel_stage) //Something went wrong
-		return COMPONENT_INCOMPATIBLE
-	stage = channel_stage
-	
-/datum/component/psionic_channel/no_move
-
-/datum/component/psionic_channel/no_move/Initialize(...)
-	. = ..()
-	RegisterSignal(parent, COMSIG_LIVING_UPDATE_CAN_MOVE, .proc/update_canmove)
-
-/datum/component/psionic_channel/no_move/UnregisterFromParent()
-	UnregisterSignal(parent, COMSIG_LIVING_UPDATE_CAN_MOVE)
-
-/datum/component/psionic_channel/no_move/proc/update_canmove()
-	var/mob/living/M = parent
-	M.canmove = FALSE

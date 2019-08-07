@@ -24,7 +24,8 @@
 		to_chat(user, "<span class='warning'>You can't do recursive mindcontrols! Do you want to break everything?!</span>")
 		return FALSE
 
-	ability.start_mind_control(target, user)
+	spawn(0) // Do it after the other stuff is done. Reduces weirdness
+		ability.start_mind_control(target, user)
 	
 
 	return TRUE

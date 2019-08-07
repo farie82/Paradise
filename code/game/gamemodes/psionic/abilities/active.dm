@@ -42,31 +42,3 @@
 		active = FALSE
 		if(maintain_component)
 			qdel(maintain_component)
-
-/datum/component/psionic_active
-	var/datum/action/psionic/active/active
-	dupe_type = COMPONENT_DUPE_UNIQUE_PASSARGS // One for each active ability
-
-/datum/component/psionic_active/Initialize(datum/action/psionic/active/ability)
-	var/mob/living/carbon/C = parent
-	if(!istype(C) || !ability) //Something went wrong
-		return COMPONENT_INCOMPATIBLE
-	active = ability
-
-/datum/component/psionic_active/ability_cost
-	var/datum/antagonist/psionic/psionic
-
-/datum/component/psionic_active/ability_cost/Initialize(datum/action/psionic/active/ability, datum/antagonist/psionic/psi)
-	. = ..()
-	if(. != COMPONENT_INCOMPATIBLE)
-		if(!psi)
-			return COMPONENT_INCOMPATIBLE
-		psionic = psi
-		RegisterSignal(parent, COMSIG_LIVING_LIFE, .proc/Life)
-
-/datum/component/psionic_active/ability_cost/proc/Life(mob/living/carbon/C)
-	if(C.stat != DEAD)
-		psionic.use_focus(parent, active.maintain_focus_cost)
-
-/datum/component/psionic_active/ability_cost/UnregisterFromParent()
-	UnregisterSignal(parent, COMSIG_LIVING_LIFE)
