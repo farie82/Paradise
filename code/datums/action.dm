@@ -66,6 +66,8 @@
 	return
 
 /datum/action/proc/IsAvailable()// returns 1 if all checks pass
+	if(name == "Mind control")
+		message_admins("owner [owner], ownerstat [owner.stat]")
 	if(!owner)
 		return 0
 	if(check_flags & AB_CHECK_RESTRAINED)

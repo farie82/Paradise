@@ -41,5 +41,4 @@
 	return TRUE
 
 /datum/psionic/channel_stage/mind_manipulation/mind_slave_1/start_channeling(mob/living/carbon/user, target, datum/antagonist/psionic/psionic_datum)
-	if(ishuman(target))
-		to_chat(target, "<span class='warning'>You start thinking about what loyalty means... Wait that thing is rooting in your brains!</span>")
+	to_chat(target, "<span class='warning'>You start thinking about what loyalty means... Wait that thing is rooting in your brains!</span>")

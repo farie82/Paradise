@@ -156,7 +156,7 @@
 
 // /mob/living/carbon signals
 #define COMSIG_CARBON_SOUNDBANG "carbon_soundbang"					//from base of mob/living/carbon/soundbang_act(): (list(intensity))
-#define COMSIG_LIVING_LIFE "carbon_life"						//from base of mob/living/carbon/Life() ()
+#define COMSIG_CARBON_LIFE "carbon_life"						//from base of mob/living/carbon/Life() ()
 
 // /obj signals
 #define COMSIG_OBJ_DECONSTRUCT "obj_deconstruct"				//from base of obj/deconstruct(): (disassembled)
@@ -209,6 +209,7 @@
 #define COMSIG_HUMAN_MELEE_UNARMED_ATTACK "human_melee_unarmed_attack"			//from mob/living/carbon/human/UnarmedAttack(): (atom/target)
 #define COMSIG_HUMAN_MELEE_UNARMED_ATTACKBY "human_melee_unarmed_attackby"		//from mob/living/carbon/human/UnarmedAttack(): (mob/living/carbon/human/attacker)
 #define COMSIG_HUMAN_DISARM_HIT	"human_disarm_hit"	//Hit by successful disarm attack (mob/living/carbon/human/attacker,zone_targeted)
+#define COMSIG_HUMAN_APPLY_DAMAGE "human_apply_damage" // Human gets damage mob/living/carbon/human/apply_damage (damage, damagetype, def_zone, blocked, sharp, used_weapon)
 
 // /datum/species signals
 #define COMSIG_SPECIES_GAIN "species_gain"						//from datum/species/on_species_gain(): (datum/species/new_species, datum/species/old_species)

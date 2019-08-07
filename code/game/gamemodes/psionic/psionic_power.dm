@@ -46,6 +46,9 @@
 	user.visible_message("<span class='notice'>[user] [pick(activation_messages)].</span>", "<span class='notice'>You cast [src].</span>")
 
 /datum/action/psionic/IsAvailable()
+	if(name == "Mind control")
+		message_admins("seconds passed: [stop_watch(last_use)], cooldown [cooldown]")
+		message_admins("focus_amount [psionic_datum.focus_amount], cost [focus_cost]")
 	return ..() && (stop_watch(last_use) >= cooldown) && psionic_datum.focus_amount >= focus_cost
 
 /datum/action/psionic/proc/used(mob/living/carbon/user)

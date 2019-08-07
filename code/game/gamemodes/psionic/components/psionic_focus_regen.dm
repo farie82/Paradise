@@ -6,10 +6,10 @@
 	if(!istype(C) || !psi) //Something went wrong
 		return COMPONENT_INCOMPATIBLE
 	psionic = psi
-	RegisterSignal(C, COMSIG_LIVING_LIFE, .proc/Life)
+	RegisterSignal(C, COMSIG_CARBON_LIFE, .proc/Life)
 
 /datum/component/psionic_focus_regen/UnregisterFromParent()
-	UnregisterSignal(parent, COMSIG_LIVING_LIFE)
+	UnregisterSignal(parent, COMSIG_CARBON_LIFE)
 
 /datum/component/psionic_focus_regen/proc/Life(mob/living/carbon/C)
 	if(C.stat != DEAD)

@@ -13,7 +13,7 @@
 		for(var/obj/item/organ/internal/O in internal_organs)
 			O.on_life()
 	
-	SEND_SIGNAL(src, COMSIG_LIVING_LIFE, seconds, times_fired)
+	SEND_SIGNAL(src, COMSIG_CARBON_LIFE, seconds, times_fired)
 	handle_changeling()
 	handle_wetness(times_fired)
 

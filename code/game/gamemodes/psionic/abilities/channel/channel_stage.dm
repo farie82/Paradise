@@ -28,7 +28,7 @@
 		user.canmove = TRUE
 
 /datum/psionic/channel_stage/proc/callback_checks(mob/living/carbon/user, target, datum/antagonist/psionic/psionic_datum, datum/psionic/channel_stage/stage, datum/psionic/channel/ability_channel)
-	return !ability_channel.stop_channeling_var && distance_check(user, target) && (!stage.interaction_breaks || concentration_check(user, target))
+	return target && !ability_channel.stop_channeling_var && distance_check(user, target) && (!stage.interaction_breaks || concentration_check(user, target))
 
 /datum/psionic/channel_stage/proc/distance_check(mob/living/carbon/user, target)
 	if(target == user)
