@@ -31,6 +31,7 @@
 		return
 	if(!IsAvailable())
 		to_chat(user, "<span class='warning'>You can't use this ability yet.</span>")
+		return
 	
 	if(channel && psionic_datum.channeling)
 		if(!psionic_datum.channeling.cancellable)
