@@ -1,6 +1,7 @@
 /datum/action/psionic/active/disguise_self
 	name = "Disguise self"
 	desc = "Disguises yourself as a selected crewmember, done by using the 'Select disguise' ability. Will cost focus to maintain but you can use abilities in this form."
+	button_icon_state = "psionic_disguise_self"
 	require_concentration = FALSE
 	channel = new /datum/psionic/channel/disguise_self
 	var/old_name
