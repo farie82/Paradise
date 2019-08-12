@@ -517,42 +517,56 @@ Gunshots/explosions/opening doors/less rare audio (done)
 		target.client.images.Remove(delusion)
 	return ..()
 
-/obj/effect/hallucination/fakeattacker/New(loc, mob/living/carbon/T)
+/obj/effect/hallucination/fakeattacker
+	var/fake_effect_type = /obj/effect/fake_attacker
+
+/obj/effect/hallucination/fakeattacker/New(loc, mob/living/carbon/T, duration = 300)
 	..()
 	target = T
-	var/mob/living/carbon/human/clone = null
-	var/clone_weapon = null
+	
+	var/obj/effect/fake_attacker/F = new fake_effect_type(get_turf(target), target, duration)
+	
+	init_attacker(F)
+	
+	qdel(src)
 
+/obj/effect/hallucination/fakeattacker/proc/init_attacker(obj/effect/fake_attacker/F)
+	var/mob/attacker_clone
 	for(var/mob/living/carbon/human/H in GLOB.living_mob_list)
 		if(H.stat || H.lying)
 			continue
-		clone = H
+		attacker_clone = H
 		break
 
-	if(!clone)
+	if(!attacker_clone)
 		return
 
-	var/obj/effect/fake_attacker/F = new/obj/effect/fake_attacker(get_turf(target),target)
-	if(clone.l_hand)
-		if(!(locate(clone.l_hand) in non_fakeattack_weapons))
-			clone_weapon = clone.l_hand.name
-			F.weap = clone.l_hand
-	else if(clone.r_hand)
-		if(!(locate(clone.r_hand) in non_fakeattack_weapons))
-			clone_weapon = clone.r_hand.name
-			F.weap = clone.r_hand
+	var/clone_weapon = null
+	if(attacker_clone.l_hand)
+		if(!(locate(attacker_clone.l_hand) in non_fakeattack_weapons))
+			clone_weapon = attacker_clone.l_hand.name
+			F.weap = attacker_clone.l_hand
+	else if(attacker_clone.r_hand)
+		if(!(locate(attacker_clone.r_hand) in non_fakeattack_weapons))
+			clone_weapon = attacker_clone.r_hand.name
+			F.weap = attacker_clone.r_hand
 
-	F.name = clone.name
+	F.name = attacker_clone.name
 	F.my_target = target
 	F.weapon_name = clone_weapon
 
-	F.left = image(clone,dir = WEST)
-	F.right = image(clone,dir = EAST)
-	F.up = image(clone,dir = NORTH)
-	F.down = image(clone,dir = SOUTH)
+	F.left = image(attacker_clone,dir = WEST)
+	F.right = image(attacker_clone,dir = EAST)
+	F.up = image(attacker_clone,dir = NORTH)
+	F.down = image(attacker_clone,dir = SOUTH)
 
 	F.updateimage()
-	qdel(src)
+
+/obj/effect/hallucination/fakeattacker/real
+	fake_effect_type = /obj/effect/fake_attacker/real
+
+/obj/effect/hallucination/fakeattacker/real/init_attacker()
+	..()
 
 /obj/effect/fake_attacker
 	icon = null
@@ -596,10 +610,10 @@ Gunshots/explosions/opening doors/less rare audio (done)
 			for(var/mob/O in oviewers(world.view , my_target))
 				to_chat(O, "<span class='danger'>[my_target] stumbles around.</span>")
 
-/obj/effect/fake_attacker/New(loc, mob/living/carbon/T)
+/obj/effect/fake_attacker/New(loc, mob/living/carbon/T, duration = 300)
 	..()
 	my_target = T
-	addtimer(CALLBACK(GLOBAL_PROC, .proc/qdel, src), 300)
+	addtimer(CALLBACK(GLOBAL_PROC, .proc/qdel, src), duration)
 	step_away(src,my_target,2)
 	INVOKE_ASYNC(src, .proc/attack_loop)
 
@@ -637,16 +651,17 @@ Gunshots/explosions/opening doors/less rare audio (done)
 				if(weapon_name)
 					my_target.playsound_local(my_target, weap.hitsound, 1)
 					my_target.show_message("<span class='danger'>[src.name] has attacked [my_target] with [weapon_name]!</span>", 1)
-					my_target.adjustStaminaLoss(30)
+					do_damage()
 					if(prob(20))
 						my_target.AdjustEyeBlurry(3)
+						
 					if(prob(33))
 						if(!locate(/obj/effect/overlay) in my_target.loc)
 							fake_blood(my_target)
 				else
 					my_target.playsound_local(my_target, pick('sound/weapons/punch1.ogg','sound/weapons/punch2.ogg','sound/weapons/punch3.ogg','sound/weapons/punch4.ogg'), 25, 1, -1)
 					my_target.show_message("<span class='userdanger'>[src.name] has punched [my_target]!</span>", 1)
-					my_target.adjustStaminaLoss(30)
+					do_damage()
 					if(prob(33))
 						if(!locate(/obj/effect/overlay) in my_target.loc)
 							fake_blood(my_target)
@@ -654,10 +669,16 @@ Gunshots/explosions/opening doors/less rare audio (done)
 		if(prob(15))
 			step_away(src,my_target,2)
 
+/obj/effect/fake_attacker/proc/do_damage()
+	my_target.adjustStaminaLoss(30)
+
 /obj/effect/fake_attacker/proc/collapse()
 	collapse = 1
 	updateimage()
 	qdel(src)
+
+/obj/effect/fake_attacker/real/do_damage()
+	my_target.apply_damage(10)
 
 /obj/effect/fake_attacker/proc/fake_blood(mob/target)
 	var/obj/effect/overlay/O = new/obj/effect/overlay(target.loc)
@@ -1040,3 +1061,4 @@ var/list/non_fakeattack_weapons = list(/obj/item/gun/projectile, /obj/item/ammo_
 						if(client)
 							client.images -= halbody
 						halbody = null
+

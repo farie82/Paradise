@@ -31,6 +31,7 @@
 
 	holder = new /obj/effect/dummy/spell_jaunt(originalloc)
 	holder.invisibility = 0
+	holder.move_speed = 0
 	user.canmove = FALSE
 	holder.canmove = FALSE
 
@@ -46,13 +47,8 @@
 	user.client.eye = holder
 	
 	sleep(12) // 12 ticks animation
-	
+	// Give holder the sprites
 	holder.canmove = TRUE
-	animation.icon_state = "nothing"
-
-	if(ishuman(user)) // Find a better way please
-		var/mob/living/carbon/human/H = user
-		H.dna.species.slowdown = 2
 
 /datum/action/psionic/active/become_ethereal/proc/become_normal(mob/living/carbon/user)
 	var/mobloc = get_turf(user.loc)
@@ -71,9 +67,6 @@
 				if(user.Move(T))
 					break
 	
-	if(ishuman(user))
-		var/mob/living/carbon/human/H = user
-		H.dna.species.slowdown = 0
 	user.canmove = 1
 	user.client.eye = user
 	qdel(animation)
