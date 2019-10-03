@@ -8,7 +8,7 @@
 
 /datum/action/psionic/force_push/on_purchase(mob/user)
 	..()
-	listening_component = user.AddComponent(/datum/component/force_push, src)
+	listening_component = user.AddComponent(/datum/component/middle_alt_click, CALLBACK(src, .proc/target))
 	to_chat(user, "<span class='info'>Press both alt and middle mouse button near a target to use the 'Force push' ability</span>")
 
 /datum/action/psionic/force_push/proc/target(mob/living/carbon/user, atom/A)

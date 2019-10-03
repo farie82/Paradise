@@ -9,8 +9,8 @@
 	var/mob/living/captive_brain/victim_brain
 	var/duration = 3 MINUTES
 
-	var/datum/component/damage_callback/victim_damage_callback
-	var/datum/component/damage_callback/user_damage_callback
+	var/datum/component/human_damage_callback/victim_damage_callback
+	var/datum/component/human_damage_callback/user_damage_callback
 
 /datum/action/psionic/active/targeted/mind_control/use_ability_on(atom/target, mob/living/user)
 	var/mob/living/T = target

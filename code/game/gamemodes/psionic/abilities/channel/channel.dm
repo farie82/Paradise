@@ -6,7 +6,7 @@
 	var/cancellable = TRUE // If you can cancel this channeling by stopping the ability or by selecting another. Will be set by stages
 	var/cancel_damage_amount = 0 // If more than 0 then the channeling will stop when the caster is damaged for the given amount in total
 
-	var/datum/component/damage_callback/damage_component // The component that will cancel the ability when enough damage is done to the caster
+	var/datum/component/human_damage_callback/damage_component // The component that will cancel the ability when enough damage is done to the caster
 
 // This returning TRUE means it started the first channeling step successfully
 /datum/psionic/channel/proc/start_channeling(mob/living/carbon/user, target, datum/antagonist/psionic/psionic_datum, upgraded)

@@ -10,8 +10,8 @@
 	. = ..()
 	if(.)
 		if(channel.start_channeling(user, user, psionic_datum, upgraded))
-			disguise(user)
-			activated(user)
+			if(disguise(user))
+				activated(user)
 
 /datum/action/psionic/active/disguise_self/deactivate(mob/living/carbon/user)
 	. = ..()
@@ -19,6 +19,9 @@
 
 /datum/action/psionic/active/disguise_self/proc/disguise(mob/living/carbon/user)
 	var/mob/living/carbon/human/selected_disguise = psionic_datum.selected_disguise
+	if(!selected_disguise)
+		to_chat(user, "<span class='warning'>You have to select a suitable disguise first</span>")
+		return FALSE
 	old_name = user.name
 	//Todo: make animations
 	user.appearance = selected_disguise.appearance
@@ -26,6 +29,7 @@
 	user.transform = initial(user.transform)
 	user.pixel_y = initial(user.pixel_y)
 	user.pixel_x = initial(user.pixel_x)
+	return TRUE
 
 /datum/action/psionic/active/disguise_self/proc/un_disguise(mob/living/carbon/user)
 	//Todo: make animations
