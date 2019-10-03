@@ -50,8 +50,8 @@
 /obj/structure/cult/functional/examine(mob/user)
 	. = ..()
 	if(iscultist(user) && cooldowntime > world.time)
-		to_chat(user, "<span class='cultitalic'>The magic in [src] is weak, it will be ready to use again in [getETA()].</span>")
-	to_chat(user, "<span class='notice'>\The [src] is [anchored ? "":"not "]secured to the floor.</span>")
+		. += "<span class='cultitalic'>The magic in [src] is weak, it will be ready to use again in [getETA()].</span>"
+	. += "<span class='notice'>\The [src] is [anchored ? "":"not "]secured to the floor.</span>"
 
 /obj/structure/cult/functional/attackby(obj/I, mob/user, params)
 	if(HULK in user.mutations)
@@ -167,11 +167,13 @@
 		..()
 
 var/list/blacklisted_pylon_turfs = typecacheof(list(
-	/turf/simulated/floor/engine/cult,
-	/turf/space,
-	/turf/simulated/floor/plating/lava,
-	/turf/simulated/floor/chasm,
-	/turf/simulated/wall,
+    /turf/simulated/floor/engine/cult,
+    /turf/space,
+    /turf/simulated/floor/plating/lava,
+    /turf/simulated/floor/chasm,
+    /turf/simulated/wall/cult,
+    /turf/simulated/wall/cult/artificer,
+    /turf/unsimulated/wall
 	))
 
 /obj/structure/cult/functional/pylon
@@ -210,7 +212,7 @@ var/list/blacklisted_pylon_turfs = typecacheof(list(
 				if(L.health != L.maxHealth)
 					new /obj/effect/temp_visual/heal(get_turf(src), "#960000")
 					if(ishuman(L))
-						L.heal_overall_damage(1, 1)
+						L.heal_overall_damage(1, 1, TRUE, FALSE, TRUE)
 					if(istype(L, /mob/living/simple_animal/shade) || istype(L, /mob/living/simple_animal/hostile/construct))
 						var/mob/living/simple_animal/M = L
 						if(M.health < M.maxHealth)
@@ -231,7 +233,10 @@ var/list/blacklisted_pylon_turfs = typecacheof(list(
 
 		var/turf/T = safepick(validturfs)
 		if(T)
-			T.ChangeTurf(/turf/simulated/floor/engine/cult)
+			if(istype(T, /turf/simulated/floor))
+				T.ChangeTurf(/turf/simulated/floor/engine/cult)
+			if(istype(T, /turf/simulated/wall))
+				T.ChangeTurf(/turf/simulated/wall/cult)
 		else
 			var/turf/simulated/floor/engine/cult/F = safepick(cultturfs)
 			if(F)
@@ -271,7 +276,7 @@ var/list/blacklisted_pylon_turfs = typecacheof(list(
 		return
 	return
 
-/obj/effect/gateway/Crossed(AM as mob|obj)
+/obj/effect/gateway/Crossed(AM as mob|obj, oldloc)
 	spawn(0)
 		return
 	return
