@@ -281,6 +281,7 @@
 #include "code\datums\components\carbon_on_life.dm"
 #include "code\datums\components\decal.dm"
 #include "code\datums\components\ducttape.dm"
+#include "code\datums\components\examine_override.dm"
 #include "code\datums\components\human_damage_callback.dm"
 #include "code\datums\components\jestosterone.dm"
 #include "code\datums\components\living_no_move.dm"

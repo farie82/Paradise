@@ -24,7 +24,7 @@
 
 /mob/living/carbon/human/psionic/Initialize(mapload)
 	..(mapload, /datum/species/psionic)
-
+/*
 /mob/living/carbon/human/psionic/examine(mob/user)
 	if(mind && mind.psionic)
 		var/found = FALSE
@@ -38,6 +38,7 @@
 			return .
 	
 	. = ..() // Not disguised
+	*/
 
 /mob/living/carbon/human/proc/make_psionic()
 	if(mind)

@@ -5,6 +5,7 @@
 	require_concentration = FALSE
 	channel = new /datum/psionic/channel/disguise_self
 	var/old_name
+	var/datum/component/examine_override/comp
 
 /datum/action/psionic/active/disguise_self/activate(mob/living/carbon/user)
 	. = ..()
@@ -29,9 +30,15 @@
 	user.transform = initial(user.transform)
 	user.pixel_y = initial(user.pixel_y)
 	user.pixel_x = initial(user.pixel_x)
+	comp = user.AddComponent(/datum/component/examine_override, selected_disguise.examine(selected_disguise))
 	return TRUE
+
+/datum/action/psionic/active/disguise_self/proc/examine_after(origin, mob/user, list/examine_list)
+	if(!upgraded && get_dist(user, origin) <= 3) // Add upgraded version
+		return "<span class='warning'>It doesn't look quite right...</span>"
 
 /datum/action/psionic/active/disguise_self/proc/un_disguise(mob/living/carbon/user)
 	//Todo: make animations
 	user.regenerate_icons()
+	QDEL_NULL(comp)
 	user.name = old_name
