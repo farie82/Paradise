@@ -1,6 +1,8 @@
 /datum/component/carbon_on_life
+	dupe_type = COMPONENT_DUPE_ALLOWED
 	var/datum/callback/callback
 
+// Will call the callback everytime the carbon calls Life() and the carbon is still alive
 /datum/component/carbon_on_life/Initialize(datum/callback/callback)
 	var/mob/living/carbon/C = parent
 	if(!istype(C) || !callback) //Something went wrong

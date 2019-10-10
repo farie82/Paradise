@@ -14,7 +14,6 @@
 	to_chat(user, "<span class='notice'>You start focusing. This will take [duration/10] seconds.</span>")
 	var/datum/component/living_no_move/no_move_component
 	if(!able_to_move)
-		user.canmove = FALSE
 		no_move_component = user.AddComponent(/datum/component/living_no_move, src)
 	
 	start_channeling(user, target, psionic_datum, upgraded)

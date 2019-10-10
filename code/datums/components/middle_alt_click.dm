@@ -1,6 +1,7 @@
 /datum/component/middle_alt_click
 	var/datum/callback/callback
 
+// Listens to the middle click and alt button combo and calls the given callback when that one is pressed
 /datum/component/middle_alt_click/Initialize(datum/callback/callback)
 	var/mob/M = parent
 	if(!istype(M)) //Something went wrong
