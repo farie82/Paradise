@@ -15,7 +15,7 @@
 		qdel(B)
 	return ..()
 
-/mob/living/carbon/blob_act()
+/mob/living/carbon/blob_act(obj/structure/blob/B)
 	if(stat == DEAD)
 		return
 	else
@@ -241,7 +241,7 @@
 			// BEGIN HUGCODE - N3X
 			else
 				playsound(get_turf(src), 'sound/weapons/thudswoosh.ogg', 50, 1, -1)
-				if(M.zone_sel.selecting == "head")
+				if(M.zone_selected == "head")
 					M.visible_message(\
 					"<span class='notice'>[M] pats [src] on the head.</span>",\
 					"<span class='notice'>You pat [src] on the head.</span>",\
@@ -1174,3 +1174,10 @@ so that different stomachs can handle things in different ways VB*/
 
 	SEND_SIGNAL(src, COMSIG_MOB_UPDATE_SIGHT)
 	sync_lighting_plane_alpha()
+
+/mob/living/carbon/ExtinguishMob()
+	for(var/X in get_equipped_items())
+		var/obj/item/I = X
+		I.acid_level = 0 //washes off the acid on our clothes
+		I.extinguish() //extinguishes our clothes
+	..()

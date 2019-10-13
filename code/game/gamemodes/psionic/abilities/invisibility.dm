@@ -42,7 +42,7 @@
 	steam.start()
 	if(ishuman(user))
 		var/mob/living/carbon/human/H = user
-		H.dna.species.slowdown = 2
+		H.dna.species.speed_mod = 2
 
 /datum/action/psionic/active/invisibility/proc/become_visible(mob/living/carbon/user)
 	var/mobloc = get_turf(user.loc)
@@ -59,4 +59,4 @@
 	qdel(steam)
 	if(ishuman(user))
 		var/mob/living/carbon/human/H = user
-		H.dna.species.slowdown = 0
+		H.dna.species.speed_mod = 0

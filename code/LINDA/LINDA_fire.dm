@@ -47,7 +47,6 @@
 /obj/effect/hotspot
 	anchored = 1
 	mouse_opacity = MOUSE_OPACITY_TRANSPARENT
-	unacidable = 1//So you can't melt fire with acid.
 	icon = 'icons/goonstation/effects/fire.dmi'
 	icon_state = "1"
 	layer = MASSIVE_OBJ_LAYER
@@ -194,6 +193,9 @@
 	..()
 	if(burn_on_crossing && isliving(L))
 		L.fire_act()
+
+/obj/effect/hotspot/singularity_pull()
+	return
 
 /obj/effect/hotspot/fake // Largely for the fireflash procs below
 	fake = TRUE

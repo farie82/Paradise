@@ -16,7 +16,7 @@
 	component_parts += new /obj/item/circuitboard/telesci_pad(null)
 	component_parts += new /obj/item/stack/ore/bluespace_crystal/artificial(null, 2)
 	component_parts += new /obj/item/stock_parts/capacitor(null)
-	component_parts += new /obj/item/stock_parts/console_screen(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
 	component_parts += new /obj/item/stack/cable_coil(null, 1)
 	RefreshParts()
 
@@ -26,7 +26,7 @@
 	component_parts += new /obj/item/circuitboard/telesci_pad(null)
 	component_parts += new /obj/item/stack/ore/bluespace_crystal/artificial(null, 2)
 	component_parts += new /obj/item/stock_parts/capacitor/super(null)
-	component_parts += new /obj/item/stock_parts/console_screen(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
 	component_parts += new /obj/item/stack/cable_coil(null, 1)
 	RefreshParts()
 
@@ -45,11 +45,14 @@
 			var/obj/item/multitool/M = I
 			M.buffer = src
 			to_chat(user, "<span class = 'caution'>You save the data in the [I.name]'s buffer.</span>")
+		return
 
 	if(exchange_parts(user, I))
 		return
 
-	default_deconstruction_crowbar(I)
+	if(default_deconstruction_crowbar(I))
+		return
+	return ..()
 
 
 //CARGO TELEPAD//
@@ -87,6 +90,8 @@
 		new /obj/item/stack/sheet/metal(get_turf(src))
 		new /obj/item/stack/sheet/glass(get_turf(src))
 		qdel(src)
+	else
+		return ..()
 
 ///TELEPAD CALLER///
 /obj/item/telepad_beacon
