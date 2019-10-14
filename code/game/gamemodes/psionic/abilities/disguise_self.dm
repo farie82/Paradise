@@ -23,14 +23,21 @@
 	if(!selected_disguise)
 		to_chat(user, "<span class='warning'>You have to select a suitable disguise first</span>")
 		return FALSE
-	old_name = user.name
 	//Todo: make animations
-	user.appearance = selected_disguise.appearance
-	user.name = selected_disguise.name
-	user.transform = initial(user.transform)
-	user.pixel_y = initial(user.pixel_y)
-	user.pixel_x = initial(user.pixel_x)
-	comp = user.AddComponent(/datum/component/examine_override, selected_disguise.examine(selected_disguise))
+	
+	if(ishuman(user))
+		var/mob/living/carbon/human/H = user
+		old_name = H.name_override
+		H.name_override = selected_disguise.name
+	else
+		old_name = user.name
+		user.name = selected_disguise.name
+	user.icon = selected_disguise.icon
+	user.icon_state = selected_disguise.icon_state
+	user.overlays = selected_disguise.overlays
+	user.update_inv_r_hand()
+	user.update_inv_l_hand()
+	comp = user.AddComponent(/datum/component/examine_override, selected_disguise.examine(selected_disguise), CALLBACK(src, .proc/examine_after))
 	return TRUE
 
 /datum/action/psionic/active/disguise_self/proc/examine_after(origin, mob/user, list/examine_list)
@@ -39,6 +46,13 @@
 
 /datum/action/psionic/active/disguise_self/proc/un_disguise(mob/living/carbon/user)
 	//Todo: make animations
+	user.overlays.Cut()
 	user.regenerate_icons()
 	QDEL_NULL(comp)
-	user.name = old_name
+	
+	if(ishuman(user))
+		var/mob/living/carbon/human/H = user
+		H.name_override = old_name
+	else
+		user.name = old_name
+	old_name = null

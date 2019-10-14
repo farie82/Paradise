@@ -3,11 +3,12 @@
 	var/datum/callback/after_callback
 
 /datum/component/examine_override/Initialize(list/examine_text, datum/callback/after_callback)
+	message_admins("test [parent]")
 	src.examine_text = examine_text
 	src.after_callback = after_callback
-	RegisterSignal(parent, COMSIG_PARENT_EXAMINE, .proc/examine)
+	RegisterSignal(parent, COMSIG_PARENT_EXAMINE, .proc/examineOverride)
 
-/datum/component/examine_override/proc/examine(origin, mob/user, list/examine_list)
+/datum/component/examine_override/proc/examineOverride(origin, mob/user, list/examine_list)
 	examine_list.Cut()
 	if(examine_text)
 		examine_list += examine_text
