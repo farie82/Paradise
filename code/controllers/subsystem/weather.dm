@@ -19,7 +19,7 @@ SUBSYSTEM_DEF(weather)
 		var/datum/weather/W = V
 		if(W.aesthetic || W.stage != MAIN_STAGE)
 			continue
-		for(var/i in living_mob_list)
+		for(var/i in GLOB.living_mob_list)
 			var/mob/living/L = i
 			if(W.can_weather_act(L))
 				W.weather_act(L)
@@ -45,7 +45,7 @@ SUBSYSTEM_DEF(weather)
 			for(var/z in levels_by_trait(target_trait))
 				LAZYINITLIST(eligible_zlevels["[z]"])
 				eligible_zlevels["[z]"][W] = probability
-	..()
+	return ..()
 
 /datum/controller/subsystem/weather/proc/run_weather(datum/weather/weather_datum_type, z_levels)
 	if(istext(weather_datum_type))

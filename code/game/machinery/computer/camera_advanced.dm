@@ -75,7 +75,7 @@
 
 	if(!eyeobj.eye_initialized)
 		var/camera_location
-		for(var/obj/machinery/camera/C in cameranet.cameras)
+		for(var/obj/machinery/camera/C in GLOB.cameranet.cameras)
 			if(!C.can_use())
 				continue
 			if(C.network&networks)
@@ -138,7 +138,8 @@
 			return
 		T = get_turf(T)
 		loc = T
-		cameranet.visibility(src)
+		if(use_static)
+			GLOB.cameranet.visibility(src, GetViewerClient())
 		if(visible_icon)
 			if(eye_user.client)
 				eye_user.client.images -= user_image
@@ -188,7 +189,7 @@
 
 	var/list/L = list()
 
-	for(var/obj/machinery/camera/cam in cameranet.cameras)
+	for(var/obj/machinery/camera/cam in GLOB.cameranet.cameras)
 		L.Add(cam)
 
 	camera_sort(L)

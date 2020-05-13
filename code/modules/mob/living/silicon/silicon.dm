@@ -19,13 +19,14 @@
 	var/speak_exclamation = "declares"
 	var/speak_query = "queries"
 	var/pose //Yes, now AIs can pose too.
+	var/death_sound = 'sound/voice/borg_deathsound.ogg'
 
 	//var/sensor_mode = 0 //Determines the current HUD.
 
 	var/next_alarm_notice
 	var/list/datum/alarm/queued_alarms = new()
 
-	hud_possible = list(SPECIALROLE_HUD, DIAG_STAT_HUD, DIAG_HUD,NATIONS_HUD)
+	hud_possible = list(SPECIALROLE_HUD, DIAG_STAT_HUD, DIAG_HUD)
 
 
 	var/med_hud = DATA_HUD_MEDICAL_ADVANCED //Determines the med hud to use
@@ -35,9 +36,9 @@
 	var/obj/item/radio/common_radio
 
 /mob/living/silicon/New()
-	silicon_mob_list |= src
+	GLOB.silicon_mob_list |= src
 	..()
-	var/datum/atom_hud/data/diagnostic/diag_hud = huds[DATA_HUD_DIAGNOSTIC]
+	var/datum/atom_hud/data/diagnostic/diag_hud = GLOB.huds[DATA_HUD_DIAGNOSTIC]
 	diag_hud.add_to_hud(src)
 	diag_hud_set_status()
 	diag_hud_set_health()
@@ -51,7 +52,7 @@
 	return //we use a different hud
 
 /mob/living/silicon/Destroy()
-	silicon_mob_list -= src
+	GLOB.silicon_mob_list -= src
 	for(var/datum/alarm_handler/AH in alarm_handlers)
 		AH.unregister(src)
 	return ..()
@@ -71,6 +72,9 @@
 /mob/living/silicon/drop_item()
 	return
 
+/mob/living/silicon/electrocute_act(shock_damage, obj/source, siemens_coeff = 1, safety = FALSE, override = FALSE, tesla_shock = FALSE, illusion = FALSE, stun = TRUE)
+	return FALSE //So borgs they don't die trying to fix wiring
+
 /mob/living/silicon/emp_act(severity)
 	switch(severity)
 		if(1)
@@ -88,13 +92,32 @@
 /mob/living/silicon/proc/damage_mob(var/brute = 0, var/fire = 0, var/tox = 0)
 	return
 
-/mob/living/silicon/can_inject(var/mob/user, var/error_msg)
+/mob/living/silicon/can_inject(mob/user, error_msg, target_zone, penetrate_thick)
 	if(error_msg)
-		to_chat(user, "<span class='alert'>Their outer shell is too tough.</span>")
-	return 0
+		to_chat(user, "<span class='alert'>[p_their(TRUE)] outer shell is too tough.</span>")
+	return FALSE
 
 /mob/living/silicon/IsAdvancedToolUser()
-	return 1
+	return TRUE
+
+/mob/living/silicon/robot/welder_act(mob/user, obj/item/I)
+	if(user.a_intent != INTENT_HELP)
+		return
+	if(user == src) //No self-repair dummy
+		return
+	. = TRUE
+	if(!getBruteLoss())
+		to_chat(user, "<span class='notice'>Nothing to fix!</span>")
+		return
+	else if(!getBruteLoss(TRUE))
+		to_chat(user, "<span class='warning'>The damaged components are beyond saving!</span>")
+		return
+	if(!I.use_tool(src, user, volume = I.tool_volume))
+		return
+	adjustBruteLoss(-30)
+	add_fingerprint(user)
+	user.visible_message("<span class='alert'>[user] patches some dents on [src] with [I].</span>")
+
 
 /mob/living/silicon/bullet_act(var/obj/item/projectile/Proj)
 
@@ -110,7 +133,7 @@
 
 	return 2
 
-/mob/living/silicon/apply_effect(var/effect = 0,var/effecttype = STUN, var/blocked = 0)
+/mob/living/silicon/apply_effect(var/effect = 0,var/effecttype = STUN, var/blocked = 0, var/negate_armor = 0)
 	return 0//The only effect that can hit them atm is flashes and they still directly edit so this works for now
 /*
 	if(!effect || (blocked >= 2))	return 0
@@ -152,7 +175,6 @@
 /mob/living/silicon/Stat()
 	..()
 	if(statpanel("Status"))
-		show_stat_station_time()
 		show_stat_emergency_shuttle_eta()
 		show_system_integrity()
 
@@ -163,7 +185,7 @@
 
 /mob/living/silicon/add_language(var/language, var/can_speak=1)
 	if(..(language) && can_speak)
-		speech_synthesizer_langs.Add(all_languages[language])
+		speech_synthesizer_langs.Add(GLOB.all_languages[language])
 		return 1
 
 /mob/living/silicon/remove_language(var/rem_language)
@@ -195,8 +217,8 @@
 /mob/living/silicon/proc/show_station_manifest()
 	var/dat
 	dat += "<h4>Crew Manifest</h4>"
-	if(data_core)
-		dat += data_core.get_manifest(1) // make it monochrome
+	if(GLOB.data_core)
+		dat += GLOB.data_core.get_manifest(1) // make it monochrome
 	dat += "<br>"
 	src << browse(dat, "window=airoster")
 	onclose(src, "airoster")
@@ -222,24 +244,24 @@
 	return 1
 
 /mob/living/silicon/proc/remove_med_sec_hud()
-	var/datum/atom_hud/secsensor = huds[sec_hud]
-	var/datum/atom_hud/medsensor = huds[med_hud]
-	for(var/datum/atom_hud/data/diagnostic/diagsensor in huds)
+	var/datum/atom_hud/secsensor = GLOB.huds[sec_hud]
+	var/datum/atom_hud/medsensor = GLOB.huds[med_hud]
+	for(var/datum/atom_hud/data/diagnostic/diagsensor in GLOB.huds)
 		diagsensor.remove_hud_from(src)
 	secsensor.remove_hud_from(src)
 	medsensor.remove_hud_from(src)
 
 
 /mob/living/silicon/proc/add_sec_hud()
-	var/datum/atom_hud/secsensor = huds[sec_hud]
+	var/datum/atom_hud/secsensor = GLOB.huds[sec_hud]
 	secsensor.add_hud_to(src)
 
 /mob/living/silicon/proc/add_med_hud()
-	var/datum/atom_hud/medsensor = huds[med_hud]
+	var/datum/atom_hud/medsensor = GLOB.huds[med_hud]
 	medsensor.add_hud_to(src)
 
 /mob/living/silicon/proc/add_diag_hud()
-	for(var/datum/atom_hud/data/diagnostic/diagsensor in huds)
+	for(var/datum/atom_hud/data/diagnostic/diagsensor in GLOB.huds)
 		diagsensor.add_hud_to(src)
 
 
@@ -317,7 +339,7 @@
 	to_chat(src, "[A.alarm_name()]! ([(cameratext)? cameratext : "No Camera"])")
 
 /mob/living/silicon/adjustToxLoss(var/amount)
-	return
+	return STATUS_UPDATE_NONE
 
 /mob/living/silicon/get_access()
 	return IGNORE_ACCESS //silicons always have access
@@ -329,10 +351,10 @@
 /mob/living/silicon/is_mechanical()
 	return 1
 
+/mob/living/silicon/is_literate()
+	return 1
+
 /////////////////////////////////// EAR DAMAGE ////////////////////////////////////
+/mob/living/silicon/can_hear()
+	. = TRUE
 
-/mob/living/silicon/SetEarDamage()
-	return
-
-/mob/living/silicon/SetEarDeaf()
-	return

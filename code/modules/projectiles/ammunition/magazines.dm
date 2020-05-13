@@ -61,6 +61,14 @@
 	caliber = "38"
 	max_ammo = 6
 
+/obj/item/ammo_box/magazine/internal/cylinder/rev38/invisible
+	name = "finger gun cylinder"
+	desc = "Wait, what?"
+	ammo_type = /obj/item/ammo_casing/c38/invisible
+
+/obj/item/ammo_box/magazine/internal/cylinder/rev38/invisible/fake
+	ammo_type = /obj/item/ammo_casing/c38/invisible/fake
+
 /obj/item/ammo_box/magazine/internal/cylinder/rev762
 	name = "nagant revolver cylinder"
 	ammo_type = /obj/item/ammo_casing/n762
@@ -114,6 +122,9 @@
 	ammo_type = /obj/item/ammo_casing/shotgun/improvised
 	max_ammo = 1
 
+/obj/item/ammo_box/magazine/internal/shot/improvised/cane
+	ammo_type = /obj/item/ammo_casing/shotgun/assassination
+
 /obj/item/ammo_box/magazine/internal/shot/riot
 	name = "riot shotgun internal magazine"
 	ammo_type = /obj/item/ammo_casing/shotgun/rubbershot
@@ -146,6 +157,8 @@
 	multiload = 0
 
 /obj/item/ammo_box/magazine/internal/rus357/New()
+	..()
+	stored_ammo.Cut() // We only want 1 bullet in there
 	stored_ammo += new ammo_type(src)
 
 /obj/item/ammo_box/magazine/internal/boltaction
@@ -208,12 +221,16 @@
 	caliber = ".45"
 	max_ammo = 8
 	multiple_sprites = 1
-/obj/item/ammo_box/magazine/m45/enforcer45
-	name = "handgun magazine (.45)"
-	icon_state = "enforcer"
-	ammo_type = /obj/item/ammo_casing/rubber45
 
-/obj/item/ammo_box/magazine/m45/enforcer45/update_icon()
+/obj/item/ammo_box/magazine/enforcer
+	name = "handgun magazine (9mm rubber)"
+	icon_state = "enforcer"
+	ammo_type = /obj/item/ammo_casing/rubber9mm
+	max_ammo = 8
+	multiple_sprites = 1
+	caliber = "9mm"
+
+/obj/item/ammo_box/magazine/enforcer/update_icon()
 	..()
 	overlays.Cut()
 
@@ -221,21 +238,22 @@
 	if(ammo && is_rubber())
 		overlays += image('icons/obj/ammo.dmi', icon_state = "enforcer-r")
 
-/obj/item/ammo_box/magazine/m45/enforcer45/examine(mob/user, var/distance)
-	..()
-	if(distance <= 2)
-		to_chat(user, "It seems to be loaded with [is_rubber() ? "rubber" : "lethal"] bullets.")//only can see the topmost one.
+/obj/item/ammo_box/magazine/enforcer/examine(mob/user)
+	. = ..()
+	if(get_dist(user, src) <= 2)
+		. += "It seems to be loaded with [is_rubber() ? "rubber" : "lethal"] bullets."//only can see the topmost one.
 
-/obj/item/ammo_box/magazine/m45/enforcer45/proc/is_rubber()//if the topmost bullet is a rubber one
+/obj/item/ammo_box/magazine/enforcer/proc/is_rubber()//if the topmost bullet is a rubber one
 	var/ammo = ammo_count()
 	if(!ammo)
 		return 0
-	if(istype(contents[contents.len], /obj/item/ammo_casing/rubber45))
+	if(istype(contents[contents.len], /obj/item/ammo_casing/rubber9mm))
 		return 1
 	return 0
 
-/obj/item/ammo_box/magazine/m45/enforcer45/lethal
-	ammo_type = /obj/item/ammo_casing/c45
+/obj/item/ammo_box/magazine/enforcer/lethal
+	name = "handgun magazine (9mm)"
+	ammo_type = /obj/item/ammo_casing/c9mm
 
 /obj/item/ammo_box/magazine/wt550m9
 	name = "wt550 magazine (4.6x30mm)"
@@ -462,6 +480,9 @@
 	..()
 	icon_state = "a762-[round(ammo_count(),10)]"
 
+/obj/item/ammo_box/magazine/toy/m762/riot
+	ammo_type = /obj/item/ammo_casing/caseless/foam_dart/riot
+
 /obj/item/ammo_box/magazine/laser
 	name = "encased laser projector magazine"
 	desc = "Fits experimental laser ammo casings."
@@ -474,3 +495,15 @@
 /obj/item/ammo_box/magazine/laser/update_icon()
 	..()
 	icon_state = "[initial(icon_state)]-[Ceiling(ammo_count(0)/20)*20]"
+
+/obj/item/ammo_box/magazine/toy/smgm45
+	name = "donksoft SMG magazine"
+	ammo_type = /obj/item/ammo_casing/caseless/foam_dart/riot
+	max_ammo = 20
+
+/obj/item/ammo_box/magazine/toy/smgm45/update_icon()
+	..()
+	icon_state = "c20r45-[round(ammo_count(),2)]"
+
+/obj/item/ammo_box/magazine/toy/smgm45/riot
+	ammo_type = /obj/item/ammo_casing/caseless/foam_dart/riot

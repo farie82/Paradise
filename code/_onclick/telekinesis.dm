@@ -3,7 +3,7 @@
 
 	This needs more thinking out, but I might as well.
 */
-var/const/tk_maxrange = 15
+#define TK_MAXRANGE 15
 
 /*
 	Telekinetic attack:
@@ -65,8 +65,8 @@ var/const/tk_maxrange = 15
 	flags = NOBLUDGEON | ABSTRACT | DROPDEL
 	//item_state = null
 	w_class = WEIGHT_CLASS_GIGANTIC
-	layer = 20
-	plane = HUD_PLANE
+	layer = ABOVE_HUD_LAYER
+	plane = ABOVE_HUD_PLANE
 
 	var/last_throw = 0
 	var/atom/movable/focus = null
@@ -118,7 +118,7 @@ var/const/tk_maxrange = 15
 	var/d = get_dist(user, target)
 	if(focus)
 		d = max(d,get_dist(user,focus)) // whichever is further
-	if(d > tk_maxrange)
+	if(d > TK_MAXRANGE)
 		to_chat(user, "<span class='warning'>Your mind won't reach that far.</span>")
 		return
 
@@ -191,27 +191,3 @@ var/const/tk_maxrange = 15
 	overlays.Cut()
 	if(focus && focus.icon && focus.icon_state)
 		overlays += icon(focus.icon,focus.icon_state)
-
-/*Not quite done likely needs to use something thats not get_step_to
-	proc/check_path()
-		var/turf/ref = get_turf(src.loc)
-		var/turf/target = get_turf(focus.loc)
-		if(!ref || !target)	return 0
-		var/distance = get_dist(ref, target)
-		if(distance >= 10)	return 0
-		for(var/i = 1 to distance)
-			ref = get_step_to(ref, target, 0)
-		if(ref != target)	return 0
-		return 1
-*/
-
-//equip_to_slot_or_del(obj/item/W, slot, del_on_fail = 1)
-/*
-		if(istype(user, /mob/living/carbon))
-			if(user:mutations & TK && get_dist(source, user) <= 7)
-				if(user:get_active_hand())	return 0
-				var/X = source:x
-				var/Y = source:y
-				var/Z = source:z
-
-*/

@@ -48,7 +48,7 @@
 	if(initPipe)
 		normalize_dir()
 		var/N = 2
-		for(var/D in cardinal)
+		for(var/D in GLOB.cardinal)
 			if(D & initialize_directions)
 				N--
 				for(var/obj/machinery/atmospherics/target in get_step(src, D))
@@ -137,6 +137,8 @@
 		node2.update_underlays()
 
 /obj/machinery/atmospherics/pipe/simple/update_icon(var/safety = 0)
+	..()
+
 	if(!check_icon_cache())
 		return
 

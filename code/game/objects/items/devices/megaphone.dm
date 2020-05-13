@@ -48,6 +48,9 @@
 	if(!message)
 		return
 	message = capitalize(message)
+	var/list/message_pieces = message_to_multilingual(message)
+	user.handle_speech_problems(message_pieces)
+	message = multilingual_to_message(message_pieces)
 	if((loc == user && !user.incapacitated()))
 		if(emagged)
 			if(insults)
@@ -68,7 +71,7 @@
 	audible_message("<span class='game say'><span class='name'>[user.GetVoice()]</span> [user.GetAltName()] broadcasts, <span class='reallybig'>\"[message]\"</span></span>", hearing_distance = 14)
 	log_say(message, user)
 	for(var/obj/O in oview(14, get_turf(src)))
-		O.hear_talk(user, "<span class='reallybig'>[message]</span>")
+		O.hear_talk(user, message_to_multilingual("<span class='reallybig'>[message]</span>"))
 
 /obj/item/megaphone/emag_act(user as mob)
 	if(!emagged)

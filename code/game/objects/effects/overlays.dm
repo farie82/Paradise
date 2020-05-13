@@ -1,6 +1,5 @@
 /obj/effect/overlay
 	name = "overlay"
-	unacidable = 1
 	var/i_attached//Added for possible image attachments to objects. For hallucinations and the like.
 
 /obj/effect/overlay/singularity_act()
@@ -58,7 +57,7 @@
 	anchored = 1
 	density = 1
 	layer = 5
-	mouse_opacity = 0
+	mouse_opacity = MOUSE_OPACITY_TRANSPARENT
 
 /obj/effect/overlay/wall_rot/New()
 	..()

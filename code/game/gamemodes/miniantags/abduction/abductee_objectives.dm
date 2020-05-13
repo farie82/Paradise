@@ -26,7 +26,7 @@
 	explanation_text = "Capture"
 
 /datum/objective/abductee/capture/New()
-	var/list/jobs = job_master.occupations.Copy()
+	var/list/jobs = SSjobs.occupations.Copy()
 	for(var/datum/job/J in jobs)
 		if(J.current_positions < 1)
 			jobs -= J
@@ -88,7 +88,7 @@
 	explanation_text = "Call forth a spirit from the other side."
 
 /datum/objective/abductee/calling/New()
-	var/mob/dead/D = pick(dead_mob_list)
+	var/mob/dead/D = pick(GLOB.dead_mob_list)
 	if(D)
 		explanation_text = "You know that [D] has perished. Hold a seance to call them from the spirit realm."
 

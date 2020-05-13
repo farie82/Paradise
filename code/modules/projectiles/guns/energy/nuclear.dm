@@ -34,12 +34,13 @@
 	ammo_x_offset = 2
 	charge_sections = 3
 	can_flashlight = 0 // Can't attach or detach the flashlight, and override it's icon update
+	actions_types = list(/datum/action/item_action/toggle_gunlight)
 
-/obj/item/gun/energy/gun/mini/New()
+/obj/item/gun/energy/gun/mini/Initialize(mapload, ...)
 	gun_light = new /obj/item/flashlight/seclite(src)
-	..()
-	power_supply.maxcharge = 600
-	power_supply.charge = 600
+	. = ..()
+	cell.maxcharge = 600
+	cell.charge = 600
 
 /obj/item/gun/energy/gun/mini/update_icon()
 	..()
@@ -54,6 +55,7 @@
 	force = 10
 	ammo_type = list(/obj/item/ammo_casing/energy/electrode/hos, /obj/item/ammo_casing/energy/laser/hos, /obj/item/ammo_casing/energy/disabler)
 	ammo_x_offset = 4
+	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | ACID_PROOF
 
 /obj/item/gun/energy/gun/blueshield
 	name = "advanced stun revolver"
@@ -65,6 +67,11 @@
 	ammo_x_offset = 1
 	shaded_charge = 1
 
+/obj/item/gun/energy/gun/blueshield/pdw9
+	name = "PDW-9 taser pistol"
+	desc = "A military grade sidearm, used by many militia forces throughout the local sector."
+	icon_state = "pdw9pistol"
+
 /obj/item/gun/energy/gun/turret
 	name = "hybrid turret gun"
 	desc = "A heavy hybrid energy cannon with two settings: Stun and kill."
@@ -73,7 +80,7 @@
 	slot_flags = null
 	w_class = WEIGHT_CLASS_HUGE
 	ammo_type = list(/obj/item/ammo_casing/energy/electrode, /obj/item/ammo_casing/energy/laser)
-	weapon_weight = WEAPON_MEDIUM
+	weapon_weight = WEAPON_HEAVY
 	can_flashlight = 0
 	trigger_guard = TRIGGER_GUARD_NONE
 	ammo_x_offset = 2

@@ -3,7 +3,7 @@
 	filedesc = "Command and communications"
 	program_icon_state = "comm"
 	extended_desc = "Used to command and control the station. Can relay long-range communications. This program can not be run on tablet computers."
-	required_access = access_heads
+	required_access = ACCESS_HEADS
 	requires_ntnet = 1
 	size = 12
 	usage_flags = PROGRAM_CONSOLE | PROGRAM_LAPTOP
@@ -20,7 +20,6 @@
 	var/centcomm_message_cooldown = 0
 	var/tmp_alertlevel = 0
 
-	var/status_display_freq = "1435"
 	var/stat_msg1
 	var/stat_msg2
 	var/display_type="blank"
@@ -28,12 +27,12 @@
 	var/datum/announcement/priority/crew_announcement = new
 
 /datum/computer_file/program/comm/New()
-	shuttle_caller_list += src
+	GLOB.shuttle_caller_list += src
 	..()
 	crew_announcement.newscast = 0
 
 /datum/computer_file/program/comm/Destroy()
-	shuttle_caller_list -= src
+	GLOB.shuttle_caller_list -= src
 	SSshuttle.autoEvac()
 	return ..()
 
@@ -51,7 +50,7 @@
 
 /datum/computer_file/program/comm/proc/change_security_level(mob/user, new_level)
 	tmp_alertlevel = new_level
-	var/old_level = security_level
+	var/old_level = GLOB.security_level
 	if(!tmp_alertlevel)
 		tmp_alertlevel = SEC_LEVEL_GREEN
 	if(tmp_alertlevel < SEC_LEVEL_GREEN)
@@ -59,10 +58,10 @@
 	if(tmp_alertlevel > SEC_LEVEL_BLUE)
 		tmp_alertlevel = SEC_LEVEL_BLUE //Cannot engage delta with this
 	set_security_level(tmp_alertlevel)
-	if(security_level != old_level)
+	if(GLOB.security_level != old_level)
 		log_game("[key_name(user)] has changed the security level to [get_security_level()].")
 		message_admins("[key_name_admin(user)] has changed the security level to [get_security_level()].")
-		switch(security_level)
+		switch(GLOB.security_level)
 			if(SEC_LEVEL_GREEN)
 				feedback_inc("alert_comms_green", 1)
 			if(SEC_LEVEL_BLUE)
@@ -102,7 +101,7 @@
 		ui.set_layout_key("program")
 		ui.open()
 
-/datum/computer_file/program/comm/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/datum/computer_file/program/comm/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/list/data = get_header_data()
 	data["is_ai"]         = isAI(user) || isrobot(user)
 	data["menu_state"]    = data["is_ai"] ? ai_menu_state : menu_state
@@ -129,7 +128,7 @@
 		)
 	)
 
-	data["security_level"] =     security_level
+	data["security_level"] =     GLOB.security_level
 	data["str_security_level"] = capitalize(get_security_level())
 	data["levels"] = list(
 		list("id" = SEC_LEVEL_GREEN, "name" = "Green"),
@@ -159,11 +158,6 @@
 
 	data["shuttle"] = shuttle
 
-	if(trade_dockrequest_timelimit > world.time)
-		data["dock_request"] = 1
-	else
-		data["dock_request"] = 0
-
 	return data
 
 /datum/computer_file/program/comm/Topic(href, href_list)
@@ -181,10 +175,10 @@
 			return
 
 		var/list/access = usr.get_access()
-		if(access_heads in access)
+		if(ACCESS_HEADS in access)
 			authenticated = COMM_AUTHENTICATION_MIN
 
-		if(access_captain in access)
+		if(ACCESS_CAPTAIN in access)
 			authenticated = COMM_AUTHENTICATION_MAX
 			var/mob/living/carbon/human/H = usr
 			var/obj/item/card/id = H.get_idcard(TRUE)
@@ -227,7 +221,7 @@
 					var/obj/item/pda/pda = I
 					I = pda.id
 				if(I && istype(I))
-					if(access_captain in I.access)
+					if(ACCESS_CAPTAIN in I.access)
 						change_security_level(usr, text2num(href_list["level"]))
 					else
 						to_chat(usr, "<span class='warning'>You are not authorized to do this.</span>")
@@ -251,7 +245,7 @@
 						message_cooldown = 0
 
 			if("callshuttle")
-				var/input = input(usr, "Please enter the reason for calling the shuttle.", "Shuttle Call Reason.","") as text|null
+				var/input = clean_input("Please enter the reason for calling the shuttle.", "Shuttle Call Reason.","")
 				if(!input || ..() || !is_authenticated(usr))
 					SSnanoui.update_uis(src)
 					return 1
@@ -312,11 +306,11 @@
 				setMenuState(usr, COMM_SCREEN_STAT)
 
 			if("setmsg1")
-				stat_msg1 = input("Line 1", "Enter Message Text", stat_msg1) as text|null
+				stat_msg1 = clean_input("Line 1", "Enter Message Text", stat_msg1)
 				setMenuState(usr, COMM_SCREEN_STAT)
 
 			if("setmsg2")
-				stat_msg2 = input("Line 2", "Enter Message Text", stat_msg2) as text|null
+				stat_msg2 = clean_input("Line 2", "Enter Message Text", stat_msg2)
 				setMenuState(usr, COMM_SCREEN_STAT)
 
 			if("nukerequest")
@@ -332,7 +326,7 @@
 					Nuke_request(input, usr)
 					to_chat(usr, "<span class='notice'>Request sent.</span>")
 					log_game("[key_name(usr)] has requested the nuclear codes from Centcomm")
-					priority_announcement.Announce("The codes for the on-station nuclear self-destruct have been requested by [usr]. Confirmation or denial of this request will be sent shortly.", "Nuclear Self Destruct Codes Requested",'sound/AI/commandreport.ogg')
+					GLOB.priority_announcement.Announce("The codes for the on-station nuclear self-destruct have been requested by [usr]. Confirmation or denial of this request will be sent shortly.", "Nuclear Self Destruct Codes Requested",'sound/AI/commandreport.ogg')
 					centcomm_message_cooldown = 1
 					spawn(6000)//10 minute cooldown
 						centcomm_message_cooldown = 0
@@ -386,17 +380,6 @@
 						to_chat(usr, "<span class='warning'>Nano-Mob Hunter GO! game server reboot failed due to recent restart. Please wait before re-attempting.</span>")
 				else
 					to_chat(usr, "<span class='danger'>Nano-Mob Hunter GO! game server is offline for extended maintenance. Contact your Central Command administrators for more info if desired.</span>")
-
-			if("AcceptDocking")
-				to_chat(usr, "Docking request accepted!")
-				trade_dock_timelimit = world.time + 1200
-				trade_dockrequest_timelimit = 0
-				event_announcement.Announce("Docking request for trading ship approved, please dock at port bay 4.", "Docking Request")
-			if("DenyDocking")
-				to_chat(usr, "Docking requeset denied!")
-				trade_dock_timelimit = 0
-				trade_dockrequest_timelimit = 0
-				event_announcement.Announce("Docking request for trading ship denied.", "Docking request")
 
 	SSnanoui.update_uis(src)
 	return 1

@@ -5,10 +5,9 @@
 	icobase = 'icons/mob/human_races/r_shadow.dmi'
 	deform = 'icons/mob/human_races/r_shadow.dmi'
 	dangerous_existence = TRUE
+	inherent_factions = list("faithless")
 
 	unarmed_type = /datum/unarmed_attack/claws
-
-	ignored_by = list(/mob/living/simple_animal/hostile/faithless)
 
 	blood_color = "#CCCCCC"
 	flesh_color = "#AAAAAA"
@@ -18,8 +17,7 @@
 		)
 
 	species_traits = list(NO_BREATHE, NO_BLOOD, RADIMMUNE, VIRUSIMMUNE)
-
-	oxy_mod = 0
+	dies_at_threshold = TRUE
 
 	dietflags = DIET_OMNI		//the mutation process allowed you to now digest all foods regardless of initial race
 	reagent_tag = PROCESS_ORG

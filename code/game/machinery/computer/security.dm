@@ -7,7 +7,7 @@
 	desc = "Used to view and edit personnel's security records."
 	icon_keyboard = "security_key"
 	icon_screen = "security"
-	req_one_access = list(access_security, access_forensics_lockers)
+	req_one_access = list(ACCESS_SECURITY, ACCESS_FORENSICS_LOCKERS)
 	circuit = /obj/item/circuitboard/secure_data
 	var/obj/item/card/id/scan = null
 	var/authenticated = null
@@ -35,7 +35,8 @@
 		O.forceMove(src)
 		scan = O
 		ui_interact(user)
-	..()
+		return
+	return ..()
 
 //Someone needs to break down the dat += into chunks instead of long ass lines.
 /obj/machinery/computer/secure_data/attack_hand(mob/user)
@@ -53,7 +54,7 @@
 		ui = new(user, src, ui_key, "secure_data.tmpl", name, 800, 800)
 		ui.open()
 
-/obj/machinery/computer/secure_data/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/computer/secure_data/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 	data["temp"] = temp
 	data["scan"] = scan ? scan.name : null
@@ -62,10 +63,10 @@
 	if(authenticated)
 		switch(screen)
 			if(SEC_DATA_R_LIST)
-				if(!isnull(data_core.general))
-					for(var/datum/data/record/R in sortRecord(data_core.general, sortBy, order))
+				if(!isnull(GLOB.data_core.general))
+					for(var/datum/data/record/R in sortRecord(GLOB.data_core.general, sortBy, order))
 						var/crimstat = "null"
-						for(var/datum/data/record/E in data_core.security)
+						for(var/datum/data/record/E in GLOB.data_core.security)
 							if(E.fields["name"] == R.fields["name"] && E.fields["id"] == R.fields["id"])
 								crimstat = E.fields["criminal"]
 								break
@@ -89,7 +90,7 @@
 			if(SEC_DATA_RECORD)
 				var/list/general = list()
 				data["general"] = general
-				if(istype(active1, /datum/data/record) && data_core.general.Find(active1))
+				if(istype(active1, /datum/data/record) && GLOB.data_core.general.Find(active1))
 					var/list/fields = list()
 					general["fields"] = fields
 					fields[++fields.len] = list("field" = "Name:", "value" = active1.fields["name"], "edit" = "name")
@@ -111,7 +112,7 @@
 
 				var/list/security = list()
 				data["security"] = security
-				if(istype(active2, /datum/data/record) && data_core.security.Find(active2))
+				if(istype(active2, /datum/data/record) && GLOB.data_core.security.Find(active2))
 					var/list/fields = list()
 					security["fields"] = fields
 					fields[++fields.len] = list("field" = "Criminal Status:", "value" = active2.fields["criminal"], "edit" = "criminal", "line_break" = 1)
@@ -132,9 +133,9 @@
 	if(..())
 		return 1
 
-	if(!data_core.general.Find(active1))
+	if(!GLOB.data_core.general.Find(active1))
 		active1 = null
-	if(!data_core.security.Find(active2))
+	if(!GLOB.data_core.security.Find(active2))
 		active2 = null
 
 	if(href_list["temp"])
@@ -144,14 +145,14 @@
 		var/temp_href = splittext(href_list["temp_action"], "=")
 		switch(temp_href[1])
 			if("del_all2")
-				for(var/datum/data/record/R in data_core.security)
+				for(var/datum/data/record/R in GLOB.data_core.security)
 					qdel(R)
 				update_all_mob_security_hud()
 				setTemp("<h3>All records deleted.</h3>")
 			if("del_alllogs2")
-				if(cell_logs.len)
+				if(GLOB.cell_logs.len)
 					setTemp("<h3>All cell logs deleted.</h3>")
-					cell_logs.Cut()
+					GLOB.cell_logs.Cut()
 				else
 					to_chat(usr, "<span class='notice'>Error; No cell logs to delete.</span>")
 			if("del_r2")
@@ -160,7 +161,7 @@
 					update_all_mob_security_hud()
 			if("del_rg2")
 				if(active1)
-					for(var/datum/data/record/R in data_core.medical)
+					for(var/datum/data/record/R in GLOB.data_core.medical)
 						if(R.fields["name"] == active1.fields["name"] && R.fields["id"] == active1.fields["id"])
 							qdel(R)
 					QDEL_NULL(active1)
@@ -169,45 +170,20 @@
 				screen = SEC_DATA_R_LIST
 			if("criminal")
 				if(active2)
-					var/their_name = active2.fields["name"]
-					var/their_rank = active2.fields["rank"]
 					var/t1
 					if(temp_href[2] == "execute")
 						t1 = copytext(trim(sanitize(input("Explain why they are being executed. Include a list of their crimes, and victims.", "EXECUTION ORDER", null, null) as text)), 1, MAX_MESSAGE_LEN)
 					else
 						t1 = copytext(trim(sanitize(input("Enter Reason:", "Secure. records", null, null) as text)), 1, MAX_MESSAGE_LEN)
-					var/visible_reason
-					if(t1)
-						visible_reason = t1
-					else
+					if(!t1)
 						t1 = "(none)"
-						visible_reason = "<span class='warning'>NO REASON PROVIDED</span>"
-					switch(temp_href[2])
-						if("none")
-							active2.fields["criminal"] = "None"
-						if("arrest")
-							active2.fields["criminal"] = "*Arrest*"
-						if("execute")
-							if((access_magistrate in authcard_access) || (access_armory in authcard_access))
-								active2.fields["criminal"] = "*Execute*"
-								message_admins("[ADMIN_FULLMONTY(usr)] authorized <span class='warning'>EXECUTION</span> for [their_rank] [their_name], with comment: [visible_reason]")
-							else
-								setTemp("<h3 class='bad'>Error: permission denied.</h3>")
-								return 1
-						if("incarcerated")
-							active2.fields["criminal"] = "Incarcerated"
-						if("parolled")
-							active2.fields["criminal"] = "Parolled"
-						if("released")
-							active2.fields["criminal"] = "Released"
-					var/newstatus = active2.fields["criminal"]
-					log_admin("[key_name_admin(usr)] set secstatus of [their_rank] [their_name] to [newstatus], comment: [t1]")
-					active2.fields["comments"] += "Set to [newstatus] by [usr.name] ([rank]) on [current_date_string] [station_time_timestamp()], comment: [t1]"
-					update_all_mob_security_hud()
+					if(!set_criminal_status(usr, active2, temp_href[2], t1, rank, authcard_access))
+						setTemp("<h3 class='bad'>Error: permission denied.</h3>")
+						return 1
 			if("rank")
 				if(active1)
 					active1.fields["rank"] = temp_href[2]
-					if(temp_href[2] in joblist)
+					if(temp_href[2] in GLOB.joblist)
 						active1.fields["real_rank"] = temp_href[2]
 
 	if(href_list["scan"])
@@ -272,10 +248,10 @@
 		else if(href_list["d_rec"])
 			var/datum/data/record/R = locate(href_list["d_rec"])
 			var/datum/data/record/M = locate(href_list["d_rec"])
-			if(!data_core.general.Find(R))
+			if(!GLOB.data_core.general.Find(R))
 				setTemp("<h3 class='bad'>Record not found!</h3>")
 				return 1
-			for(var/datum/data/record/E in data_core.security)
+			for(var/datum/data/record/E in GLOB.data_core.security)
 				if(E.fields["name"] == R.fields["name"] && E.fields["id"] == R.fields["id"])
 					M = E
 			active1 = R
@@ -320,7 +296,7 @@
 				R.fields["ma_crim"] = "None"
 				R.fields["ma_crim_d"] = "No major crime convictions."
 				R.fields["notes"] = "No notes."
-				data_core.security += R
+				GLOB.data_core.security += R
 				active2 = R
 				screen = SEC_DATA_RECORD
 
@@ -336,7 +312,7 @@
 			G.fields["p_stat"] = "Active"
 			G.fields["m_stat"] = "Stable"
 			G.fields["species"] = "Human"
-			data_core.general += G
+			GLOB.data_core.general += G
 			active1 = G
 			active2 = null
 
@@ -347,7 +323,7 @@
 				sleep(50)
 				var/obj/item/paper/P = new /obj/item/paper(loc)
 				P.info = "<CENTER><B>Security Record</B></CENTER><BR>"
-				if(istype(active1, /datum/data/record) && data_core.general.Find(active1))
+				if(istype(active1, /datum/data/record) && GLOB.data_core.general.Find(active1))
 					P.info += {"Name: [active1.fields["name"]] ID: [active1.fields["id"]]
 							<BR>\nSex: [active1.fields["sex"]]
 							<BR>\nAge: [active1.fields["age"]]
@@ -356,7 +332,7 @@
 							<BR>\nMental Status: [active1.fields["m_stat"]]<BR>"}
 				else
 					P.info += "<B>General Record Lost!</B><BR>"
-				if(istype(active2, /datum/data/record) && data_core.security.Find(active2))
+				if(istype(active2, /datum/data/record) && GLOB.data_core.security.Find(active2))
 					P.info += {"<BR>\n<CENTER><B>Security Data</B></CENTER>
 					<BR>\nCriminal Status: [active2.fields["criminal"]]<BR>\n
 					<BR>\nMinor Crimes: [active2.fields["mi_crim"]]
@@ -385,8 +361,8 @@
 */
 
 		else if(href_list["printlogs"])
-			if(cell_logs.len && !printing)
-				var/obj/item/paper/P = input(usr, "Select log to print", "Available Cell Logs") as null|anything in cell_logs
+			if(GLOB.cell_logs.len && !printing)
+				var/obj/item/paper/P = input(usr, "Select log to print", "Available Cell Logs") as null|anything in GLOB.cell_logs
 				if(!P)
 					return 0
 				printing = 1
@@ -408,7 +384,7 @@
 				var/t1 = copytext(trim(sanitize(input("Add Comment:", "Secure. records", null, null) as message)), 1, MAX_MESSAGE_LEN)
 				if(!t1 || ..() || active2 != a2)
 					return 1
-				active2.fields["comments"] += "Made by [authenticated] ([rank]) on [current_date_string] [station_time_timestamp()]<BR>[t1]"
+				active2.fields["comments"] += "Made by [authenticated] ([rank]) on [GLOB.current_date_string] [station_time_timestamp()]<BR>[t1]"
 
 		else if(href_list["del_c"])
 			var/index = min(max(text2num(href_list["del_c"]) + 1, 1), length(active2.fields["comments"]))
@@ -423,7 +399,7 @@
 			switch(href_list["field"])
 				if("name")
 					if(istype(active1, /datum/data/record))
-						var/t1 = reject_bad_name(input("Please input name:", "Secure. records", active1.fields["name"], null) as text)
+						var/t1 = reject_bad_name(clean_input("Please input name:", "Secure. records", active1.fields["name"], null))
 						if(!t1 || !length(trim(t1)) || ..() || active1 != a1)
 							return 1
 						active1.fields["name"] = t1
@@ -500,7 +476,7 @@
 					//This was so silly before the change. Now it actually works without beating your head against the keyboard. /N
 					if(istype(active1, /datum/data/record) && L.Find(rank))
 						var/list/buttons = list()
-						for(var/rank in joblist)
+						for(var/rank in GLOB.joblist)
 							buttons[++buttons.len] = list("name" = rank, "icon" = null, "href" = "rank=[rank]", "status" = (active1.fields["rank"] == rank ? "selected" : null))
 						setTemp("<h3>Rank</h3>", buttons)
 					else
@@ -562,11 +538,11 @@
 		..(severity)
 		return
 
-	for(var/datum/data/record/R in data_core.security)
+	for(var/datum/data/record/R in GLOB.data_core.security)
 		if(prob(10/severity))
 			switch(rand(1,6))
 				if(1)
-					R.fields["name"] = "[pick(pick(first_names_male), pick(first_names_female))] [pick(last_names)]"
+					R.fields["name"] = "[pick(pick(GLOB.first_names_male), pick(GLOB.first_names_female))] [pick(GLOB.last_names)]"
 				if(2)
 					R.fields["sex"] = pick("Male", "Female")
 				if(3)

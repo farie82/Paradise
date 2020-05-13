@@ -1,9 +1,9 @@
 /obj/machinery/computer/prisoner
-	name = "prisoner management console"
+	name = "implant management console"
 	icon = 'icons/obj/computer.dmi'
 	icon_keyboard = "security_key"
 	icon_screen = "explosive"
-	req_access = list(access_armory)
+	req_access = list(ACCESS_ARMORY)
 	circuit = /obj/item/circuitboard/prisoner
 	var/id = 0.0
 	var/temp = null
@@ -19,11 +19,11 @@
 	return src.attack_hand(user)
 
 /obj/machinery/computer/prisoner/New()
- 	prisoncomputer_list += src
+ 	GLOB.prisoncomputer_list += src
  	return ..()
 
 /obj/machinery/computer/prisoner/Destroy()
- 	prisoncomputer_list -= src
+ 	GLOB.prisoncomputer_list -= src
  	return ..()
 
 /obj/machinery/computer/prisoner/attack_hand(var/mob/user as mob)
@@ -46,7 +46,7 @@
 			dat += text("<A href='?src=[UID()];id=0'>Insert Prisoner ID</A><br>")
 		var/turf/Tr = null
 		dat += "<HR>Chemical Implants<BR>"
-		for(var/obj/item/implant/chem/C in tracked_implants)
+		for(var/obj/item/implant/chem/C in GLOB.tracked_implants)
 			Tr = get_turf(C)
 			if((Tr) && (Tr.z != src.z))	continue//Out of range
 			if(!C.implanted) continue
@@ -59,7 +59,7 @@
 				********************************<BR>"}
 			// END AUTOFIX
 		dat += "<HR>Tracking Implants<BR>"
-		for(var/obj/item/implant/tracking/T in tracked_implants)
+		for(var/obj/item/implant/tracking/T in GLOB.tracked_implants)
 			Tr = get_turf(T)
 			if((Tr) && (Tr.z != src.z))	continue//Out of range
 			if(!T.implanted) continue
@@ -71,8 +71,8 @@
 				health_display = "DEAD"
 			else if(total_loss)
 				health_display = "HURT ([total_loss])"
-			if(is_station_level(M.z) && !istype(M.loc, /turf/space))
-				loc_display = "[get_area(M)]"
+			if(is_station_level(Tr.z) && !istype(Tr.loc, /turf/space))
+				loc_display = "[get_area(Tr)]"
 			dat += "ID: [T.id] <BR>Subject: [M] <BR>Location: [loc_display] <BR>Health: [health_display] <BR>"
 			dat += "<A href='?src=[UID()];warn=\ref[T]'>(<font color=red><i>Message Holder</i></font>)</A> |<BR>"
 			dat += "********************************<BR>"

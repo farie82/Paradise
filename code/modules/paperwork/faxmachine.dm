@@ -1,17 +1,21 @@
-var/list/obj/machinery/photocopier/faxmachine/allfaxes = list()
-var/list/admin_departments = list("Central Command")
-var/list/hidden_admin_departments = list("Syndicate")
-var/list/alldepartments = list()
+GLOBAL_LIST_EMPTY(allfaxes)
+GLOBAL_LIST_INIT(admin_departments, list("Central Command"))
+GLOBAL_LIST_INIT(hidden_admin_departments, list("Syndicate"))
+GLOBAL_LIST_EMPTY(alldepartments)
+GLOBAL_LIST_EMPTY(hidden_departments)
+GLOBAL_LIST_EMPTY(fax_blacklist)
 
 /obj/machinery/photocopier/faxmachine
 	name = "fax machine"
 	icon = 'icons/obj/library.dmi'
 	icon_state = "fax"
 	insert_anim = "faxsend"
+	pass_flags = PASSTABLE
 	var/fax_network = "Local Fax Network"
+	var/syndie_restricted = FALSE //is it a syndicate base fax restricted from contacting NT assets?
 
 	var/long_range_enabled = 0 // Can we send messages off the station?
-	req_one_access = list(access_lawyer, access_heads, access_armory)
+	req_one_access = list(ACCESS_LAWYER, ACCESS_HEADS, ACCESS_ARMORY)
 
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 30
@@ -29,18 +33,29 @@ var/list/alldepartments = list()
 
 /obj/machinery/photocopier/faxmachine/New()
 	..()
-	allfaxes += src
+	GLOB.allfaxes += src
 	update_network()
 
 /obj/machinery/photocopier/faxmachine/proc/update_network()
 	if(department != "Unknown")
-		if(!(("[department]" in alldepartments) || ("[department]" in admin_departments) || ("[department]" in hidden_admin_departments)))
-			alldepartments |= department
+		if(!(("[department]" in GLOB.alldepartments) || ("[department]" in GLOB.hidden_departments) || ("[department]" in GLOB.admin_departments) || ("[department]" in GLOB.hidden_admin_departments)))
+			GLOB.alldepartments |= department
 
 /obj/machinery/photocopier/faxmachine/longrange
 	name = "long range fax machine"
 	fax_network = "Central Command Quantum Entanglement Network"
 	long_range_enabled = 1
+
+/obj/machinery/photocopier/faxmachine/longrange/syndie
+	name = "syndicate long range fax machine"
+	emagged = TRUE
+	syndie_restricted = TRUE
+	req_one_access = list(ACCESS_SYNDICATE)
+	//No point setting fax network, being emagged overrides that anyway.
+
+/obj/machinery/photocopier/faxmachine/longrange/syndie/update_network()
+	if(department != "Unknown")
+		GLOB.hidden_departments |= department
 
 /obj/machinery/photocopier/faxmachine/attack_hand(mob/user)
 	ui_interact(user)
@@ -60,6 +75,7 @@ var/list/alldepartments = list()
 /obj/machinery/photocopier/faxmachine/emag_act(mob/user)
 	if(!emagged)
 		emagged = 1
+		req_one_access = list()
 		to_chat(user, "<span class='notice'>The transmitters realign to an unknown source!</span>")
 	else
 		to_chat(user, "<span class='warning'>You swipe the card through [src], but nothing happens.</span>")
@@ -70,7 +86,7 @@ var/list/alldepartments = list()
 		ui = new(user, src, ui_key, "faxmachine.tmpl", "Fax Machine UI", 540, 450)
 		ui.open()
 
-/obj/machinery/photocopier/faxmachine/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/photocopier/faxmachine/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 	var/is_authenticated = is_authenticated(user)
 
@@ -93,7 +109,7 @@ var/list/alldepartments = list()
 		data["paperinserted"] = 0
 	data["destination"] = destination
 	data["cooldown"] = sendcooldown
-	if((destination in admin_departments) || (destination in hidden_admin_departments))
+	if((destination in GLOB.admin_departments) || (destination in GLOB.hidden_admin_departments))
 		data["respectcooldown"] = 1
 	else
 		data["respectcooldown"] = 0
@@ -114,10 +130,10 @@ var/list/alldepartments = list()
 	var/is_authenticated = is_authenticated(usr)
 	if(href_list["send"])
 		if(copyitem && is_authenticated)
-			if((destination in admin_departments) || (destination in hidden_admin_departments))
+			if((destination in GLOB.admin_departments) || (destination in GLOB.hidden_admin_departments))
 				send_admin_fax(usr, destination)
 			else
-				sendfax(destination,usr)
+				sendfax(destination, usr)
 
 			if(sendcooldown)
 				spawn(sendcooldown) // cooldown time
@@ -147,12 +163,20 @@ var/list/alldepartments = list()
 	if(href_list["dept"])
 		if(is_authenticated)
 			var/lastdestination = destination
-			var/list/combineddepartments = alldepartments.Copy()
+			var/list/combineddepartments = GLOB.alldepartments.Copy()
 			if(long_range_enabled)
-				combineddepartments += admin_departments.Copy()
+				combineddepartments += GLOB.admin_departments.Copy()
 
 			if(emagged)
-				combineddepartments += hidden_admin_departments.Copy()
+				combineddepartments += GLOB.hidden_admin_departments.Copy()
+				combineddepartments += GLOB.hidden_departments.Copy()
+
+			if(syndie_restricted)
+				combineddepartments = GLOB.hidden_admin_departments.Copy()
+				combineddepartments += GLOB.hidden_departments.Copy()
+				for(var/obj/machinery/photocopier/faxmachine/F in GLOB.allfaxes)
+					if(F.emagged)//we can contact emagged faxes on the station
+						combineddepartments |= F.department
 
 			destination = input(usr, "To which department?", "Choose a department", "") as null|anything in combineddepartments
 			if(!destination)
@@ -160,7 +184,9 @@ var/list/alldepartments = list()
 
 	if(href_list["auth"])
 		if(!is_authenticated && scan)
-			if(check_access(scan))
+			if(scan.registered_name in GLOB.fax_blacklist)
+				playsound(loc, 'sound/machines/buzz-sigh.ogg', 50, 0)
+			else if(check_access(scan))
 				authenticated = 1
 		else if(is_authenticated)
 			authenticated = 0
@@ -226,7 +252,7 @@ var/list/alldepartments = list()
 	use_power(200)
 
 	var/success = 0
-	for(var/obj/machinery/photocopier/faxmachine/F in allfaxes)
+	for(var/obj/machinery/photocopier/faxmachine/F in GLOB.allfaxes)
 		if(F.department == destination)
 			success = F.receivefax(copyitem)
 
@@ -279,35 +305,26 @@ var/list/alldepartments = list()
 
 	use_power(200)
 
-	var/obj/item/rcvdcopy
-	if(istype(copyitem, /obj/item/paper))
-		rcvdcopy = copy(copyitem)
-	else if(istype(copyitem, /obj/item/photo))
-		rcvdcopy = photocopy(copyitem)
-	else if(istype(copyitem, /obj/item/paper_bundle))
-		rcvdcopy = bundlecopy(copyitem)
-	else
+	if(!(istype(copyitem, /obj/item/paper) || istype(copyitem, /obj/item/paper_bundle) || istype(copyitem, /obj/item/photo)))
 		visible_message("[src] beeps, \"Error transmitting message.\"")
 		return
 
-	rcvdcopy.loc = null //hopefully this shouldn't cause trouble
-
 	var/datum/fax/admin/A = new /datum/fax/admin()
-	A.name = rcvdcopy.name
+	A.name = copyitem.name
 	A.from_department = department
 	A.to_department = destination
 	A.origin = src
-	A.message = rcvdcopy
+	A.message = copyitem
 	A.sent_by = sender
 	A.sent_at = world.time
 
 	//message badmins that a fax has arrived
 	switch(destination)
 		if("Central Command")
-			message_admins(sender, "CENTCOM FAX", destination, rcvdcopy, "#006100")
+			message_admins(sender, "CENTCOM FAX", destination, copyitem, "#006100")
 		if("Syndicate")
-			message_admins(sender, "SYNDICATE FAX", destination, rcvdcopy, "#DC143C")
-	for(var/obj/machinery/photocopier/faxmachine/F in allfaxes)
+			message_admins(sender, "SYNDICATE FAX", destination, copyitem, "#DC143C")
+	for(var/obj/machinery/photocopier/faxmachine/F in GLOB.allfaxes)
 		if(F.department == destination)
 			F.receivefax(copyitem)
 	sendcooldown = cooldown_time
@@ -316,9 +333,15 @@ var/list/alldepartments = list()
 
 
 /obj/machinery/photocopier/faxmachine/proc/message_admins(var/mob/sender, var/faxname, var/faxtype, var/obj/item/sent, font_colour="#9A04D1")
-	var/msg = "<span class='boldnotice'><font color='[font_colour]'>[faxname]: </font> [key_name_admin(sender)] | REPLY: (<A HREF='?_src_=holder;[faxname == "SYNDICATE FAX" ? "SyndicateReply" : "CentcommReply"]=[sender.UID()]'>RADIO</A>) (<a href='?_src_=holder;AdminFaxCreate=\ref[sender];originfax=\ref[src];faxtype=[faxtype];replyto=\ref[sent]'>FAX</a>) (<A HREF='?_src_=holder;subtlemessage=\ref[sender]'>SM</A>) | REJECT: (<A HREF='?_src_=holder;FaxReplyTemplate=\ref[sender];originfax=\ref[src]'>TEMPLATE</A>) (<A HREF='?_src_=holder;BlueSpaceArtillery=\ref[sender]'>BSA</A>) (<A HREF='?_src_=holder;EvilFax=\ref[sender];originfax=\ref[src]'>EVILFAX</A>) </span>: Receiving '[sent.name]' via secure connection... <a href='?_src_=holder;AdminFaxView=\ref[sent]'>view message</a>"
-	for(var/client/C in admins)
+	var/msg = "<span class='boldnotice'><font color='[font_colour]'>[faxname]: </font> [key_name_admin(sender)] | REPLY: (<A HREF='?_src_=holder;[faxname == "SYNDICATE FAX" ? "SyndicateReply" : "CentcommReply"]=[sender.UID()]'>RADIO</A>) (<a href='?_src_=holder;AdminFaxCreate=\ref[sender];originfax=\ref[src];faxtype=[faxtype];replyto=\ref[sent]'>FAX</a>) ([ADMIN_SM(sender,"SM")]) | REJECT: (<A HREF='?_src_=holder;FaxReplyTemplate=[sender.UID()];originfax=\ref[src]'>TEMPLATE</A>) ([ADMIN_BSA(sender,"BSA")]) (<A HREF='?_src_=holder;EvilFax=[sender.UID()];originfax=\ref[src]'>EVILFAX</A>) </span>: Receiving '[sent.name]' via secure connection... <a href='?_src_=holder;AdminFaxView=\ref[sent]'>view message</a>"
+	for(var/client/C in GLOB.admins)
 		if(check_rights(R_EVENT, 0, C.mob))
 			to_chat(C, msg)
 			if(C.prefs.sound & SOUND_ADMINHELP)
 				C << 'sound/effects/adminhelp.ogg'
+
+/obj/machinery/photocopier/faxmachine/proc/become_mimic()
+	if(scan)
+		scan.forceMove(get_turf(src))
+	var/mob/living/simple_animal/hostile/mimic/copy/M = new(loc, src, null, 1) // it will delete src on creation and override any machine checks
+	M.name = "angry fax machine"

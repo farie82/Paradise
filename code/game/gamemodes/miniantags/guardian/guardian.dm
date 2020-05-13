@@ -12,6 +12,7 @@
 	icon_dead = "magicOrange"
 	speed = 0
 	a_intent = INTENT_HARM
+	can_change_intents = 0
 	stop_automated_movement = 1
 	floating = 1
 	attack_sound = 'sound/weapons/punch1.ogg'
@@ -60,9 +61,9 @@
 /mob/living/simple_animal/hostile/guardian/Life(seconds, times_fired) //Dies if the summoner dies
 	..()
 	if(summoner)
-		if(summoner.stat == DEAD)
+		if(summoner.stat == DEAD || (!summoner.check_death_method() && summoner.health <= HEALTH_THRESHOLD_DEAD))
 			to_chat(src, "<span class='danger'>Your summoner has died!</span>")
-			visible_message("<span class='danger'>The [src] dies along with its user!</span>")
+			visible_message("<span class='danger'>[src] dies along with its user!</span>")
 			ghostize()
 			qdel(src)
 	snapback()
@@ -72,7 +73,8 @@
 		qdel()
 
 /mob/living/simple_animal/hostile/guardian/proc/snapback()
-	if(summoner)
+	// If the summoner dies instantly, the summoner's ghost may be drawn into null space as the protector is deleted. This check should prevent that.
+	if(summoner && loc && summoner.loc)
 		if(get_dist(get_turf(summoner),get_turf(src)) <= range)
 			return
 		else
@@ -85,12 +87,27 @@
 				forceMove(summoner.loc) //move to summoner's tile, don't recall
 				new /obj/effect/temp_visual/guardian/phase(loc)
 
+/mob/living/simple_animal/hostile/guardian/proc/is_deployed()
+	return loc != summoner
+
+/mob/living/simple_animal/hostile/guardian/AttackingTarget()
+	if(!is_deployed() && a_intent == INTENT_HARM)
+		to_chat(src, "<span class='danger'>You must be manifested to attack!</span>")
+		return FALSE
+	else if(!is_deployed() && a_intent == INTENT_HELP)
+		return FALSE
+	else
+		return ..()
+
 /mob/living/simple_animal/hostile/guardian/Move() //Returns to summoner if they move out of range
 	..()
 	snapback()
 
 /mob/living/simple_animal/hostile/guardian/death(gibbed)
-	..()
+	// Only execute the below if we successfully died
+	. = ..()
+	if(!.)
+		return FALSE
 	to_chat(summoner, "<span class='danger'>Your [name] died somehow!</span>")
 	summoner.death()
 
@@ -99,7 +116,7 @@
 	if(summoner)
 		var/resulthealth
 		if(iscarbon(summoner))
-			resulthealth = round((abs(config.health_threshold_dead - summoner.health) / abs(config.health_threshold_dead - summoner.maxHealth)) * 100)
+			resulthealth = round((abs(HEALTH_THRESHOLD_DEAD - summoner.health) / abs(HEALTH_THRESHOLD_DEAD - summoner.maxHealth)) * 100)
 		else
 			resulthealth = round((summoner.health / summoner.maxHealth) * 100)
 		if(hud_used)
@@ -107,7 +124,7 @@
 		med_hud_set_health()
 		med_hud_set_status()
 
-/mob/living/simple_animal/hostile/guardian/adjustHealth(amount) //The spirit is invincible, but passes on damage to the summoner
+/mob/living/simple_animal/hostile/guardian/adjustHealth(amount, updating_health = TRUE) //The spirit is invincible, but passes on damage to the summoner
 	var/damage = amount * damage_transfer
 	if(summoner)
 		if(loc == summoner)
@@ -146,11 +163,12 @@
 	if(!summoner) return
 	if(loc == summoner)
 		forceMove(get_turf(summoner))
+		new /obj/effect/temp_visual/guardian/phase(loc)
 		src.client.eye = loc
 		cooldown = world.time + 30
 
 /mob/living/simple_animal/hostile/guardian/proc/Recall(forced = FALSE)
-	if(cooldown > world.time && !forced)
+	if(!summoner || loc == summoner || (cooldown > world.time && !forced))
 		return
 	if(!summoner) return
 	new /obj/effect/temp_visual/guardian/phase/out(get_turf(src))
@@ -158,17 +176,28 @@
 	buckled = null
 	cooldown = world.time + 30
 
-/mob/living/simple_animal/hostile/guardian/proc/Communicate()
-	var/input = stripped_input(src, "Please enter a message to tell your summoner.", "Guardian", "")
+/mob/living/simple_animal/hostile/guardian/proc/Communicate(message)
+	var/input
+	if(!message)
+		input = stripped_input(src, "Please enter a message to tell your summoner.", "Guardian", "")
+	else
+		input = message
 	if(!input) return
 
-	for(var/mob/M in mob_list)
+	for(var/mob/M in GLOB.mob_list)
 		if(M == summoner)
 			to_chat(M, "<span class='changeling'><i>[src]:</i> [input]</span>")
 			log_say("(GUARDIAN to [key_name(M)]) [input]", src)
-		else if(M in dead_mob_list)
+		else if(M in GLOB.dead_mob_list && M.client && M.stat == DEAD && !isnewplayer(M))
 			to_chat(M, "<span class='changeling'><i>Guardian Communication from <b>[src]</b> ([ghost_follow_link(src, ghost=M)]): [input]</i>")
 	to_chat(src, "<span class='changeling'><i>[src]:</i> [input]</span>")
+
+//override set to true if message should be passed through instead of going to host communication
+/mob/living/simple_animal/hostile/guardian/say(message, override = FALSE)
+	if(adminseal || override)//if it's an admin-spawned guardian without a host it can still talk normally
+		return ..(message)
+	Communicate(message)
+
 
 /mob/living/simple_animal/hostile/guardian/proc/ToggleMode()
 	to_chat(src, "<span class='danger'>You dont have another mode!</span>")
@@ -181,14 +210,14 @@
 	var/input = stripped_input(src, "Please enter a message to tell your guardian.", "Message", "")
 	if(!input) return
 
-	for(var/mob/M in mob_list)
-		if(istype (M, /mob/living/simple_animal/hostile/guardian))
+	for(var/mob/M in GLOB.mob_list)
+		if(istype(M, /mob/living/simple_animal/hostile/guardian))
 			var/mob/living/simple_animal/hostile/guardian/G = M
 			if(G.summoner == src)
 				to_chat(G, "<span class='changeling'><i>[src]:</i> [input]</span>")
 				log_say("(GUARDIAN to [key_name(G)]) [input]", src)
 
-		else if(M in dead_mob_list)
+		else if(M in GLOB.dead_mob_list && M.client && M.stat == DEAD && !isnewplayer(M))
 			to_chat(M, "<span class='changeling'><i>Guardian Communication from <b>[src]</b> ([ghost_follow_link(src, ghost=M)]): [input]</i>")
 	to_chat(src, "<span class='changeling'><i>[src]:</i> [input]</span>")
 
@@ -196,7 +225,7 @@
 	set name = "Recall Guardian"
 	set category = "Guardian"
 	set desc = "Forcibly recall your guardian."
-	for(var/mob/living/simple_animal/hostile/guardian/G in mob_list)
+	for(var/mob/living/simple_animal/hostile/guardian/G in GLOB.mob_list)
 		if(G.summoner == src)
 			G.Recall()
 
@@ -206,7 +235,7 @@
 	set desc = "Re-rolls which ghost will control your Guardian. One use."
 
 	src.verbs -= /mob/living/proc/guardian_reset
-	for(var/mob/living/simple_animal/hostile/guardian/G in mob_list)
+	for(var/mob/living/simple_animal/hostile/guardian/G in GLOB.mob_list)
 		if(G.summoner == src)
 			var/list/mob/dead/observer/candidates = pollCandidates("Do you want to play as [G.real_name]?", ROLE_GUARDIAN, 0, 100)
 			var/mob/dead/observer/new_stand = null
@@ -242,15 +271,22 @@
 	var/used = FALSE
 	var/theme = "magic"
 	var/mob_name = "Guardian Spirit"
+	var/confirmation_message = "The cards are still unused. Do you wish to use them?"
 	var/use_message = "You shuffle the deck..."
 	var/used_message = "All the cards seem to be blank now."
 	var/failure_message = "..And draw a card! It's...blank? Maybe you should try again later."
 	var/ling_failure = "The deck refuses to respond to a souless creature such as you."
 	var/list/possible_guardians = list("Chaos", "Standard", "Ranged", "Support", "Explosive", "Assassin", "Lightning", "Charger", "Protector")
-	var/random = TRUE
+	var/random = FALSE
+	var/color_list = list("Pink" = "#FFC0CB",
+		"Red" = "#FF0000",
+		"Orange" = "#FFA500",
+		"Green" = "#008000",
+		"Blue" = "#0000FF")
+	var/name_list = list("Aries", "Leo", "Sagittarius", "Taurus", "Virgo", "Capricorn", "Gemini", "Libra", "Aquarius", "Cancer", "Scorpio", "Pisces")
 
 /obj/item/guardiancreator/attack_self(mob/living/user)
-	for(var/mob/living/simple_animal/hostile/guardian/G in living_mob_list)
+	for(var/mob/living/simple_animal/hostile/guardian/G in GLOB.living_mob_list)
 		if(G.summoner == user)
 			to_chat(user, "You already have a [mob_name]!")
 			return
@@ -260,7 +296,12 @@
 	if(used == TRUE)
 		to_chat(user, "[used_message]")
 		return
-	used = TRUE
+	used = TRUE // Set this BEFORE the popup to prevent people using the injector more than once, polling ghosts multiple times, and receiving multiple guardians.
+	var/choice = alert(user, "[confirmation_message]",, "Yes", "No")
+	if(choice == "No")
+		to_chat(user, "<span class='warning'>You decide against using the [name].</span>")
+		used = FALSE
+		return
 	to_chat(user, "[use_message]")
 	var/list/mob/dead/observer/candidates = pollCandidates("Do you want to play as the [mob_name] of [user.real_name]?", ROLE_GUARDIAN, 0, 100)
 	var/mob/dead/observer/theghost = null
@@ -272,15 +313,19 @@
 		to_chat(user, "[failure_message]")
 		used = FALSE
 
+/obj/item/guardiancreator/examine(mob/user, distance)
+	. = ..()
+	if(used)
+		. += "<span class='notice'>[used_message]</span>"
 
-/obj/item/guardiancreator/proc/spawn_guardian(var/mob/living/user, var/key)
-	var/gaurdiantype = "Standard"
+/obj/item/guardiancreator/proc/spawn_guardian(mob/living/user, key)
+	var/guardian_type = "Standard"
 	if(random)
-		gaurdiantype = pick(possible_guardians)
+		guardian_type = pick(possible_guardians)
 	else
-		gaurdiantype = input(user, "Pick the type of [mob_name]", "[mob_name] Creation") as null|anything in possible_guardians
+		guardian_type = input(user, "Pick the type of [mob_name]", "[mob_name] Creation") as null|anything in possible_guardians
 	var/pickedtype = /mob/living/simple_animal/hostile/guardian/punch
-	switch(gaurdiantype)
+	switch(guardian_type)
 
 		if("Chaos")
 			pickedtype = /mob/living/simple_animal/hostile/guardian/fire
@@ -322,83 +367,18 @@
 	user.verbs += /mob/living/proc/guardian_recall
 	user.verbs += /mob/living/proc/guardian_reset
 
-	var/color
+	var/color = pick(color_list)
+	G.name_color = color_list[color]
+	var/picked_name = pick(name_list)
+	create_theme(G, user, picked_name, color)
 
-	//names and their RGB
-	var/magic_list = list("Pink" = "#FFC0CB", \
-	"Red" = "#FF0000", \
-	"Orange" = "#FFA500", \
-	"Green" = "#008000", \
-	"Blue" = "#0000FF")
-
-	var/tech_list = list("Rose" = "#F62C6B", \
-	"Peony" = "#E54750", \
-	"Lily" = "#F6562C", \
-	"Daisy" = "#ECCD39", \
-	"Zinnia" = "#89F62C", \
-	"Ivy" = "#5DF62C", \
-	"Iris" = "#2CF6B8", \
-	"Petunia" = "#51A9D4", \
-	"Violet" = "#8A347C", \
-	"Lilac" = "#C7A0F6", \
-	"Orchid" = "#F62CF5")
-
-	var/bio_list = list("Rose" = "#F62C6B", \
-	"Peony" = "#E54750", \
-	"Lily" = "#F6562C", \
-	"Daisy" = "#ECCD39", \
-	"Zinnia" = "#89F62C", \
-	"Ivy" = "#5DF62C", \
-	"Iris" = "#2CF6B8", \
-	"Petunia" = "#51A9D4", \
-	"Violet" = "#8A347C", \
-	"Lilac" = "#C7A0F6", \
-	"Orchid" = "#F62CF5")
-
-	var/picked_name
-//	var/picked_color = pick("#FFFFFF","#000000","#808080","#A52A2A","#FF0000","#8B0000","#DC143C","#FFA500","#FFFF00","#008000","#00FF00","#006400","#00FFFF","#0000FF","#000080","#008080","#800080","#4B0082")
-
-	switch(theme)
-		if("magic")
-			color = pick(magic_list)
-			G.name_color = magic_list[color]
-			picked_name = pick("Aries", "Leo", "Sagittarius", "Taurus", "Virgo", "Capricorn", "Gemini", "Libra", "Aquarius", "Cancer", "Scorpio", "Pisces")
-
-			G.name = "[picked_name] [color]"
-			G.real_name = "[picked_name] [color]"
-			G.icon_living = "[theme][color]"
-			G.icon_state = "[theme][color]"
-			G.icon_dead = "[theme][color]"
-
-			to_chat(user, "[G.magic_fluff_string].")
-		if("tech")
-			color = pick(tech_list) //technically not colors, just flowers that can be specific colors
-			G.name_color = tech_list[color]
-			picked_name = pick("Gallium", "Indium", "Thallium", "Bismuth", "Aluminium", "Mercury", "Iron", "Silver", "Zinc", "Titanium", "Chromium", "Nickel", "Platinum", "Tellurium", "Palladium", "Rhodium", "Cobalt", "Osmium", "Tungsten", "Iridium")
-
-			G.name = "[picked_name] [color]"
-			G.real_name = "[picked_name] [color]"
-			G.icon_living = "[theme][color]"
-			G.icon_state = "[theme][color]"
-			G.icon_dead = "[theme][color]"
-
-			to_chat(user, "[G.tech_fluff_string].")
-			G.speak_emote = list("states")
-		if("bio")
-			color = pick(bio_list) //technically not colors, just using the same flowers as tech currerntly
-			G.name_color = tech_list[color]
-			picked_name = pick("brood", "hive", "nest")
-			to_chat(user, "[G.bio_fluff_string].")
-
-			G.name = "[color] [picked_name]"
-			G.real_name = "[color] [picked_name]"
-			G.icon_living = "[theme][color]"
-			G.icon_state = "[theme][color]"
-			G.icon_dead = "[theme][color]"
-
-			to_chat(user, "[G.bio_fluff_string].")
-			G.attacktext = "swarms"
-			G.speak_emote = list("chitters")
+/obj/item/guardiancreator/proc/create_theme(mob/living/simple_animal/hostile/guardian/G, mob/living/user, picked_name, color)
+	G.name = "[picked_name] [color]"
+	G.real_name = "[picked_name] [color]"
+	G.icon_living = "[theme][color]"
+	G.icon_state = "[theme][color]"
+	G.icon_dead = "[theme][color]"
+	to_chat(user, "[G.magic_fluff_string].")
 
 /obj/item/guardiancreator/choose
 	random = FALSE
@@ -410,10 +390,32 @@
 	icon_state = "combat_hypo"
 	theme = "tech"
 	mob_name = "Holoparasite"
+	confirmation_message =  "The injector still contains holoparasites. Do you wish to use it?"
 	use_message = "You start to power on the injector..."
 	used_message = "The injector has already been used."
 	failure_message = "<B>...ERROR. BOOT SEQUENCE ABORTED. AI FAILED TO INTIALIZE. PLEASE CONTACT SUPPORT OR TRY AGAIN LATER.</B>"
 	ling_failure = "The holoparasites recoil in horror. They want nothing to do with a creature like you."
+	color_list = list("Rose" = "#F62C6B",
+		"Peony" = "#E54750",
+		"Lily" = "#F6562C",
+		"Daisy" = "#ECCD39",
+		"Zinnia" = "#89F62C",
+		"Ivy" = "#5DF62C",
+		"Iris" = "#2CF6B8",
+		"Petunia" = "#51A9D4",
+		"Violet" = "#8A347C",
+		"Lilac" = "#C7A0F6",
+		"Orchid" = "#F62CF5")
+	name_list = list("Gallium", "Indium", "Thallium", "Bismuth", "Aluminium", "Mercury", "Iron", "Silver", "Zinc", "Titanium", "Chromium", "Nickel", "Platinum", "Tellurium", "Palladium", "Rhodium", "Cobalt", "Osmium", "Tungsten", "Iridium")
+
+/obj/item/guardiancreator/tech/create_theme(mob/living/simple_animal/hostile/guardian/G, mob/living/user, picked_name, color)
+	G.name = "[picked_name] [color]"
+	G.real_name = "[picked_name] [color]"
+	G.icon_living = "[theme][color]"
+	G.icon_state = "[theme][color]"
+	G.icon_dead = "[theme][color]"
+	to_chat(user, "[G.tech_fluff_string].")
+	G.speak_emote = list("states")
 
 /obj/item/guardiancreator/tech/check_uplink_validity()
 	return !used
@@ -429,8 +431,31 @@
 	theme = "bio"
 	mob_name = "Scarab Swarm"
 	use_message = "The eggs begin to twitch..."
+	confirmation_message =  "These eggs are still dormant. Do you wish to activate them?"
 	used_message = "The cluster already hatched."
 	failure_message = "<B>...but soon settles again. Guess they weren't ready to hatch after all.</B>"
+	color_list = list("Rose" = "#F62C6B",
+		"Peony" = "#E54750",
+		"Lily" = "#F6562C",
+		"Daisy" = "#ECCD39",
+		"Zinnia" = "#89F62C",
+		"Ivy" = "#5DF62C",
+		"Iris" = "#2CF6B8",
+		"Petunia" = "#51A9D4",
+		"Violet" = "#8A347C",
+		"Lilac" = "#C7A0F6",
+		"Orchid" = "#F62CF5")
+	name_list = list("brood", "hive", "nest")
+
+/obj/item/guardiancreator/biological/create_theme(mob/living/simple_animal/hostile/guardian/G, mob/living/user, picked_name, color)
+	G.name = "[color] [picked_name]"
+	G.real_name = "[color] [picked_name]"
+	G.icon_living = "[theme][color]"
+	G.icon_state = "[theme][color]"
+	G.icon_dead = "[theme][color]"
+	to_chat(user, "[G.bio_fluff_string].")
+	G.attacktext = "swarms"
+	G.speak_emote = list("chitters")
 
 /obj/item/guardiancreator/biological/choose
 	random = FALSE
@@ -448,7 +473,7 @@
  <br>
  <b>Ranged</b>: Has two modes. Ranged: Extremely weak, highly spammable projectile attack. Scout: Can not attack, but can move through walls. Can lay surveillance snares in either mode.<br>
  <br>
- <b>Support</b>: Has two modes. Combat: Medium power attacks and damage resist. Healer: Attacks heal damage, but low damage resist and slow movemen. Can deploy a bluespace beacon and warp targets to it (including you) in either mode.<br>
+ <b>Support</b>: Has two modes. Combat: Medium power attacks and damage resist. Healer: Attacks heal damage, but low damage resist and slow movement. Can deploy a bluespace beacon and warp targets to it (including you) in either mode.<br>
  <br>
  <b>Explosive</b>: High damage resist and medium power attack. Can turn any object into a bomb, dealing explosive damage to the next person to touch it. The object will return to normal after the trap is triggered.<br>
  <br>

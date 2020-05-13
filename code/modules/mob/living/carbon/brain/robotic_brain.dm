@@ -13,7 +13,7 @@
 	var/askDelay = 10 * 60 * 1
 	//var/mob/living/carbon/brain/brainmob = null
 	var/list/ghost_volunteers[0]
-	req_access = list(access_robotics)
+	req_access = list(ACCESS_ROBOTICS)
 	mecha = null//This does not appear to be used outside of reference in mecha.dm.
 	var/silenced = FALSE //if TRUE, they can't talk.
 	var/next_ping_at = 0
@@ -21,11 +21,16 @@
 	var/mob/living/carbon/human/imprinted_master = null
 	var/ejected_flavor_text = "circuit"
 
+	dead_icon = "boris_blank"
+
 /obj/item/mmi/robotic_brain/Destroy()
 	imprinted_master = null
 	return ..()
 
 /obj/item/mmi/robotic_brain/attack_self(mob/user)
+	if(isgolem(user))
+		to_chat(user, "<span class='warning'>Your golem fingers are too large to press the switch on [src].</span>")
+		return
 	if(requires_master && !imprinted_master)
 		to_chat(user, "<span class='notice'>You press your thumb on [src] and imprint your user information.</span>")
 		imprinted_master = user
@@ -52,7 +57,7 @@
 			to_chat(brainmob, "<span class='warning'>Your internal speaker has been toggled [silenced ? "off" : "on"].</span>")
 
 /obj/item/mmi/robotic_brain/proc/request_player()
-	for(var/mob/dead/observer/O in player_list)
+	for(var/mob/dead/observer/O in GLOB.player_list)
 		if(check_observer(O))
 			to_chat(O, "<span class='boldnotice'>\A [src] has been activated. (<a href='?src=[O.UID()];jump=\ref[src]'>Teleport</a> | <a href='?src=[UID()];signup=\ref[O]'>Sign Up</a>)</span>")
 
@@ -105,7 +110,6 @@
 		if(imprinted_master)
 			to_chat(H, "<span class='biggerdanger'>You are permanently imprinted to [imprinted_master], obey [imprinted_master]'s every order and assist [imprinted_master.p_them()] in completing [imprinted_master.p_their()] goals at any cost.</span>")
 
-
 /obj/item/mmi/robotic_brain/proc/transfer_personality(mob/candidate)
 	searching = FALSE
 	brainmob.key = candidate.key
@@ -156,17 +160,14 @@
 	if(jobban_isbanned(O, "Cyborg") || jobban_isbanned(O,"nonhumandept"))
 		to_chat(O, "<span class='warning'>You are job banned from this role.</span>")
 		return
-	to_chat(O., "<span class='notice'>You've been added to the list of ghosts that may become this [src].  Click again to unvolunteer.</span>")
+	to_chat(O, "<span class='notice'>You've been added to the list of ghosts that may become this [src].  Click again to unvolunteer.</span>")
 	ghost_volunteers.Add(O)
 
 
 /obj/item/mmi/robotic_brain/examine(mob/user)
-	to_chat(user, "Its speaker is turned [silenced ? "off" : "on"].")
-	to_chat(user, "<span class='info'>*---------*</span>")
+	. += "Its speaker is turned [silenced ? "off" : "on"]."
+	. += "<span class='info'>*---------*</span>"
 	. = ..()
-	if(!.)
-		to_chat(user, "<span class='info'>*---------*</span>")
-		return
 
 	var/list/msg = list("<span class='info'>")
 
@@ -182,7 +183,7 @@
 	else
 		msg += "<span class='deadsay'>It appears to be completely inactive.</span>\n"
 	msg += "*---------*</span>"
-	to_chat(user, msg.Join(""))
+	. += msg.Join("")
 
 /obj/item/mmi/robotic_brain/emp_act(severity)
 	if(!brainmob)
@@ -204,7 +205,11 @@
 	brainmob.container = src
 	brainmob.stat = CONSCIOUS
 	brainmob.SetSilence(0)
-	dead_mob_list -= brainmob
+	brainmob.dna = new(brainmob)
+	brainmob.dna.species = new /datum/species/machine() // Else it will default to human. And we don't want to clone IRC humans now do we?
+	brainmob.dna.ResetSE()
+	brainmob.dna.ResetUI()
+	GLOB.dead_mob_list -= brainmob
 	..()
 
 /obj/item/mmi/robotic_brain/attack_ghost(mob/dead/observer/O)
@@ -229,3 +234,4 @@
 	silenced = TRUE
 	requires_master = FALSE
 	ejected_flavor_text = "metal cube"
+	dead_icon = "posibrain"

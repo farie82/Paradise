@@ -65,6 +65,9 @@
 /mob/living/simple_animal/bot/medbot/fish
 	skin = "fish"
 
+/mob/living/simple_animal/bot/medbot/machine
+	skin = "machine"
+
 /mob/living/simple_animal/bot/medbot/mysterious
 	name = "\improper Mysterious Medibot"
 	desc = "International Medibot of mystery."
@@ -91,7 +94,7 @@
 
 /mob/living/simple_animal/bot/medbot/syndicate/New()
 	..()
-	Radio.syndie = 1
+	Radio.syndiekey = new /obj/item/encryptionkey/syndicate
 
 /mob/living/simple_animal/bot/medbot/syndicate/emagged
 	emagged = 2
@@ -120,7 +123,7 @@
 	prev_access = access_card.access
 	qdel(J)
 
-	var/datum/atom_hud/medsensor = huds[DATA_HUD_MEDICAL_ADVANCED]
+	var/datum/atom_hud/medsensor = GLOB.huds[DATA_HUD_MEDICAL_ADVANCED]
 	medsensor.add_hud_to(src)
 	permanent_huds |= medsensor
 
@@ -442,7 +445,7 @@
 
 /mob/living/simple_animal/bot/medbot/examinate(atom/A as mob|obj|turf in view())
 	..()
-	if(!is_blind(src))
+	if(has_vision(information_only=TRUE))
 		chemscan(src, A)
 
 /mob/living/simple_animal/bot/medbot/proc/medicate_patient(mob/living/carbon/C)
@@ -527,7 +530,7 @@
 				if(inject_beaker)
 					if(use_beaker && reagent_glass && reagent_glass.reagents.total_volume)
 						var/fraction = min(injection_amount/reagent_glass.reagents.total_volume, 1)
-						reagent_glass.reagents.reaction(patient, INGEST, fraction)
+						reagent_glass.reagents.reaction(patient, REAGENT_INGEST, fraction)
 						reagent_glass.reagents.trans_to(patient, injection_amount) //Inject from beaker instead.
 				else
 					patient.reagents.add_reagent(reagent_id,injection_amount)
@@ -543,7 +546,7 @@
 	return
 
 /mob/living/simple_animal/bot/medbot/proc/check_overdose(mob/living/carbon/patient,reagent_id,injection_amount)
-	var/datum/reagent/R  = chemical_reagents_list[reagent_id]
+	var/datum/reagent/R  = GLOB.chemical_reagents_list[reagent_id]
 	if(!R.overdose_threshold)
 		return 0
 	var/current_volume = patient.reagents.get_reagent_amount(reagent_id)
@@ -578,6 +581,8 @@
 				T.syndicate_aligned = syndicate_aligned //This is a special case since Syndicate medibots and the mysterious medibot look the same; we also dont' want crew building Syndicate medibots if the mysterious medibot blows up.
 			if("fish")
 				new /obj/item/storage/firstaid/aquatic_kit(Tsec)
+			if("machine")
+				new /obj/item/storage/firstaid/machine/empty(Tsec)
 			else
 				new /obj/item/storage/firstaid(Tsec)
 
@@ -586,7 +591,7 @@
 		new /obj/item/healthanalyzer(Tsec)
 
 		if(prob(50))
-			new /obj/item/robot_parts/l_arm(Tsec)
+			drop_part(robot_arm, Tsec)
 
 	if(reagent_glass)
 		reagent_glass.forceMove(Tsec)
@@ -595,9 +600,7 @@
 	if(emagged && prob(25))
 		playsound(loc, 'sound/voice/minsult.ogg', 50, 0)
 
-	var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
-	s.set_up(3, 1, src)
-	s.start()
+	do_sparks(3, 1, src)
 	..()
 
 /mob/living/simple_animal/bot/medbot/proc/declare(crit_patient)
@@ -612,7 +615,7 @@
 		declare_cooldown = 0
 
 /obj/machinery/bot_core/medbot
-	req_one_access = list(access_medical, access_robotics)
+	req_one_access = list(ACCESS_MEDICAL, ACCESS_ROBOTICS)
 
 /obj/machinery/bot_core/medbot/syndicate
-	req_one_access = list(access_syndicate)
+	req_one_access = list(ACCESS_SYNDICATE)

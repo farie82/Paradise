@@ -33,21 +33,32 @@
 	icons = list("plasma","plasma_dam")
 
 /turf/simulated/floor/mineral/plasma/temperature_expose(datum/gas_mixture/air, exposed_temperature, exposed_volume)
+	..()
 	if(exposed_temperature > 300)
 		PlasmaBurn()
 
 /turf/simulated/floor/mineral/plasma/attackby(obj/item/W, mob/user, params)
 	if(is_hot(W) > 300)//If the temperature of the object is over 300, then ignite
-		message_admins("Plasma flooring was ignited by [key_name_admin(user)](<A HREF='?_src_=holder;adminmoreinfo=\ref[user]'>?</A>) (<A HREF='?_src_=holder;adminplayerobservefollow=\ref[user]'>FLW</A>) in ([x],[y],[z] - <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[x];Y=[y];Z=[z]'>JMP</a>)",0,1)
+		message_admins("Plasma flooring was ignited by [key_name_admin(user)]([ADMIN_QUE(user,"?")]) ([ADMIN_FLW(user,"FLW")]) in ([x],[y],[z] - <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[x];Y=[y];Z=[z]'>JMP</a>)",0,1)
 		log_game("Plasma flooring was <b>ignited by [key_name(user)] in ([x],[y],[z])")
 		investigate_log("was <font color='red'><b>ignited</b></font> by [key_name(user)]","atmos")
 		ignite(is_hot(W))
 		return
 	..()
 
+/turf/simulated/floor/mineral/plasma/welder_act(mob/user, obj/item/I)
+	if(I.use_tool(src, user, volume = I.tool_volume))
+		user.visible_message("<span class='danger'>[user] sets [src] on fire!</span>",\
+						"<span class='danger'>[src] disintegrates into a cloud of plasma!</span>",\
+						"<span class='warning'>You hear a 'whoompf' and a roar.</span>")
+		ignite(2500) //Big enough to ignite
+		message_admins("Plasma wall ignited by [key_name_admin(user)] in ([x], [y], [z] - <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[x];Y=[y];Z=[z]'>JMP</a>)",0,1)
+		log_game("Plasma wall ignited by [key_name(user)] in ([x], [y], [z])")
+		investigate_log("was <font color='red'><b>ignited</b></font> by [key_name(user)]","atmos")
+
 /turf/simulated/floor/mineral/plasma/proc/PlasmaBurn()
 	make_plating()
-	atmos_spawn_air(SPAWN_HEAT | SPAWN_TOXINS, 20)
+	atmos_spawn_air(LINDA_SPAWN_HEAT | LINDA_SPAWN_TOXINS, 20)
 
 /turf/simulated/floor/mineral/plasma/proc/ignite(exposed_temperature)
 	if(exposed_temperature > 300)
@@ -79,9 +90,19 @@
 
 //TITANIUM (shuttle)
 
+/turf/simulated/floor/mineral/titanium
+	name = "shuttle floor"
+	icon_state = "titanium"
+	floor_tile = /obj/item/stack/tile/mineral/titanium
+	broken_states = list("titanium_dam1","titanium_dam2","titanium_dam3","titanium_dam4","titanium_dam5")
+
+/turf/simulated/floor/mineral/titanium/airless
+	oxygen = 0.01
+	nitrogen = 0.01
+	temperature = TCMB
+
 /turf/simulated/floor/mineral/titanium/blue
-	icon_state = "shuttlefloor"
-	icons = list("shuttlefloor","shuttlefloor_dam")
+	icon_state = "titanium_blue"
 
 /turf/simulated/floor/mineral/titanium/blue/airless
 	oxygen = 0.01
@@ -89,28 +110,16 @@
 	temperature = TCMB
 
 /turf/simulated/floor/mineral/titanium/yellow
-	icon_state = "shuttlefloor2"
-	icons = list("shuttlefloor2","shuttlefloor2_dam")
+	icon_state = "titanium_yellow"
 
 /turf/simulated/floor/mineral/titanium/yellow/airless
 	oxygen = 0.01
 	nitrogen = 0.01
 	temperature = TCMB
 
-/turf/simulated/floor/mineral/titanium
-	name = "shuttle floor"
-	icon_state = "shuttlefloor3"
-	floor_tile = /obj/item/stack/tile/mineral/titanium
-	icons = list("shuttlefloor3","shuttlefloor3_dam")
-
-/turf/simulated/floor/mineral/titanium/airless
-	oxygen = 0.01
-	nitrogen = 0.01
-	temperature = TCMB
-
 /turf/simulated/floor/mineral/titanium/purple
-	icon_state = "shuttlefloor5"
-	icons = list("shuttlefloor5","shuttlefloor5_dam")
+	icon_state = "titanium_purple"
+	floor_tile = /obj/item/stack/tile/mineral/titanium/purple
 
 /turf/simulated/floor/mineral/titanium/purple/airless
 	oxygen = 0.01
@@ -120,16 +129,19 @@
 //PLASTITANIUM (syndieshuttle)
 /turf/simulated/floor/mineral/plastitanium
 	name = "shuttle floor"
-	icon_state = "shuttlefloor4"
+	icon_state = "plastitanium"
 	floor_tile = /obj/item/stack/tile/mineral/plastitanium
-	icons = list("shuttlefloor4","shuttlefloor4_dam")
+	broken_states = list("plastitanium_dam1","plastitanium_dam2","plastitanium_dam3","plastitanium_dam4","plastitanium_dam5")
 
-/turf/simulated/floor/mineral/plastitanium/airless
+/turf/simulated/floor/mineral/plastitanium/red
+	icon_state = "plastitanium_red"
+
+/turf/simulated/floor/mineral/plastitanium/red/airless
 	oxygen = 0.01
 	nitrogen = 0.01
 	temperature = TCMB
 
-/turf/simulated/floor/mineral/plastitanium/brig
+/turf/simulated/floor/mineral/plastitanium/red/brig
 	name = "brig floor"
 
 //BANANIUM
@@ -170,6 +182,18 @@
 	oxygen = 0.01
 	nitrogen = 0.01
 	temperature = TCMB
+
+
+/turf/simulated/floor/mineral/bananium/lubed/Initialize(mapload)
+	. = ..()
+	MakeSlippery(TURF_WET_LUBE, INFINITY)
+
+/turf/simulated/floor/mineral/bananium/lubed/pry_tile(obj/item/C, mob/user, silent = FALSE) //I want to get off Mr Honk's Wild Ride
+	if(ishuman(user))
+		var/mob/living/carbon/human/H = user
+		to_chat(H, "<span class='warning'>You lose your footing trying to pry off the tile!</span>")
+		H.slip("the floor", 0, 5, tilesSlipped = 4, walkSafely = 0, slipAny = 1)
+	return
 
 //TRANQUILLITE
 /turf/simulated/floor/mineral/tranquillite

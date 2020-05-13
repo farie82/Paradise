@@ -1,21 +1,22 @@
-/obj/structure/stool/bed/chair/wheelchair
+/obj/structure/chair/wheelchair
 	name = "wheelchair"
-	desc = "You sit in this. Either by will or force."
-	icon = 'icons/obj/objects.dmi'
 	icon_state = "wheelchair"
-	anchored = 0
-	movable = 1
+	item_chair = null
+	anchored = FALSE
+	movable = TRUE
 
 	var/move_delay = null
 
-/obj/structure/stool/bed/chair/wheelchair/handle_rotation()
+/obj/structure/chair/wheelchair/handle_rotation()
 	overlays = null
 	var/image/O = image(icon = icon, icon_state = "[icon_state]_overlay", layer = FLY_LAYER, dir = src.dir)
 	overlays += O
-	if(buckled_mob)
-		buckled_mob.dir = dir
+	if(has_buckled_mobs())
+		for(var/m in buckled_mobs)
+			var/mob/living/buckled_mob = m
+			buckled_mob.setDir(dir)
 
-/obj/structure/stool/bed/chair/wheelchair/relaymove(mob/user, direction)
+/obj/structure/chair/wheelchair/relaymove(mob/user, direction)
 	if(propelled)
 		return 0
 
@@ -28,7 +29,8 @@
 	var/calculated_move_delay
 	calculated_move_delay += 2 //wheelchairs are not infact sport bikes
 
-	if(buckled_mob)
+	if(has_buckled_mobs())
+		var/mob/living/buckled_mob = buckled_mobs[1]
 		if(buckled_mob.incapacitated())
 			return 0
 
@@ -67,16 +69,18 @@
 		else
 			. = 1
 
-/obj/structure/stool/bed/chair/wheelchair/Bump(atom/A)
+/obj/structure/chair/wheelchair/Bump(atom/A)
 	..()
-	if(!buckled_mob)	return
 
+	if(!has_buckled_mobs())
+		return
+	var/mob/living/buckled_mob = buckled_mobs[1]
 	if(istype(A, /obj/machinery/door))
 		A.Bumped(buckled_mob)
 
 	if(propelled)
 		var/mob/living/occupant = buckled_mob
-		unbuckle_mob()
+		unbuckle_mob(occupant)
 
 		occupant.throw_at(A, 3, propelled)
 
@@ -93,14 +97,14 @@
 
 		occupant.visible_message("<span class='danger'>[occupant] crashed into \the [A]!</span>")
 
-/obj/structure/stool/bed/chair/wheelchair/bike
+/obj/structure/chair/wheelchair/bike
 	name = "bicycle"
 	desc = "Two wheels of FURY!"
 	//placeholder until i get a bike sprite
 	icon = 'icons/vehicles/motorcycle.dmi'
 	icon_state = "motorcycle_4dir"
 
-/obj/structure/stool/bed/chair/wheelchair/bike/relaymove(mob/user, direction)
+/obj/structure/chair/wheelchair/bike/relaymove(mob/user, direction)
 	if(propelled)
 		return 0
 
@@ -113,9 +117,10 @@
 	var/calculated_move_delay
 	calculated_move_delay = 0 //bikes are infact sport bikes
 
-	if(buckled_mob)
+	if(has_buckled_mobs())
+		var/mob/living/buckled_mob = buckled_mobs[1]
 		if(buckled_mob.incapacitated())
-			unbuckle_mob()	//if the rider is incapacitated, unbuckle them (they can't balance so they fall off)
+			unbuckle_mob(buckled_mob)	//if the rider is incapacitated, unbuckle them (they can't balance so they fall off)
 			return 0
 
 		var/mob/living/thedriver = user

@@ -1,7 +1,6 @@
 //TODO: Flash range does nothing currently
 
-/proc/explosion(turf/epicenter, devastation_range, heavy_impact_range, light_impact_range, flash_range, adminlog = 1, ignorecap = 0, flame_range = 0 ,silent = 0, smoke = 1)
-	src = null	//so we don't abort once src is deleted
+/proc/explosion(turf/epicenter, devastation_range, heavy_impact_range, light_impact_range, flash_range, adminlog = 1, ignorecap = 0, flame_range = 0, silent = 0, smoke = 1, cause = null, breach = TRUE)
 	epicenter = get_turf(epicenter)
 
 	// Archive the uncapped explosion for the doppler array
@@ -11,11 +10,11 @@
 
 	if(!ignorecap)
 		// Clamp all values to MAX_EXPLOSION_RANGE
-		devastation_range = min (MAX_EX_DEVESTATION_RANGE, devastation_range)
-		heavy_impact_range = min (MAX_EX_HEAVY_RANGE, heavy_impact_range)
-		light_impact_range = min (MAX_EX_LIGHT_RANGE, light_impact_range)
-		flash_range = min (MAX_EX_FLASH_RANGE, flash_range)
-		flame_range = min (MAX_EX_FLAME_RANGE, flame_range)
+		devastation_range = min (GLOB.max_ex_devastation_range, devastation_range)
+		heavy_impact_range = min (GLOB.max_ex_heavy_range, heavy_impact_range)
+		light_impact_range = min (GLOB.max_ex_light_range, light_impact_range)
+		flash_range = min (GLOB.max_ex_flash_range, flash_range)
+		flame_range = min (GLOB.max_ex_flame_range, flame_range)
 
 	spawn(0)
 		var/watch = start_watch()
@@ -25,8 +24,8 @@
 		var/list/cached_exp_block = list()
 
 		if(adminlog)
-			message_admins("Explosion with size ([devastation_range], [heavy_impact_range], [light_impact_range], [flame_range]) in area [epicenter.loc.name] ([epicenter.x],[epicenter.y],[epicenter.z]) (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[epicenter.x];Y=[epicenter.y];Z=[epicenter.z]'>JMP</a>)")
-			log_game("Explosion with size ([devastation_range], [heavy_impact_range], [light_impact_range], [flame_range]) in area [epicenter.loc.name] ([epicenter.x],[epicenter.y],[epicenter.z])")
+			message_admins("Explosion with size ([devastation_range], [heavy_impact_range], [light_impact_range], [flame_range]) in area [epicenter.loc.name] [cause ? "(Cause: [cause])" : ""] [ADMIN_COORDJMP(epicenter)] ")
+			log_game("Explosion with size ([devastation_range], [heavy_impact_range], [light_impact_range], [flame_range]) in area [epicenter.loc.name] [cause ? "(Cause: [cause])" : ""] [COORD(epicenter)] ")
 
 		// Play sounds; we want sounds to be different depending on distance so we will manually do it ourselves.
 		// Stereo users will also hear the direction of the explosion!
@@ -43,7 +42,7 @@
 			var/sound/explosion_sound = sound(get_sfx("explosion"))
 			var/sound/global_boom = sound('sound/effects/explosionfar.ogg')
 
-			for(var/P in player_list)
+			for(var/P in GLOB.player_list)
 				var/mob/M = P
 				// Double check for client
 				if(M && M.client)
@@ -132,7 +131,10 @@
 							if(AM && AM.simulated)
 								AM.ex_act(dist)
 							CHECK_TICK
-					T.ex_act(dist)
+					if(breach)
+						T.ex_act(dist)
+					else
+						T.ex_act(3)
 
 			CHECK_TICK
 			//--- THROW ITEMS AROUND ---
@@ -150,12 +152,12 @@
 */
 		var/took = stop_watch(watch)
 		//You need to press the DebugGame verb to see these now....they were getting annoying and we've collected a fair bit of data. Just -test- changes  to explosion code using this please so we can compare
-		if(Debug2)
+		if(GLOB.debug2)
 			log_world("## DEBUG: Explosion([x0],[y0],[z0])(d[devastation_range],h[heavy_impact_range],l[light_impact_range]): Took [took] seconds.")
 
 		//Machines which report explosions.
-		for(var/i,i<=doppler_arrays.len,i++)
-			var/obj/machinery/doppler_array/Array = doppler_arrays[i]
+		for(var/i,i<=GLOB.doppler_arrays.len,i++)
+			var/obj/machinery/doppler_array/Array = GLOB.doppler_arrays[i]
 			if(Array)
 				Array.sense_explosion(x0,y0,z0,devastation_range,heavy_impact_range,light_impact_range,took,orig_dev_range,orig_heavy_range,orig_light_range)
 

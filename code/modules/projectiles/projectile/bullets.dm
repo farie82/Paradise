@@ -5,6 +5,7 @@
 	damage_type = BRUTE
 	flag = "bullet"
 	hitsound_wall = "ricochet"
+	impact_effect_type = /obj/effect/temp_visual/impact_effect
 
 /obj/item/projectile/bullet/weakbullet //beanbag, heavy stamina damage
 	name = "beanbag slug"
@@ -36,6 +37,18 @@
 	weaken = 3
 	stamina = 60
 	icon_state = "bullet-r"
+
+/obj/item/projectile/bullet/weakbullet2/invisible //finger gun bullets
+	name = "invisible bullet"
+	damage = 0
+	icon_state = null
+	hitsound_wall = null
+
+/obj/item/projectile/bullet/weakbullet2/invisible/fake
+	weaken = 0
+	stamina = 0
+	nodamage = 1
+	log_override = TRUE
 
 /obj/item/projectile/bullet/weakbullet3
 	damage = 20
@@ -69,17 +82,8 @@
 /obj/item/projectile/bullet/pellet
 	name = "pellet"
 	damage = 12.5
-	var/tile_dropoff = 0.75
-	var/tile_dropoff_s = 1.25
-
-/obj/item/projectile/bullet/pellet/Range()
-	..()
-	if(damage > 0)
-		damage -= tile_dropoff
-	if(stamina > 0)
-		stamina -= tile_dropoff_s
-	if(damage < 0 && stamina < 0)
-		qdel(src)
+	tile_dropoff = 0.75
+	tile_dropoff_s = 1.25
 
 /obj/item/projectile/bullet/pellet/rubber
 	name = "rubber pellet"
@@ -96,9 +100,7 @@
 	..()
 
 /obj/item/projectile/bullet/pellet/weak/on_range()
- 	var/datum/effect_system/spark_spread/sparks = new /datum/effect_system/spark_spread
- 	sparks.set_up(1, 1, src)
- 	sparks.start()
+ 	do_sparks(1, 1, src)
  	..()
 
 /obj/item/projectile/bullet/pellet/overload
@@ -108,20 +110,31 @@
 	range = rand(1, 10)
 	..()
 
+/obj/item/projectile/bullet/pellet/assassination
+	damage = 12
+	tile_dropoff = 1	// slightly less damage and greater damage falloff compared to normal buckshot
+
+/obj/item/projectile/bullet/pellet/assassination/on_hit(atom/target, blocked = 0)
+	if(..(target, blocked))
+		var/mob/living/M = target
+		M.AdjustSilence(2)	// HELP MIME KILLING ME IN MAINT
+
 /obj/item/projectile/bullet/pellet/overload/on_hit(atom/target, blocked = 0)
  	..()
  	explosion(target, 0, 0, 2)
 
 /obj/item/projectile/bullet/pellet/overload/on_range()
  	explosion(src, 0, 0, 2)
- 	var/datum/effect_system/spark_spread/sparks = new /datum/effect_system/spark_spread
- 	sparks.set_up(3, 3, src)
- 	sparks.start()
+ 	do_sparks(3, 3, src)
  	..()
 
 /obj/item/projectile/bullet/midbullet
 	damage = 20
 	stamina = 65 //two rounds from the c20r knocks people down
+
+/obj/item/projectile/bullet/midbullet_r
+	damage = 5
+	stamina = 75 //Still two rounds to knock people down
 
 /obj/item/projectile/bullet/midbullet2
 	damage = 25
@@ -197,23 +210,6 @@
 	weaken = 4
 	stun = 4
 
-/obj/item/projectile/bullet/honker
-	name = "banana"
-	damage = 0
-	weaken = 5
-	stun = 5
-	forcedodge = 1
-	nodamage = 1
-	pass_flags = PASSTABLE | PASSGLASS | PASSGRILLE
-	hitsound = 'sound/items/bikehorn.ogg'
-	icon = 'icons/obj/hydroponics/harvest.dmi'
-	icon_state = "banana"
-	range = 200
-
-/obj/item/projectile/bullet/honker/New()
-	..()
-	SpinAnimation()
-
 /obj/item/projectile/bullet/mime
 	damage = 0
 	stun = 5
@@ -237,7 +233,7 @@
 	name = "dart"
 	icon_state = "cbbolt"
 	damage = 6
-	var/piercing = 0
+	var/piercing = FALSE
 
 /obj/item/projectile/bullet/dart/New()
 	..()
@@ -248,7 +244,7 @@
 	if(iscarbon(target))
 		var/mob/living/carbon/M = target
 		if(blocked != 100)
-			if(M.can_inject(null,0,hit_zone)) // Pass the hit zone to see if it can inject by whether it hit the head or the body.
+			if(M.can_inject(null, FALSE, hit_zone, piercing)) // Pass the hit zone to see if it can inject by whether it hit the head or the body.
 				..()
 				reagents.trans_to(M, reagents.total_volume)
 				return 1

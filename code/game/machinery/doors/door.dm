@@ -1,7 +1,7 @@
 /obj/machinery/door
 	name = "door"
 	desc = "It opens and closes."
-	icon = 'icons/obj/doors/Doorint.dmi'
+	icon = 'icons/obj/doors/doorint.dmi'
 	icon_state = "door1"
 	anchored = TRUE
 	opacity = 1
@@ -9,26 +9,26 @@
 	layer = OPEN_DOOR_LAYER
 	power_channel = ENVIRON
 	max_integrity = 350
-	armor = list(melee = 30, bullet = 30, laser = 20, energy = 20, bomb = 10, bio = 100, rad = 100)
+	armor = list("melee" = 30, "bullet" = 30, "laser" = 20, "energy" = 20, "bomb" = 10, "bio" = 100, "rad" = 100, "fire" = 80, "acid" = 70)
+	flags = PREVENT_CLICK_UNDER
+	damage_deflection = 10
 	var/closingLayer = CLOSED_DOOR_LAYER
 	var/visible = 1
 	var/operating = FALSE
 	var/autoclose = 0
-	var/autoclose_timer
 	var/safe = TRUE //whether the door detects things and mobs in its way and reopen or crushes them.
 	var/locked = FALSE //whether the door is bolted or not.
 	var/glass = FALSE
 	var/welded = FALSE
 	var/normalspeed = 1
 	var/auto_close_time = 150
-	var/auto_close_time_dangerous = 5
+	var/auto_close_time_dangerous = 15
 	var/assemblytype //the type of door frame to drop during deconstruction
 	var/datum/effect_system/spark_spread/spark_system
-	var/damage_deflection = 10
 	var/real_explosion_block	//ignore this, just use explosion_block
 	var/heat_proof = FALSE // For rglass-windowed airlocks and firedoors
 	var/emergency = FALSE
-
+	var/unres_sides = 0 //Unrestricted sides. A bitflag for which direction (if any) can open the door with no access
 	//Multi-tile doors
 	var/width = 1
 
@@ -37,7 +37,7 @@
 	set_init_door_layer()
 	update_dir()
 	update_freelook_sight()
-	airlocks += src
+	GLOB.airlocks += src
 	spark_system = new /datum/effect_system/spark_spread
 	spark_system.set_up(2, 1, src)
 
@@ -54,6 +54,10 @@
 /obj/machinery/door/setDir(newdir)
 	..()
 	update_dir()
+
+/obj/machinery/door/power_change()
+	..()
+	update_icon()
 
 /obj/machinery/door/proc/update_dir()
 	if(width > 1)
@@ -72,12 +76,8 @@
 	density = 0
 	air_update_turf(1)
 	update_freelook_sight()
-	airlocks -= src
-	if(autoclose_timer)
-		deltimer(autoclose_timer)
-		autoclose_timer = 0
-	if(spark_system)
-		QDEL_NULL(spark_system)
+	GLOB.airlocks -= src
+	QDEL_NULL(spark_system)
 	return ..()
 
 /obj/machinery/door/Bumped(atom/AM)
@@ -135,8 +135,6 @@
 	if(operating)
 		return
 	add_fingerprint(user)
-	if(!requiresID())
-		user = null
 
 	if(density && !emagged)
 		if(allowed(user))
@@ -158,7 +156,7 @@
 	return try_to_activate_door(user)
 
 /obj/machinery/door/attack_tk(mob/user)
-	if(requiresID() && !allowed(null))
+	if(!allowed(null))
 		return
 	..()
 
@@ -166,9 +164,7 @@
 	add_fingerprint(user)
 	if(operating || emagged)
 		return
-	if(!requiresID())
-		user = null //so allowed(user) always succeeds
-	if(allowed(user) || user.can_advanced_admin_interact())
+	if(requiresID() && (allowed(user) || user.can_advanced_admin_interact()))
 		if(density)
 			open()
 		else
@@ -180,30 +176,37 @@
 /obj/machinery/door/allowed(mob/M)
 	if(emergency)
 		return TRUE
+	if(unrestricted_side(M))
+		return TRUE
+	if(!requiresID())
+		return FALSE // Intentional. machinery/door/requiresID() always == 1. airlocks, however, == 0 if ID scan is disabled. Yes, this var is poorly named.
 	return ..()
 
-/obj/machinery/door/proc/try_to_weld(obj/item/weldingtool/W, mob/user)
-	return
+/obj/machinery/door/proc/unrestricted_side(mob/M) //Allows for specific side of airlocks to be unrestrected (IE, can exit maint freely, but need access to enter)
+	return get_dir(src, M) & unres_sides
 
-/obj/machinery/door/proc/try_to_crowbar(obj/item/I, mob/user)
+/obj/machinery/door/proc/try_to_crowbar(mob/user, obj/item/I)
 	return
 
 /obj/machinery/door/attackby(obj/item/I, mob/user, params)
-	if(user.a_intent != INTENT_HARM && (iscrowbar(I) || istype(I, /obj/item/twohanded/fireaxe)))
-		try_to_crowbar(I, user)
-		return 1
-	else if(iswelder(I))
-		try_to_weld(I, user)
+	if(user.a_intent != INTENT_HARM && istype(I, /obj/item/twohanded/fireaxe))
+		try_to_crowbar(user, I)
 		return 1
 	else if(!(I.flags & NOBLUDGEON) && user.a_intent != INTENT_HARM)
 		try_to_activate_door(user)
 		return 1
 	return ..()
 
-/obj/machinery/door/run_obj_armor(damage_amount, damage_type, damage_flag = 0, attack_dir)
-	if(damage_flag == "melee" && damage_amount < damage_deflection)
-		return 0
-	. = ..()
+
+/obj/machinery/door/crowbar_act(mob/user, obj/item/I)
+	if(user.a_intent == INTENT_HARM)
+		return
+	. = TRUE
+	if(operating)
+		return
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	try_to_crowbar(user, I)
 
 /obj/machinery/door/take_damage(damage_amount, damage_type = BRUTE, damage_flag = 0, sound_effect = 1, attack_dir)
 	. = ..()
@@ -215,13 +218,13 @@
 	switch(damage_type)
 		if(BRUTE)
 			if(glass)
-				playsound(loc, 'sound/effects/glasshit.ogg', 90, 1)
+				playsound(loc, 'sound/effects/glasshit.ogg', 90, TRUE)
 			else if(damage_amount)
-				playsound(loc, 'sound/weapons/smash.ogg', 50, 1)
+				playsound(loc, 'sound/weapons/smash.ogg', 50, TRUE)
 			else
-				playsound(loc, 'sound/weapons/tap.ogg', 50, 1)
+				playsound(src, 'sound/weapons/tap.ogg', 50, TRUE)
 		if(BURN)
-			playsound(loc, 'sound/items/welder.ogg', 100, 1)
+			playsound(src.loc, 'sound/items/welder.ogg', 100, TRUE)
 
 /obj/machinery/door/emag_act(mob/user)
 	if(density)
@@ -276,11 +279,8 @@
 	operating = FALSE
 	air_update_turf(1)
 	update_freelook_sight()
-
-	// The `addtimer` system has the advantage of being cancelable
 	if(autoclose)
-		autoclose_timer = addtimer(CALLBACK(src, .proc/autoclose), normalspeed ? auto_close_time : auto_close_time_dangerous, TIMER_UNIQUE | TIMER_STOPPABLE)
-
+		autoclose_in(normalspeed ? auto_close_time : auto_close_time_dangerous)
 	return TRUE
 
 /obj/machinery/door/proc/close()
@@ -289,17 +289,14 @@
 	if(operating || welded)
 		return
 	if(safe)
-		for(var/atom/movable/M in get_turf(src))
-			if(M.density && M != src) //something is blocking the door
-				if(autoclose)
-					addtimer(CALLBACK(src, .proc/autoclose), 60)
-				return
+		for(var/turf/turf in locs)
+			for(var/atom/movable/M in turf)
+				if(M.density && M != src) //something is blocking the door
+					if(autoclose)
+						autoclose_in(60)
+					return
 
 	operating = TRUE
-
-	if(autoclose_timer)
-		deltimer(autoclose_timer)
-		autoclose_timer = 0
 
 	do_animate("closing")
 	layer = closingLayer
@@ -348,13 +345,15 @@
 	return !(stat & NOPOWER)
 
 /obj/machinery/door/proc/autoclose()
-	autoclose_timer = 0
 	if(!QDELETED(src) && !density && !operating && !locked && !welded && autoclose)
 		close()
 
+/obj/machinery/door/proc/autoclose_in(wait)
+	addtimer(CALLBACK(src, .proc/autoclose), wait, TIMER_UNIQUE | TIMER_NO_HASH_WAIT | TIMER_OVERRIDE)
+
 /obj/machinery/door/proc/update_freelook_sight()
-	if(!glass && cameranet)
-		cameranet.updateVisibility(src, 0)
+	if(!glass && GLOB.cameranet)
+		GLOB.cameranet.updateVisibility(src, 0)
 
 /obj/machinery/door/BlockSuperconductivity() // All non-glass airlocks block heat, this is intended.
 	if(opacity || heat_proof)
@@ -378,32 +377,10 @@
 	if(!stat) //Opens only powered doors.
 		open() //Open everything!
 
-/obj/machinery/door/blob_act(obj/structure/blob/B)
-	if(isturf(loc))
-		var/turf/T = loc
-		if(T.intact && level == 1) //the blob doesn't destroy thing below the floor
-			return
-	take_damage(400, BRUTE, "melee", 0, get_dir(src, B))
+/obj/machinery/door/ex_act(severity)
+	//if it blows up a wall it should blow up a door
+	..(severity ? max(1, severity - 1) : 0)
 
-/obj/machinery/door/ex_act(severity, target)
-	if(severity)
-		severity = max(1, severity - 1)
-	else
-		severity = 0
-	if(resistance_flags & INDESTRUCTIBLE)
-		return
-	if(target == src)
-		obj_integrity = 0
-		qdel(src)
-		return
-	switch(severity)
-		if(1)
-			obj_integrity = 0
-			qdel(src)
-		if(2)
-			take_damage(rand(100, 250), BRUTE, "bomb", 0)
-		if(3)
-			take_damage(rand(10, 90), BRUTE, "bomb", 0)
 
 /obj/machinery/door/GetExplosionBlock()
 	return density ? real_explosion_block : 0

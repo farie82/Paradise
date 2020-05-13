@@ -140,6 +140,25 @@
 		var/mob/living/silicon/robot/borg = usr
 		borg.sensor_mode()
 
+/obj/screen/ai/multicam
+	name = "Multicamera Mode"
+	icon_state = "multicam"
+
+/obj/screen/ai/multicam/Click()
+	if(..())
+		return
+	var/mob/living/silicon/ai/AI = usr
+	AI.toggle_multicam()
+
+/obj/screen/ai/add_multicam
+	name = "New Camera"
+	icon_state = "new_cam"
+
+/obj/screen/ai/add_multicam/Click()
+	if(..())
+		return
+	var/mob/living/silicon/ai/AI = usr
+	AI.drop_new_multicam()
 
 /mob/living/silicon/ai/create_mob_hud()
 	if(client && !hud_used)
@@ -228,3 +247,19 @@
 	using = new /obj/screen/ai/sensors()
 	using.screen_loc = ui_ai_sensor
 	static_inventory += using
+
+//Multicamera mode
+	using = new /obj/screen/ai/multicam()
+	using.screen_loc = ui_ai_multicam
+	static_inventory += using
+
+//Add multicamera camera
+	using = new /obj/screen/ai/add_multicam()
+	using.screen_loc = ui_ai_add_multicam
+	static_inventory += using
+
+//Intent
+	using = new /obj/screen/act_intent/robot/AI()
+	using.icon_state = mymob.a_intent
+	static_inventory += using
+	action_intent = using

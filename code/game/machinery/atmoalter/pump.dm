@@ -95,6 +95,16 @@
 /obj/machinery/portable_atmospherics/pump/return_air()
 	return air_contents
 
+/obj/machinery/portable_atmospherics/pump/replace_tank(mob/living/user, close_valve)
+	. = ..()
+	if(.)
+		if(close_valve)
+			if(on)
+				on = FALSE
+				update_icon()
+		else if(on && holding && direction_out)
+			investigate_log("[key_name(user)] started a transfer into [holding].<br>", "atmos")
+
 /obj/machinery/portable_atmospherics/pump/attack_ai(var/mob/user as mob)
 	src.add_hiddenprint(user)
 	return src.attack_hand(user)
@@ -105,7 +115,7 @@
 /obj/machinery/portable_atmospherics/pump/attack_hand(var/mob/user as mob)
 	ui_interact(user)
 
-/obj/machinery/portable_atmospherics/pump/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = physical_state)
+/obj/machinery/portable_atmospherics/pump/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.physical_state)
 	// update the ui if it exists, returns null if no ui is passed/found
 	ui = SSnanoui.try_update_ui(user, src, ui_key, ui, force_open)
 	if(!ui)
@@ -117,7 +127,7 @@
 		// auto update every Master Controller tick
 		ui.set_auto_update(1)
 
-/obj/machinery/portable_atmospherics/pump/ui_data(mob/user, ui_key = "main", datum/topic_state/state = physical_state)
+/obj/machinery/portable_atmospherics/pump/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.physical_state)
 	var/data[0]
 	data["portConnected"] = connected_port ? 1 : 0
 	data["tankPressure"] = round(air_contents.return_pressure() > 0 ? air_contents.return_pressure() : 0)
@@ -139,13 +149,18 @@
 
 	if(href_list["power"])
 		on = !on
+		if(on && direction_out)
+			investigate_log("[key_name(usr)] started a transfer into [holding].<br>", "atmos")
 		update_icon()
 
 	if(href_list["direction"])
 		direction_out = !direction_out
+		if(on && holding)
+			investigate_log("[key_name(usr)] started a transfer into [holding].<br>", "atmos")
 
 	if(href_list["remove_tank"])
 		if(holding)
+			on = FALSE
 			holding.loc = loc
 			holding = null
 		update_icon()

@@ -6,13 +6,13 @@
 	lefthand_file = 'icons/mob/inhands/flags_lefthand.dmi'
 	righthand_file = 'icons/mob/inhands/flags_righthand.dmi'
 	w_class = WEIGHT_CLASS_BULKY
-	burntime = 20
-	burn_state = FLAMMABLE
+	max_integrity = 40
+	resistance_flags = FLAMMABLE
 	var/rolled = FALSE
 
 /obj/item/flag/attackby(obj/item/W, mob/user, params)
-	..()
-	if(is_hot(W) && burn_state != ON_FIRE)
+	. = ..()
+	if(is_hot(W) && !(resistance_flags & ON_FIRE))
 		user.visible_message("<span class='notice'>[user] lights [src] with [W].</span>", "<span class='notice'>You light [src] with [W].</span>", "<span class='warning'>You hear a low whoosh.</span>")
 		fire_act()
 
@@ -21,7 +21,7 @@
 	user.visible_message("<span class='notice'>[user] [rolled ? "rolls up" : "unfurls"] [src].</span>", "<span class='notice'>You [rolled ? "roll up" : "unfurl"] [src].</span>", "<span class='warning'>You hear fabric rustling.</span>")
 	update_icon()
 
-/obj/item/flag/fire_act(global_overlay = FALSE)
+/obj/item/flag/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume, global_overlay = FALSE)
 	..()
 	update_icon()
 
@@ -35,11 +35,11 @@
 	item_state = icon_state
 	if(rolled)
 		icon_state = "[icon_state]_rolled"
-	if(burn_state == ON_FIRE)
+	if(resistance_flags & ON_FIRE)
 		item_state = "[item_state]_fire"
-	if(burn_state == ON_FIRE && rolled)
+	if((resistance_flags & ON_FIRE) && rolled)
 		overlays += image('icons/obj/flag.dmi', src , "fire_rolled")
-	else if(burn_state == ON_FIRE && !rolled)
+	else if((resistance_flags & ON_FIRE) && !rolled)
 		overlays += image('icons/obj/flag.dmi', src , "fire")
 	if(ismob(loc))
 		var/mob/M = loc
@@ -63,11 +63,6 @@
 	name = "Mime Revolution flag"
 	desc = "The banner of the glorious revolutionary forces fighting the oppressors on Clown Planet."
 	icon_state = "mimeflag"
-
-/obj/item/flag/pony
-	name = "Equestria flag"
-	desc = "The flag of the independent, sovereign nation of Equestria, whatever the fuck that is."
-	icon_state = "ponyflag"
 
 /obj/item/flag/ian
 	name = "Ian flag"
@@ -170,8 +165,8 @@
 	icon_state = "atmosflag"
 
 /obj/item/flag/command
-	name = "Commandzikstan flag"
-	desc = "The flag of the independent, sovereign nation of Commandzikstan."
+	name = "Command flag"
+	desc = "The flag of the independent, sovereign nation of Command."
 	icon_state = "ntflag"
 
 //Antags
@@ -202,9 +197,11 @@
 	name = "Chameleon flag"
 	desc = "A poor recreation of the official NT flag. It seems to shimmer a little."
 	icon_state = "ntflag"
-	origin_tech = "syndicate=4;magnets=4"
+	origin_tech = "syndicate=1;magnets=4"
 	var/updated_icon_state = null
 	var/used = FALSE
+	var/obj/item/grenade/boobytrap = null
+	var/mob/trapper = null
 
 /obj/item/flag/chameleon/New()
 	updated_icon_state = icon_state
@@ -214,7 +211,7 @@
 	if(used)
 		return ..()
 
-	var/list/flag_types = typesof(/obj/item/flag) - list(src.type, /obj/item/flag)
+	var/list/flag_types = typesof(/obj/item/flag) - list(/obj/item/flag, /obj/item/flag/chameleon, /obj/item/flag/chameleon/depot)
 	var/list/flag = list()
 
 	for(var/flag_type in flag_types)
@@ -225,7 +222,7 @@
 
 	var/input_flag = input(user, "Choose a flag to disguise as.", "Choose a flag.") in show_flag
 
-	if(user && src in user.contents)
+	if(user && (src in user.contents))
 
 		var/obj/item/flag/chosen_flag = flag[input_flag]
 
@@ -236,9 +233,46 @@
 			desc = chosen_flag.desc
 			used = TRUE
 
+/obj/item/flag/chameleon/attackby(obj/item/I, mob/user, params)
+	if(istype(I, /obj/item/grenade) && !boobytrap)
+		if(user.drop_item())
+			boobytrap = I
+			trapper = user
+			I.forceMove(src)
+			to_chat(user, "<span class='notice'>You hide [I] in the [src]. It will detonate some time after the flag is lit on fire.</span>")
+			var/turf/bombturf = get_turf(src)
+			var/area/A = get_area(bombturf)
+			message_admins("[key_name_admin(user)] has hidden [I] in the [src] ready for detonation at <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[bombturf.x];Y=[bombturf.y];Z=[bombturf.z]'>[A.name] (JMP)</a>.")
+			log_game("[key_name(user)] has hidden [I] in the [src] ready for detonation at [A.name] ([bombturf.x],[bombturf.y],[bombturf.z]).")
+			investigate_log("[key_name(user)] has hidden [I] in the [src] ready for detonation at [A.name] ([bombturf.x],[bombturf.y],[bombturf.z]).", INVESTIGATE_BOMB)
+	else if(is_hot(I) && !(resistance_flags & ON_FIRE) && boobytrap && trapper)
+		var/turf/bombturf = get_turf(src)
+		var/area/A = get_area(bombturf)
+		message_admins("[key_name_admin(user)] has lit the [src] trapped with [boobytrap] by [key_name_admin(trapper)] at <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[bombturf.x];Y=[bombturf.y];Z=[bombturf.z]'>[A.name] (JMP)</a>.")
+		log_game("[key_name_admin(user)] has lit the [src] trapped with [boobytrap] by [key_name_admin(trapper)] at [A.name] ([bombturf.x],[bombturf.y],[bombturf.z]).")
+		investigate_log("[key_name_admin(user)] has lit the [src] trapped with [boobytrap] by [key_name_admin(trapper)] at [A.name] ([bombturf.x],[bombturf.y],[bombturf.z]).", INVESTIGATE_BOMB)
+	else
+		return ..()
+
+/obj/item/flag/chameleon/screwdriver_act(mob/user, obj/item/I)
+	if(!boobytrap || user != trapper)
+		return
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	to_chat(user, "<span class='notice'>You remove [boobytrap] from [src].</span>")
+	boobytrap.forceMove(get_turf(src))
+	boobytrap = null
+	trapper = null
+
 /obj/item/flag/chameleon/burn()
-	explosion(loc,1,2,4,4, flame_range = 4)
-	qdel(src)
+	if(boobytrap)
+		boobytrap.prime()
+	..()
 
 /obj/item/flag/chameleon/updateFlagIcon()
 	icon_state = updated_icon_state
+
+/obj/item/flag/chameleon/depot/New()
+	..()
+	boobytrap = new /obj/item/grenade/gas/plasma(src)

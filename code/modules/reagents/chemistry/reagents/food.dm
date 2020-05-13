@@ -5,16 +5,19 @@
 /datum/reagent/consumable
 	name = "Consumable"
 	id = "consumable"
+	harmless = TRUE
+	taste_description = "generic food"
+	taste_mult = 4
 	var/nutriment_factor = 1 * REAGENTS_METABOLISM
 	var/diet_flags = DIET_OMNI | DIET_HERB | DIET_CARN
 
 /datum/reagent/consumable/on_mob_life(mob/living/M)
-	if(!(M.mind in ticker.mode.vampires))
+	if(!(M.mind in SSticker.mode.vampires))
 		if(ishuman(M))
 			var/mob/living/carbon/human/H = M
 			if(H.can_eat(diet_flags))	//Make sure the species has it's dietflag set, otherwise it can't digest any nutrients
-				H.nutrition += nutriment_factor	// For hunger and fatness
-	..()
+				H.adjust_nutrition(nutriment_factor)	// For hunger and fatness
+	return ..()
 
 /datum/reagent/consumable/nutriment		// Pure nutriment, universally digestable and thus slightly less effective
 	name = "Nutriment"
@@ -23,53 +26,67 @@
 	reagent_state = SOLID
 	nutriment_factor = 15 * REAGENTS_METABOLISM
 	color = "#664330" // rgb: 102, 67, 48
+	var/brute_heal = 1
+	var/burn_heal = 0
 
 /datum/reagent/consumable/nutriment/on_mob_life(mob/living/M)
-	if(!(M.mind in ticker.mode.vampires))
+	var/update_flags = STATUS_UPDATE_NONE
+	if(!(M.mind in SSticker.mode.vampires))
 		if(ishuman(M))
 			var/mob/living/carbon/human/H = M
 			if(H.can_eat(diet_flags))	//Make sure the species has it's dietflag set, otherwise it can't digest any nutrients
 				if(prob(50))
-					M.adjustBruteLoss(-1)
-					if(!(NO_BLOOD in H.dna.species.species_traits))//do not restore blood on things with no blood by nature.
-						if(H.blood_volume < BLOOD_VOLUME_NORMAL)
-							H.blood_volume += 0.4
-	..()
+					update_flags |= M.adjustBruteLoss(-brute_heal, FALSE)
+					update_flags |= M.adjustFireLoss(-burn_heal, FALSE)
+	return ..() | update_flags
+
+/datum/reagent/consumable/nutriment/on_new(list/supplied_data)
+	// taste data can sometimes be ("salt" = 3, "chips" = 1)
+	// and we want it to be in the form ("salt" = 0.75, "chips" = 0.25)
+	// which is called "normalizing"
+	if(!supplied_data)
+		supplied_data = data
+	// if data isn't an associative list, this has some WEIRD side effects
+	// TODO probably check for assoc list?
+	data = counterlist_normalise(supplied_data)
+
+/datum/reagent/consumable/nutriment/on_merge(list/newdata, newvolume)
+	if(!islist(newdata) || !newdata.len)
+		return
+	var/list/taste_amounts = list()
+	var/list/other_taste_amounts = newdata.Copy()
+	if(data)
+		taste_amounts = data.Copy()
+	counterlist_scale(taste_amounts, volume)
+	counterlist_combine(taste_amounts, other_taste_amounts)
+	counterlist_normalise(taste_amounts)
+	data = taste_amounts
 
 /datum/reagent/consumable/nutriment/protein			// Meat-based protein, digestable by carnivores and omnivores, worthless to herbivores
 	name = "Protein"
 	id = "protein"
 	description = "Various essential proteins and fats commonly found in animal flesh and blood."
 	diet_flags = DIET_CARN | DIET_OMNI
-	taste_message = "meat"
 
 /datum/reagent/consumable/nutriment/plantmatter		// Plant-based biomatter, digestable by herbivores and omnivores, worthless to carnivores
 	name = "Plant-matter"
 	id = "plantmatter"
 	description = "Vitamin-rich fibers and natural sugars commonly found in fresh produce."
 	diet_flags = DIET_HERB | DIET_OMNI
-	taste_message = "vegetables"
 
-/datum/reagent/consumable/vitamin
+/datum/reagent/consumable/nutriment/vitamin
 	name = "Vitamin"
 	id = "vitamin"
 	description = "All the best vitamins, minerals, and carbohydrates the body needs in pure form."
 	reagent_state = SOLID
 	color = "#664330" // rgb: 102, 67, 48
-	taste_message = null
+	brute_heal = 1
+	burn_heal = 1
 
-/datum/reagent/consumable/vitamin/on_mob_life(mob/living/M)
-	if(prob(50))
-		M.adjustBruteLoss(-1)
-		M.adjustFireLoss(-1)
+/datum/reagent/consumable/nutriment/vitamin/on_mob_life(mob/living/M)
 	if(M.satiety < 600)
 		M.satiety += 30
-	if(ishuman(M))
-		var/mob/living/carbon/human/H = M
-		if(!(NO_BLOOD in H.dna.species.species_traits))//do not restore blood on things with no blood by nature.
-			if(H.blood_volume < BLOOD_VOLUME_NORMAL)
-				H.blood_volume += 0.5
-	..()
+	return ..()
 
 /datum/reagent/consumable/sugar
 	name = "Sugar"
@@ -79,19 +96,21 @@
 	color = "#FFFFFF" // rgb: 255, 255, 255
 	nutriment_factor = 5 * REAGENTS_METABOLISM
 	overdose_threshold = 200 // Hyperglycaemic shock
-	taste_message = "sweetness"
+	taste_description = "sweetness"
+	taste_mult = 1.5
 
 /datum/reagent/consumable/sugar/on_mob_life(mob/living/M)
+	var/update_flags = STATUS_UPDATE_NONE
 	M.AdjustDrowsy(-5)
 	if(current_cycle >= 90)
 		M.AdjustJitter(2)
 	if(prob(50))
-		M.AdjustParalysis(-1)
-		M.AdjustStunned(-1)
-		M.AdjustWeakened(-1)
+		update_flags |= M.AdjustParalysis(-1, FALSE)
+		update_flags |= M.AdjustStunned(-1, FALSE)
+		update_flags |= M.AdjustWeakened(-1, FALSE)
 	if(prob(4))
 		M.reagents.add_reagent("epinephrine", 1.2)
-	..()
+	return ..() | update_flags
 
 /datum/reagent/consumable/sugar/overdose_start(mob/living/M)
 	to_chat(M, "<span class='danger'>You pass out from hyperglycemic shock!</span>")
@@ -99,10 +118,12 @@
 	..()
 
 /datum/reagent/consumable/sugar/overdose_process(mob/living/M, severity)
-	M.Paralyse(3 * severity)
-	M.Weaken(4 * severity)
+	var/update_flags = STATUS_UPDATE_NONE
+	update_flags |= M.Paralyse(3 * severity, FALSE)
+	update_flags |= M.Weaken(4 * severity, FALSE)
 	if(prob(8))
-		M.adjustToxLoss(severity)
+		update_flags |= M.adjustToxLoss(severity, FALSE)
+	return list(0, update_flags)
 
 /datum/reagent/consumable/soysauce
 	name = "Soysauce"
@@ -111,7 +132,7 @@
 	reagent_state = LIQUID
 	nutriment_factor = 2 * REAGENTS_METABOLISM
 	color = "#792300" // rgb: 121, 35, 0
-	taste_message = "soy"
+	taste_description = "soy"
 
 /datum/reagent/consumable/ketchup
 	name = "Ketchup"
@@ -120,7 +141,7 @@
 	reagent_state = LIQUID
 	nutriment_factor = 5 * REAGENTS_METABOLISM
 	color = "#731008" // rgb: 115, 16, 8
-	taste_message = "ketchup"
+	taste_description = "ketchup"
 
 /datum/reagent/consumable/capsaicin
 	name = "Capsaicin Oil"
@@ -128,7 +149,12 @@
 	description = "This is what makes chilis hot."
 	reagent_state = LIQUID
 	color = "#B31008" // rgb: 179, 16, 8
-	taste_message = "<span class='warning'>HOTNESS</span>"
+	addiction_chance = 1
+	addiction_chance_additional = 10
+	addiction_threshold = 2
+	minor_addiction = TRUE
+	taste_description = "<span class='warning'>HOTNESS</span>"
+	taste_mult = 1.5
 
 /datum/reagent/consumable/capsaicin/on_mob_life(mob/living/M)
 	switch(current_cycle)
@@ -150,7 +176,7 @@
 			M.bodytemperature += 20 * TEMPERATURE_DAMAGE_COEFFICIENT
 			if(isslime(M))
 				M.bodytemperature += rand(20,25)
-	..()
+	return ..()
 
 /datum/reagent/consumable/condensedcapsaicin
 	name = "Condensed Capsaicin"
@@ -158,15 +184,15 @@
 	description = "This shit goes in pepperspray."
 	reagent_state = LIQUID
 	color = "#B31008" // rgb: 179, 16, 8
-	taste_message = "<span class='userdanger'>PURE FIRE</span>"
+	taste_description = "<span class='userdanger'>PURE FIRE</span>"
 
 /datum/reagent/consumable/condensedcapsaicin/on_mob_life(mob/living/M)
 	if(prob(5))
 		M.visible_message("<span class='warning'>[M] [pick("dry heaves!","coughs!","splutters!")]</span>")
-	..()
+	return ..()
 
-/datum/reagent/consumable/condensedcapsaicin/reaction_mob(mob/living/M, method=TOUCH, volume)
-	if(method == TOUCH)
+/datum/reagent/consumable/condensedcapsaicin/reaction_mob(mob/living/M, method=REAGENT_TOUCH, volume)
+	if(method == REAGENT_TOUCH)
 		if(ishuman(M))
 			var/mob/living/carbon/human/victim = M
 			var/mouth_covered = 0
@@ -227,7 +253,7 @@
 	reagent_state = LIQUID
 	color = "#8BA6E9" // rgb: 139, 166, 233
 	process_flags = ORGANIC | SYNTHETIC
-	taste_message = "<font color='lightblue'>cold</span>"
+	taste_description = "<font color='lightblue'>cold</span>"
 
 /datum/reagent/consumable/frostoil/on_mob_life(mob/living/M)
 	switch(current_cycle)
@@ -253,12 +279,12 @@
 				M.emote("shiver")
 			if(isslime(M))
 				M.bodytemperature -= rand(20,25)
-	..()
+	return ..()
 
 /datum/reagent/consumable/frostoil/reaction_turf(turf/T, volume)
 	if(volume >= 5)
-		for(var/mob/living/carbon/slime/M in T)
-			M.adjustToxLoss(rand(15,30))
+		for(var/mob/living/simple_animal/slime/M in T)
+			M.adjustToxLoss(rand(15, 30))
 
 /datum/reagent/consumable/sodiumchloride
 	name = "Salt"
@@ -266,20 +292,23 @@
 	description = "Sodium chloride, common table salt."
 	reagent_state = SOLID
 	color = "#B1B0B0"
+	harmless = FALSE
 	overdose_threshold = 100
-	taste_message = "salt"
+	taste_mult = 2
+	taste_description = "salt"
 
 /datum/reagent/consumable/sodiumchloride/overdose_process(mob/living/M, severity)
+	var/update_flags = STATUS_UPDATE_NONE
 	if(prob(70))
-		M.adjustBrainLoss(1)
-	..()
+		update_flags |= M.adjustBrainLoss(1, FALSE)
+	return ..() | update_flags
 
 /datum/reagent/consumable/blackpepper
 	name = "Black Pepper"
 	id = "blackpepper"
 	description = "A powder ground from peppercorns. *AAAACHOOO*"
 	reagent_state = SOLID
-	taste_message = "pepper"
+	taste_description = "pepper"
 
 /datum/reagent/consumable/cocoa
 	name = "Cocoa Powder"
@@ -288,7 +317,7 @@
 	reagent_state = SOLID
 	nutriment_factor = 5 * REAGENTS_METABOLISM
 	color = "#302000" // rgb: 48, 32, 0
-	taste_message = "bitter cocoa"
+	taste_description = "bitter cocoa"
 
 /datum/reagent/consumable/vanilla
 	name = "Vanilla Powder"
@@ -297,7 +326,7 @@
 	reagent_state = SOLID
 	nutriment_factor = 5 * REAGENTS_METABOLISM
 	color = "#FFFACD"
-	taste_message = "bitter vanilla"
+	taste_description = "bitter vanilla"
 
 /datum/reagent/consumable/hot_coco
 	name = "Hot Chocolate"
@@ -306,25 +335,51 @@
 	reagent_state = LIQUID
 	nutriment_factor = 2 * REAGENTS_METABOLISM
 	color = "#403010" // rgb: 64, 48, 16
-	taste_message = "chocolate"
+	taste_description = "chocolate"
 
 /datum/reagent/consumable/hot_coco/on_mob_life(mob/living/M)
 	if(M.bodytemperature < 310)//310 is the normal bodytemp. 310.055
 		M.bodytemperature = min(310, M.bodytemperature + (5 * TEMPERATURE_DAMAGE_COEFFICIENT))
-	..()
+	return ..()
+
+/datum/reagent/consumable/garlic
+	name = "Garlic Juice"
+	id = "garlic"
+	description = "Crushed garlic. Chefs love it, but it can make you smell bad."
+	color = "#FEFEFE"
+	taste_description = "garlic"
+	metabolization_rate = 0.15 * REAGENTS_METABOLISM
+
+/datum/reagent/consumable/garlic/on_mob_life(mob/living/carbon/M)
+	var/update_flags = STATUS_UPDATE_NONE
+	if(ishuman(M))
+		var/mob/living/carbon/human/H = M
+		if(H.mind && H.mind.vampire && !H.mind.vampire.get_ability(/datum/vampire_passive/full)) //incapacitating but not lethal.
+			if(prob(min(25, current_cycle)))
+				to_chat(H, "<span class='danger'>You can't get the scent of garlic out of your nose! You can barely think...</span>")
+				H.Weaken(1)
+				H.Jitter(10)
+				H.fakevomit()
+		else
+			if(H.job == "Chef")
+				if(prob(20)) //stays in the system much longer than sprinkles/banana juice, so heals slower to partially compensate
+					update_flags |= H.adjustBruteLoss(-1, FALSE)
+					update_flags |= H.adjustFireLoss(-1, FALSE)
+	return ..() | update_flags
 
 /datum/reagent/consumable/sprinkles
 	name = "Sprinkles"
 	id = "sprinkles"
 	description = "Multi-colored little bits of sugar, commonly found on donuts. Loved by cops."
 	color = "#FF00FF" // rgb: 255, 0, 255
-	taste_message = "sweetness"
+	taste_description = "crunchy sweetness"
 
 /datum/reagent/consumable/sprinkles/on_mob_life(mob/living/M)
-	if(ishuman(M) && M.job in list("Security Officer", "Security Pod Pilot", "Detective", "Warden", "Head of Security", "Brig Physician", "Internal Affairs Agent", "Magistrate"))
-		M.adjustBruteLoss(-1)
-		M.adjustFireLoss(-1)
-	..()
+	var/update_flags = STATUS_UPDATE_NONE
+	if(ishuman(M) && (M.job in list("Security Officer", "Security Pod Pilot", "Detective", "Warden", "Head of Security", "Brig Physician", "Internal Affairs Agent", "Magistrate")))
+		update_flags |= M.adjustBruteLoss(-1, FALSE)
+		update_flags |= M.adjustFireLoss(-1, FALSE)
+	return ..() | update_flags
 
 /datum/reagent/consumable/cornoil
 	name = "Corn Oil"
@@ -333,7 +388,7 @@
 	reagent_state = LIQUID
 	nutriment_factor = 20 * REAGENTS_METABOLISM
 	color = "#302000" // rgb: 48, 32, 0
-	taste_message = "oil"
+	taste_description = "oil"
 
 /datum/reagent/consumable/cornoil/reaction_turf(turf/simulated/T, volume)
 	if(!istype(T))
@@ -354,7 +409,7 @@
 	description = "Heated beyond usefulness, this enzyme is now worthless."
 	reagent_state = LIQUID
 	color = "#282314" // rgb: 54, 94, 48
-	taste_message = null
+	taste_description = "sweetness"
 
 /datum/reagent/consumable/dry_ramen
 	name = "Dry Ramen"
@@ -362,7 +417,7 @@
 	description = "Space age food, since August 25, 1958. Contains dried noodles, vegetables, and chemicals that boil in contact with water."
 	reagent_state = SOLID
 	color = "#302000" // rgb: 48, 32, 0
-	taste_message = "dry ramen coated with what might just be your tears"
+	taste_description = "dry ramen coated with what might just be your tears"
 
 /datum/reagent/consumable/hot_ramen
 	name = "Hot Ramen"
@@ -371,12 +426,12 @@
 	reagent_state = LIQUID
 	nutriment_factor = 5 * REAGENTS_METABOLISM
 	color = "#302000" // rgb: 48, 32, 0
-	taste_message = "cheap ramen and memories"
+	taste_description = "cheap ramen and memories"
 
 /datum/reagent/consumable/hot_ramen/on_mob_life(mob/living/M)
 	if(M.bodytemperature < 310)//310 is the normal bodytemp. 310.055
 		M.bodytemperature = min(310, M.bodytemperature + (10 * TEMPERATURE_DAMAGE_COEFFICIENT))
-	..()
+	return ..()
 
 /datum/reagent/consumable/hell_ramen
 	name = "Hell Ramen"
@@ -385,11 +440,11 @@
 	reagent_state = LIQUID
 	nutriment_factor = 5 * REAGENTS_METABOLISM
 	color = "#302000" // rgb: 48, 32, 0
-	taste_message = "SPICY ramen"
+	taste_description = "SPICY ramen"
 
 /datum/reagent/consumable/hell_ramen/on_mob_life(mob/living/M)
 	M.bodytemperature += 10 * TEMPERATURE_DAMAGE_COEFFICIENT
-	..()
+	return ..()
 
 /datum/reagent/consumable/flour
 	name = "flour"
@@ -397,7 +452,7 @@
 	description = "This is what you rub all over yourself to pretend to be a ghost."
 	reagent_state = SOLID
 	color = "#FFFFFF" // rgb: 0, 0, 0
-	taste_message = "flour"
+	taste_description = "flour"
 
 /datum/reagent/consumable/flour/reaction_turf(turf/T, volume)
 	if(!isspaceturf(T))
@@ -410,7 +465,7 @@
 	reagent_state = SOLID
 	nutriment_factor = 3 * REAGENTS_METABOLISM
 	color = "#FFFFFF" // rgb: 0, 0, 0
-	taste_message = "rice"
+	taste_description = "rice"
 
 /datum/reagent/consumable/cherryjelly
 	name = "Cherry Jelly"
@@ -418,7 +473,7 @@
 	description = "Totally the best. Only to be spread on foods with excellent lateral symmetry."
 	reagent_state = LIQUID
 	color = "#801E28" // rgb: 128, 30, 40
-	taste_message = "cherry jelly"
+	taste_description = "cherry jelly"
 
 /datum/reagent/consumable/bluecherryjelly
 	name = "Blue Cherry Jelly"
@@ -426,7 +481,7 @@
 	description = "Blue and tastier kind of cherry jelly."
 	reagent_state = LIQUID
 	color = "#00F0FF"
-	taste_message = "cherry jelly"
+	taste_description = "the blues"
 
 /datum/reagent/consumable/egg
 	name = "Egg"
@@ -434,14 +489,12 @@
 	description = "A runny and viscous mixture of clear and yellow fluids."
 	reagent_state = LIQUID
 	color = "#F0C814"
-	taste_message = "eggs"
+	taste_description = "eggs"
 
 /datum/reagent/consumable/egg/on_mob_life(mob/living/M)
-	if(prob(8))
-		M.emote("fart")
 	if(prob(3))
 		M.reagents.add_reagent("cholesterol", rand(1,2))
-	..()
+	return ..()
 
 /datum/reagent/consumable/corn_starch
 	name = "Corn Starch"
@@ -449,7 +502,7 @@
 	description = "The powdered starch of maize, derived from the kernel's endosperm. Used as a thickener for gravies and puddings."
 	reagent_state = LIQUID
 	color = "#C8A5DC"
-	taste_message = "flour"
+	taste_description = "flour"
 
 /datum/reagent/consumable/corn_syrup
 	name = "Corn Syrup"
@@ -457,11 +510,11 @@
 	description = "A sweet syrup derived from corn starch that has had its starches converted into maltose and other sugars."
 	reagent_state = LIQUID
 	color = "#C8A5DC"
-	taste_message = "sweetness"
+	taste_description = "cheap sugar substitute"
 
 /datum/reagent/consumable/corn_syrup/on_mob_life(mob/living/M)
 	M.reagents.add_reagent("sugar", 1.2)
-	..()
+	return ..()
 
 /datum/reagent/consumable/vhfcs
 	name = "Very-high-fructose corn syrup"
@@ -469,11 +522,11 @@
 	description = "An incredibly sweet syrup, created from corn syrup treated with enzymes to convert its sugars into fructose."
 	reagent_state = LIQUID
 	color = "#C8A5DC"
-	taste_message = "diabetes"
+	taste_description = "diabetes"
 
 /datum/reagent/consumable/vhfcs/on_mob_life(mob/living/M)
 	M.reagents.add_reagent("sugar", 2.4)
-	..()
+	return ..()
 
 /datum/reagent/consumable/honey
 	name = "Honey"
@@ -482,24 +535,25 @@
 	reagent_state = LIQUID
 	color = "#d3a308"
 	nutriment_factor = 15 * REAGENTS_METABOLISM
-	taste_message = "sweetness"
+	taste_description = "sweetness"
 
 /datum/reagent/consumable/honey/on_mob_life(mob/living/M)
+	var/update_flags = STATUS_UPDATE_NONE
 	M.reagents.add_reagent("sugar", 3)
 	if(prob(20))
-		M.adjustBruteLoss(-3)
-		M.adjustFireLoss(-1)
-	..()
+		update_flags |= M.adjustBruteLoss(-3, FALSE)
+		update_flags |= M.adjustFireLoss(-1, FALSE)
+	return ..() | update_flags
 
 /datum/reagent/consumable/onion
 	name = "Concentrated Onion Juice"
 	id = "onionjuice"
 	description = "A strong tasting substance that can induce partial blindness."
 	color = "#c0c9a0"
-	taste_message = "bitterness"
+	taste_description = "pungency"
 
-/datum/reagent/consumable/onion/reaction_mob(mob/living/M, method = TOUCH, volume)
-	if(method == TOUCH)
+/datum/reagent/consumable/onion/reaction_mob(mob/living/M, method = REAGENT_TOUCH, volume)
+	if(method == REAGENT_TOUCH)
 		if(!M.is_mouth_covered() && !M.is_eyes_covered())
 			if(!M.get_organ_slot("eyes"))	//can't blind somebody with no eyes
 				to_chat(M, "<span class = 'notice'>Your eye sockets feel wet.</span>")
@@ -520,11 +574,11 @@
 	drink_icon = "chocolateglass"
 	drink_name = "Glass of chocolate"
 	drink_desc = "Tasty"
-	taste_message = "chocolate"
+	taste_description = "chocolate"
 
 /datum/reagent/consumable/chocolate/on_mob_life(mob/living/M)
 	M.reagents.add_reagent("sugar", 0.8)
-	..()
+	return ..()
 
 /datum/reagent/consumable/chocolate/reaction_turf(turf/T, volume)
 	if(volume >= 5 && !isspaceturf(T))
@@ -536,16 +590,17 @@
 	description = "A rather bitter herb once thought to hold magical protective properties."
 	reagent_state = LIQUID
 	color = "#21170E"
-	taste_message = "tea"
+	taste_description = "tea"
 
 /datum/reagent/consumable/mugwort/on_mob_life(mob/living/M)
+	var/update_flags = STATUS_UPDATE_NONE
 	if(ishuman(M) && M.mind)
 		if(M.mind.special_role == SPECIAL_ROLE_WIZARD)
-			M.adjustToxLoss(-1*REAGENTS_EFFECT_MULTIPLIER)
-			M.adjustOxyLoss(-1*REAGENTS_EFFECT_MULTIPLIER)
-			M.adjustBruteLoss(-1*REAGENTS_EFFECT_MULTIPLIER)
-			M.adjustFireLoss(-1*REAGENTS_EFFECT_MULTIPLIER)
-	..()
+			update_flags |= M.adjustToxLoss(-1*REAGENTS_EFFECT_MULTIPLIER, FALSE)
+			update_flags |= M.adjustOxyLoss(-1*REAGENTS_EFFECT_MULTIPLIER, FALSE)
+			update_flags |= M.adjustBruteLoss(-1*REAGENTS_EFFECT_MULTIPLIER, FALSE)
+			update_flags |= M.adjustFireLoss(-1*REAGENTS_EFFECT_MULTIPLIER, FALSE)
+	return ..() | update_flags
 
 /datum/reagent/consumable/porktonium
 	name = "Porktonium"
@@ -555,7 +610,8 @@
 	color = "#AB5D5D"
 	metabolization_rate = 0.2
 	overdose_threshold = 133
-	taste_message = "bacon"
+	harmless = FALSE
+	taste_description = "bacon"
 
 /datum/reagent/consumable/porktonium/overdose_process(mob/living/M, severity)
 	if(prob(15))
@@ -563,6 +619,7 @@
 	if(prob(8))
 		M.reagents.add_reagent("radium", 15)
 		M.reagents.add_reagent("cyanide", 10)
+	return list(0, STATUS_UPDATE_NONE)
 
 /datum/reagent/consumable/chicken_soup
 	name = "Chicken soup"
@@ -572,7 +629,7 @@
 	color = "#B4B400"
 	metabolization_rate = 0.2
 	nutriment_factor = 2
-	taste_message = "broth"
+	taste_description = "broth"
 
 /datum/reagent/consumable/cheese
 	name = "Cheese"
@@ -580,12 +637,12 @@
 	description = "Some cheese. Pour it out to make it solid."
 	reagent_state = SOLID
 	color = "#FFFF00"
-	taste_message = "cheese"
+	taste_description = "cheese"
 
 /datum/reagent/consumable/cheese/on_mob_life(mob/living/M)
 	if(prob(3))
 		M.reagents.add_reagent("cholesterol", rand(1,2))
-	..()
+	return ..()
 
 /datum/reagent/consumable/cheese/reaction_turf(turf/T, volume)
 	if(volume >= 5 && !isspaceturf(T))
@@ -598,12 +655,19 @@
 	reagent_state = LIQUID
 	color = "#B2B139"
 	overdose_threshold = 50
-	taste_message = "cheese?"
+	addiction_chance = 2
+	addiction_chance_additional = 10
+	addiction_threshold = 5
+	minor_addiction = TRUE
+	harmless = FALSE
+	taste_description = "cheese?"
 
 /datum/reagent/consumable/fake_cheese/overdose_process(mob/living/M, severity)
+	var/update_flags = STATUS_UPDATE_NONE
 	if(prob(8))
 		to_chat(M, "<span class='warning'>You feel something squirming in your stomach. Your thoughts turn to cheese and you begin to sweat.</span>")
-		M.adjustToxLoss(rand(1,2))
+		update_flags |= M.adjustToxLoss(rand(1,2), FALSE)
+	return list(0, update_flags)
 
 /datum/reagent/consumable/weird_cheese
 	name = "Weird cheese"
@@ -611,13 +675,16 @@
 	description = "Hell, I don't even know if this IS cheese. Whatever it is, it ain't normal. If you want to, pour it out to make it solid."
 	reagent_state = SOLID
 	color = "#50FF00"
-	addiction_chance = 5
-	taste_message = "cheeeeeese...?"
+	addiction_chance = 1
+	addiction_chance_additional = 10
+	addiction_threshold = 5
+	minor_addiction = TRUE
+	taste_description = "cheeeeeese...?"
 
 /datum/reagent/consumable/weird_cheese/on_mob_life(mob/living/M)
 	if(prob(5))
 		M.reagents.add_reagent("cholesterol", rand(1,3))
-	..()
+	return ..()
 
 /datum/reagent/consumable/weird_cheese/reaction_turf(turf/T, volume)
 	if(volume >= 5 && !isspaceturf(T))
@@ -629,12 +696,7 @@
 	description = "A dish made of mashed beans cooked with lard."
 	reagent_state = LIQUID
 	color = "#684435"
-	taste_message = "burritos"
-
-/datum/reagent/consumable/beans/on_mob_life(mob/living/M)
-	if(prob(10))
-		M.emote("fart")
-	..()
+	taste_description = "burritos"
 
 /datum/reagent/consumable/bread
 	name = "Bread"
@@ -642,7 +704,7 @@
 	description = "Bread! Yep, bread."
 	reagent_state = SOLID
 	color = "#9C5013"
-	taste_message = "bread"
+	taste_description = "bread"
 
 /datum/reagent/consumable/soybeanoil
 	name = "Space-soybean oil"
@@ -650,14 +712,14 @@
 	description = "An oil derived from extra-terrestrial soybeans."
 	reagent_state = LIQUID
 	color = "#B1B0B0"
-	taste_message = "oil"
+	taste_description = "oil"
 
 /datum/reagent/consumable/soybeanoil/on_mob_life(mob/living/M)
 	if(prob(10))
 		M.reagents.add_reagent("cholesterol", rand(1,3))
 	if(prob(8))
 		M.reagents.add_reagent("porktonium", 5)
-	..()
+	return ..()
 
 /datum/reagent/consumable/hydrogenated_soybeanoil
 	name = "Partially hydrogenated space-soybean oil"
@@ -667,7 +729,8 @@
 	color = "#B1B0B0"
 	metabolization_rate = 0.2
 	overdose_threshold = 75
-	taste_message = "oil"
+	harmless = FALSE
+	taste_description = "oil"
 
 /datum/reagent/consumable/hydrogenated_soybeanoil/on_mob_life(mob/living/M)
 	if(prob(15))
@@ -678,19 +741,21 @@
 		metabolization_rate = 0.4
 	else
 		metabolization_rate = 0.2
-	..()
+	return ..()
 
 /datum/reagent/consumable/hydrogenated_soybeanoil/overdose_process(mob/living/M, severity)
+	var/update_flags = STATUS_UPDATE_NONE
 	if(prob(33))
 		to_chat(M, "<span class='warning'>You feel horribly weak.</span>")
 	if(prob(10))
 		to_chat(M, "<span class='warning'>You cannot breathe!</span>")
-		M.adjustOxyLoss(5)
+		update_flags |= M.adjustOxyLoss(5, FALSE)
 	if(prob(5))
 		to_chat(M, "<span class='warning'>You feel a sharp pain in your chest!</span>")
-		M.adjustOxyLoss(25)
-		M.Stun(5)
-		M.Paralyse(10)
+		update_flags |= M.adjustOxyLoss(25, FALSE)
+		update_flags |= M.Stun(5, FALSE)
+		update_flags |= M.Paralyse(10, FALSE)
+	return list(0, update_flags)
 
 /datum/reagent/consumable/meatslurry
 	name = "Meat Slurry"
@@ -698,12 +763,12 @@
 	description = "A paste comprised of highly-processed organic material. Uncomfortably similar to deviled ham spread."
 	reagent_state = LIQUID
 	color = "#EBD7D7"
-	taste_message = "meat"
+	taste_description = "meat?"
 
 /datum/reagent/consumable/meatslurry/on_mob_life(mob/living/M)
 	if(prob(4))
 		M.reagents.add_reagent("cholesterol", rand(1,3))
-	..()
+	return ..()
 
 /datum/reagent/consumable/meatslurry/reaction_turf(turf/T, volume)
 	if(prob(10) && volume >= 5 && !isspaceturf(T))
@@ -716,7 +781,7 @@
 	description = "A starchy food paste made from boiled potatoes."
 	reagent_state = SOLID
 	color = "#D6D9C1"
-	taste_message = "potatoes"
+	taste_description = "potatoes"
 
 /datum/reagent/consumable/gravy
 	name = "Gravy"
@@ -724,7 +789,7 @@
 	description = "A savory sauce made from a simple meat-dripping roux and milk."
 	reagent_state = LIQUID
 	color = "#B4641B"
-	taste_message = "gravy"
+	taste_description = "gravy"
 
 /datum/reagent/consumable/beff
 	name = "Beff"
@@ -732,7 +797,7 @@
 	description = "An advanced blend of mechanically-recovered meat and textured synthesized protein product notable for its unusual crystalline grain when sliced."
 	reagent_state = SOLID
 	color = "#AC7E67"
-	taste_message = "meat"
+	taste_description = "meat"
 
 /datum/reagent/consumable/beff/on_mob_life(mob/living/M)
 	if(prob(5))
@@ -742,7 +807,7 @@
 	else if(prob(6))
 		to_chat(M, "<span class='warning'>[pick("You feel ill.","Your stomach churns.","You feel queasy.","You feel sick.")]</span>")
 		M.emote(pick("groan","moan"))
-	..()
+	return ..()
 
 /datum/reagent/consumable/pepperoni
 	name = "Pepperoni"
@@ -750,10 +815,10 @@
 	description = "An Italian-American variety of salami usually made from beef and pork"
 	reagent_state = SOLID
 	color = "#AC7E67"
-	taste_message = "pepperoni"
+	taste_description = "pepperoni"
 
-/datum/reagent/consumable/pepperoni/reaction_mob(mob/living/M, method=TOUCH, volume)
-	if(method == TOUCH)
+/datum/reagent/consumable/pepperoni/reaction_mob(mob/living/M, method=REAGENT_TOUCH, volume)
+	if(method == REAGENT_TOUCH)
 		if(ishuman(M))
 			var/mob/living/carbon/human/H = M
 
@@ -782,14 +847,18 @@
 	description = "A gross and unidentifiable substance."
 	reagent_state = LIQUID
 	color = "#63DE63"
-	taste_message = "burned food"
+	taste_description = "burned food"
 
-/datum/reagent/questionmark/reaction_mob(mob/living/M, method=TOUCH, volume)
-	if(method == INGEST)
-		M.Stun(2)
-		M.Weaken(2)
-		to_chat(M, "<span class='danger'>Ugh! Eating that was a terrible idea!</span>")
-		M.ForceContractDisease(new /datum/disease/food_poisoning(0))
+/datum/reagent/questionmark/reaction_mob(mob/living/carbon/human/H, method = REAGENT_TOUCH, volume)
+	if(istype(H) && method == REAGENT_INGEST)
+		if(H.dna.species.taste_sensitivity < TASTE_SENSITIVITY_NO_TASTE) // If you can taste it, then you know how awful it is.
+			H.Stun(2, FALSE)
+			H.Weaken(2, FALSE)
+			H.update_canmove()
+			to_chat(H, "<span class='danger'>Ugh! Eating that was a terrible idea!</span>")
+		if(NO_HUNGER in H.dna.species.species_traits) //If you don't eat, then you can't get food poisoning
+			return
+		H.ForceContractDisease(new /datum/disease/food_poisoning(0))
 
 /datum/reagent/msg
 	name = "Monosodium glutamate"
@@ -798,16 +867,18 @@
 	reagent_state = LIQUID
 	color = "#F5F5F5"
 	metabolization_rate = 0.2
-	taste_message = "excellent cuisine"
+	taste_description = "excellent cuisine"
+	taste_mult = 4
 
 /datum/reagent/msg/on_mob_life(mob/living/M)
+	var/update_flags = STATUS_UPDATE_NONE
 	if(prob(5))
 		if(prob(10))
-			M.adjustToxLoss(rand(2.4))
+			update_flags |= M.adjustToxLoss(rand(2,4), FALSE)
 		if(prob(7))
 			to_chat(M, "<span class='warning'>A horrible migraine overpowers you.</span>")
-			M.Stun(rand(2,5))
-	..()
+			update_flags |= M.Stun(rand(2,5), FALSE)
+	return ..() | update_flags
 
 /datum/reagent/cholesterol
 	name = "cholesterol"
@@ -815,25 +886,23 @@
 	description = "Pure cholesterol. Probably not very good for you."
 	reagent_state = LIQUID
 	color = "#FFFAC8"
-	taste_message = "heart attack"
+	taste_description = "heart attack"
 
 /datum/reagent/cholesterol/on_mob_life(mob/living/M)
+	var/update_flags = STATUS_UPDATE_NONE
 	if(volume >= 25 && prob(volume*0.15))
 		to_chat(M, "<span class='warning'>Your chest feels [pick("weird","uncomfortable","nasty","gross","odd","unusual","warm")]!</span>")
-		M.adjustToxLoss(rand(1,2))
+		update_flags |= M.adjustToxLoss(rand(1,2), FALSE)
 	else if(volume >= 45 && prob(volume*0.08))
 		to_chat(M, "<span class='warning'>Your chest [pick("hurts","stings","aches","burns")]!</span>")
-		M.adjustToxLoss(rand(2,4))
-		M.Stun(1)
+		update_flags |= M.adjustToxLoss(rand(2,4), FALSE)
+		update_flags |= M.Stun(1, FALSE)
 	else if(volume >= 150 && prob(volume*0.01))
 		to_chat(M, "<span class='warning'>Your chest is burning with pain!</span>")
-		M.Stun(1)
-		M.Weaken(1)
-		if(ishuman(M))
-			var/mob/living/carbon/human/H = M
-			if(!H.undergoing_cardiac_arrest())
-				H.set_heartattack(TRUE)
-	..()
+		update_flags |= M.Stun(1, FALSE)
+		update_flags |= M.Weaken(1, FALSE)
+		M.ForceContractDisease(new /datum/disease/critical/heart_failure(0))
+	return ..() | update_flags
 
 /datum/reagent/fungus
 	name = "Space fungus"
@@ -841,10 +910,10 @@
 	description = "Scrapings of some unknown fungus found growing on the station walls."
 	reagent_state = LIQUID
 	color = "#C87D28"
-	taste_message = "mold"
+	taste_description = "mold"
 
-/datum/reagent/fungus/reaction_mob(mob/living/M, method=TOUCH, volume)
-	if(method == INGEST)
+/datum/reagent/fungus/reaction_mob(mob/living/M, method=REAGENT_TOUCH, volume)
+	if(method == REAGENT_INGEST)
 		var/ranchance = rand(1,10)
 		if(ranchance == 1)
 			to_chat(M, "<span class='warning'>You feel very sick.</span>")
@@ -862,16 +931,16 @@
 	reagent_state = LIQUID
 	color = "#8EAE7B"
 	process_flags = ORGANIC | SYNTHETIC		//Because apparently ghosts in the shell
-	taste_message = "spooks"
+	taste_description = "spooks"
 
 /datum/reagent/ectoplasm/on_mob_life(mob/living/M)
 	var/spooky_message = pick("You notice something moving out of the corner of your eye, but nothing is there...", "Your eyes twitch, you feel like something you can't see is here...", "You've got the heebie-jeebies.", "You feel uneasy.", "You shudder as if cold...", "You feel something gliding across your back...")
 	if(prob(8))
 		to_chat(M, "<span class='warning'>[spooky_message]</span>")
-	..()
+	return ..()
 
-/datum/reagent/ectoplasm/reaction_mob(mob/living/M, method=TOUCH, volume)
-	if(method == INGEST)
+/datum/reagent/ectoplasm/reaction_mob(mob/living/M, method=REAGENT_TOUCH, volume)
+	if(method == REAGENT_INGEST)
 		var/spooky_eat = pick("Ugh, why did you eat that? Your mouth feels haunted. Haunted with bad flavors.", "Ugh, why did you eat that? It has the texture of ham aspic.  From the 1950s.  Left out in the sun.", "Ugh, why did you eat that? It tastes like a ghost fart.", "Ugh, why did you eat that? It tastes like flavor died.")
 		to_chat(M, "<span class='warning'>[spooky_eat]</span>")
 
@@ -879,11 +948,11 @@
 	if(volume >= 10 && !isspaceturf(T))
 		new /obj/item/reagent_containers/food/snacks/ectoplasm(T)
 
-///Vomit///
-
 /datum/reagent/consumable/bread/reaction_turf(turf/T, volume)
 	if(volume >= 5 && !isspaceturf(T))
 		new /obj/item/reagent_containers/food/snacks/breadslice(T)
+
+		///Vomit///
 
 /datum/reagent/vomit
 	name = "Vomit"
@@ -891,12 +960,11 @@
 	description = "Looks like someone lost their lunch. And then collected it. Yuck."
 	reagent_state = LIQUID
 	color = "#FFFF00"
-	taste_message = "puke"
+	taste_description = "puke"
 
 /datum/reagent/vomit/reaction_turf(turf/T, volume)
 	if(volume >= 5 && !isspaceturf(T))
-		new /obj/effect/decal/cleanable/vomit(T)
-		playsound(T, 'sound/effects/splat.ogg', 50, 1, -3)
+		T.add_vomit_floor()
 
 /datum/reagent/greenvomit
 	name = "Green vomit"
@@ -904,12 +972,11 @@
 	description = "Whoa, that can't be natural. That's horrible."
 	reagent_state = LIQUID
 	color = "#78FF74"
-	taste_message = "puke"
+	taste_description = "puke"
 
 /datum/reagent/greenvomit/reaction_turf(turf/T, volume)
 	if(volume >= 5 && !isspaceturf(T))
-		new /obj/effect/decal/cleanable/vomit/green(T)
-		playsound(T, 'sound/effects/splat.ogg', 50, 1, -3)
+		T.add_vomit_floor(FALSE, TRUE)
 
 ////Lavaland Flora Reagents////
 
@@ -918,32 +985,33 @@
 	id = "entpoly"
 	description = "An ichor, derived from a certain mushroom, makes for a bad time."
 	color = "#1d043d"
-	taste_message = "mold"
+	taste_description = "bitter mushroom"
 
 /datum/reagent/consumable/entpoly/on_mob_life(mob/living/M)
+	var/update_flags = STATUS_UPDATE_NONE
 	if(current_cycle >= 10)
-		M.Paralyse(2)
+		update_flags |= M.Paralyse(2, FALSE)
 	if(prob(20))
-		M.LoseBreath(4)
-		M.adjustBrainLoss(2 * REAGENTS_EFFECT_MULTIPLIER)
-		M.adjustToxLoss(3 * REAGENTS_EFFECT_MULTIPLIER)
-		M.adjustStaminaLoss(10 * REAGENTS_EFFECT_MULTIPLIER)
-		M.EyeBlurry(5)
-	..()
+		update_flags |= M.LoseBreath(4, FALSE)
+		update_flags |= M.adjustBrainLoss(2 * REAGENTS_EFFECT_MULTIPLIER, FALSE)
+		update_flags |= M.adjustToxLoss(3 * REAGENTS_EFFECT_MULTIPLIER, FALSE)
+		update_flags |= M.adjustStaminaLoss(10 * REAGENTS_EFFECT_MULTIPLIER, FALSE)
+		update_flags |= M.EyeBlurry(5, FALSE)
+	return ..() | update_flags
 
 /datum/reagent/consumable/tinlux
 	name = "Tinea Luxor"
 	id = "tinlux"
 	description = "A stimulating ichor which causes luminescent fungi to grow on the skin. "
 	color = "#b5a213"
-	var/light_activated = 0
-	taste_message = "mold"
+	var/light_activated = FALSE
+	taste_description = "tingling mushroom"
 
 /datum/reagent/consumable/tinlux/on_mob_life(mob/living/M)
 	if(!light_activated)
 		M.set_light(2)
-		light_activated = 1
-	..()
+		light_activated = TRUE
+	return ..()
 
 /datum/reagent/consumable/tinlux/on_mob_delete(mob/living/M)
 	M.set_light(0)
@@ -954,10 +1022,11 @@
 	description = "A bubbly paste that heals wounds of the skin."
 	color = "#d3a308"
 	nutriment_factor = 3 * REAGENTS_METABOLISM
-	taste_message = "sweetness"
+	taste_description = "fruity mushroom"
 
 /datum/reagent/consumable/vitfro/on_mob_life(mob/living/M)
+	var/update_flags = STATUS_UPDATE_NONE
 	if(prob(80))
-		M.adjustBruteLoss(-1 * REAGENTS_EFFECT_MULTIPLIER)
-		M.adjustFireLoss(-1 * REAGENTS_EFFECT_MULTIPLIER)
-	..()
+		update_flags |= M.adjustBruteLoss(-1 * REAGENTS_EFFECT_MULTIPLIER, FALSE)
+		update_flags |= M.adjustFireLoss(-1 * REAGENTS_EFFECT_MULTIPLIER, FALSE)
+	return ..() | update_flags

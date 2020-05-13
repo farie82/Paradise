@@ -1,4 +1,5 @@
-var/list/admin_datums = list()
+GLOBAL_LIST_EMPTY(admin_datums)
+GLOBAL_PROTECT(admin_datums) // This is protected because we dont want people making their own admin ranks, for obvious reasons
 
 /datum/admins
 	var/rank			= "Temporary Admin"
@@ -22,7 +23,7 @@ var/list/admin_datums = list()
 	admincaster_signature = "Nanotrasen Officer #[rand(0,9)][rand(0,9)][rand(0,9)]"
 	rank = initial_rank
 	rights = initial_rights
-	admin_datums[ckey] = src
+	GLOB.admin_datums[ckey] = src
 
 /datum/admins/Destroy()
 	..()
@@ -35,11 +36,11 @@ var/list/admin_datums = list()
 		owner.on_holder_add()
 		owner.add_admin_verbs()	//TODO
 		owner.verbs -= /client/proc/readmin
-		admins |= C
+		GLOB.admins |= C
 
 /datum/admins/proc/disassociate()
 	if(owner)
-		admins -= owner
+		GLOB.admins -= owner
 		owner.remove_admin_verbs()
 		owner.holder = null
 		owner = null
@@ -87,7 +88,7 @@ you will have to do something like if(client.holder.rights & R_ADMIN) yourself.
 	return 0
 
 /client/proc/deadmin()
-	admin_datums -= ckey
+	GLOB.admin_datums -= ckey
 	if(holder)
 		holder.disassociate()
 		qdel(holder)

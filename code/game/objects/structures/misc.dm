@@ -11,9 +11,6 @@
 	anchored = 1
 	density = 1
 
-	attackby(obj/item/W as obj, mob/user as mob, params)
-		return attack_hand(user)
-
 	attack_hand(mob/user as mob)
 		to_chat(user, "Civilians: NT is recruiting! Please head SOUTH to the NT Recruitment office to join the station's crew!")
 
@@ -26,11 +23,6 @@
 	anchored = 1
 	density = 0
 
-	attackby(obj/item/W as obj, mob/user as mob, params)
-
-		return attack_hand(user)
-
-
 	attack_hand(mob/user as mob)
 
 
@@ -41,7 +33,7 @@
 					if(user.z != src.z)        return
 
 					user.loc.loc.Exited(user)
-					user.loc = pick(carplist) // In the future, possibly make specific NinjaTele landmarks, and give him an option to teleport to North/South/East/West of SS13 instead of just hijacking a carpspawn.
+					user.loc = pick(GLOB.carplist) // In the future, possibly make specific NinjaTele landmarks, and give him an option to teleport to North/South/East/West of SS13 instead of just hijacking a carpspawn.
 
 
 					playsound(user.loc, 'sound/effects/phasein.ogg', 25, 1)
@@ -92,11 +84,11 @@
 	last_ghost_alert = world.time
 	attack_atom = src
 	if(active)
-		processing_objects.Add(src)
+		START_PROCESSING(SSobj, src)
 
 /obj/structure/ghost_beacon/Destroy()
 	if(active)
-		processing_objects.Remove(src)
+		STOP_PROCESSING(SSobj, src)
 	attack_atom = null
 	return ..()
 
@@ -111,9 +103,9 @@
 		return
 	to_chat(user, "<span class='notice'>You [active ? "disable" : "enable"] \the [src].</span>")
 	if(active)
-		processing_objects.Remove(src)
+		STOP_PROCESSING(SSobj, src)
 	else
-		processing_objects.Add(src)
+		START_PROCESSING(SSobj, src)
 	active = !active
 
 /obj/structure/ghost_beacon/process()

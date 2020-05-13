@@ -11,11 +11,15 @@
 	throw_speed = 2
 	throw_range = 7
 	force = 10
+	container_type = AMOUNT_VISIBLE
 	materials = list(MAT_METAL=90)
 	attack_verb = list("slammed", "whacked", "bashed", "thunked", "battered", "bludgeoned", "thrashed")
+	dog_fashion = /datum/dog_fashion/back
+	resistance_flags = FIRE_PROOF
 	var/max_water = 50
 	var/last_use = 1.0
 	var/safety = 1
+	var/refilling = FALSE
 	var/sprite_name = "fire_extinguisher"
 	var/power = 5 //Maximum distance launched water will travel
 	var/precision = 0 //By default, turfs picked from a spray are random, set to 1 to make it always have at least one water effect per row
@@ -34,16 +38,15 @@
 	materials = list()
 	max_water = 30
 	sprite_name = "miniFE"
+	dog_fashion = null
 
 /obj/item/extinguisher/examine(mob/user)
-	if(..(user, 0))
-		to_chat(usr, "[bicon(src)] [src.name] contains:")
-		if(reagents && reagents.reagent_list.len)
-			for(var/datum/reagent/R in reagents.reagent_list)
-				to_chat(user, "<span class='notice'>[R.volume] units of [R.name]</span>")
+	. = ..()
+	. += "<span class='notice'>The safety is [safety ? "on" : "off"].</span>"
 
 
 /obj/item/extinguisher/New()
+	..()
 	create_reagents(max_water)
 	reagents.add_reagent("water", max_water)
 
@@ -53,6 +56,13 @@
 	src.desc = "The safety is [safety ? "on" : "off"]."
 	to_chat(user, "The safety is [safety ? "on" : "off"].")
 	return
+
+/obj/item/extinguisher/attack_obj(obj/O, mob/living/user)
+	if(AttemptRefill(O, user))
+		refilling = TRUE
+		return FALSE
+	else
+		return ..()
 
 /obj/item/extinguisher/proc/AttemptRefill(atom/target, mob/user)
 	if(istype(target, /obj/structure/reagent_dispensers/watertank) && target.Adjacent(user))
@@ -77,11 +87,15 @@
 		return 0
 
 /obj/item/extinguisher/afterattack(atom/target, mob/user , flag)
+	. = ..()
 	//TODO; Add support for reagents in water.
 	if(target.loc == user)//No more spraying yourself when putting your extinguisher away
 		return
-	if(AttemptRefill(target, user))
+
+	if(refilling)
+		refilling = FALSE
 		return
+
 	if(!safety)
 		if(src.reagents.total_volume < 1)
 			to_chat(usr, "<span class='danger'>\The [src] is empty.</span>")
@@ -98,8 +112,8 @@
 
 		if(usr.buckled && isobj(usr.buckled) && !usr.buckled.anchored )
 			spawn(0)
-				var/obj/structure/stool/bed/chair/C = null
-				if(istype(usr.buckled, /obj/structure/stool/bed/chair))
+				var/obj/structure/chair/C = null
+				if(istype(usr.buckled, /obj/structure/chair))
 					C = usr.buckled
 				var/obj/B = usr.buckled
 				var/movementdirection = turn(direction,180)

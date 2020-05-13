@@ -1,5 +1,4 @@
-
-var/global/datum/prizes/global_prizes = new
+GLOBAL_DATUM_INIT(global_prizes, /datum/prizes, new())
 
 /datum/prizes
 	var/list/prizes = list()
@@ -9,9 +8,12 @@ var/global/datum/prizes/global_prizes = new
 		prizes += new itempath()
 
 /datum/prizes/proc/PlaceOrder(var/obj/machinery/prize_counter/prize_counter, var/itemID)
+	if(!prize_counter.Adjacent(usr))
+		to_chat(usr, "<span class='warning'>You need to be closer!</span>")
+		return
 	if(!prize_counter)
 		return 0
-	var/datum/prize_item/item = global_prizes.prizes[itemID]
+	var/datum/prize_item/item = GLOB.global_prizes.prizes[itemID]
 	if(!item)
 		return 0
 	if(prize_counter.tickets >= item.cost)
@@ -76,7 +78,7 @@ var/global/datum/prizes/global_prizes = new
 /datum/prize_item/cards
 	name = "Deck of Cards"
 	desc = "Anyone fancy a game of 52-card Pickup?"
-	typepath = /obj/item/toy/cards/deck
+	typepath = /obj/item/deck/cards
 	cost = 25
 
 /datum/prize_item/crayons
@@ -154,8 +156,8 @@ var/global/datum/prizes/global_prizes = new
 	cost = 65
 
 /datum/prize_item/plushie
-	name = "Random Animal Plushie"
-	desc = "A colorful animal-shaped plush toy."
+	name = "Random Plushie"
+	desc = "A colorful plush toy."
 	typepath = /obj/item/toy/prizeball/plushie
 	cost = 75
 
@@ -219,6 +221,12 @@ var/global/datum/prizes/global_prizes = new
 	typepath = /obj/item/spellbook/oneuse/fake_gib
 	cost = 100
 
+/datum/prize_item/fakefingergun
+	name = "Miming Manual : Finger Gun"
+	desc = "..."
+	typepath = /obj/item/spellbook/oneuse/mime/fingergun/fake
+	cost = 100
+
 /datum/prize_item/magic_conch
 	name = "Magic Conch Shell"
 	desc = "All hail the magic conch!"
@@ -267,6 +275,12 @@ var/global/datum/prizes/global_prizes = new
 	typepath = /obj/item/toy/griffin
 	cost = 125
 
+/datum/prize_item/codex_gigas
+	name = "Toy Codex Gigas"
+	desc = "For helping you come up with writing ideas for your diabolical adventures."
+	typepath = /obj/item/toy/codex_gigas/
+	cost = 75
+
 /datum/prize_item/esword
 	name = "Toy Energy Sword"
 	desc = "A plastic replica of an energy blade."
@@ -303,8 +317,14 @@ var/global/datum/prizes/global_prizes = new
 	typepath = /obj/item/twohanded/toy/chainsaw
 	cost = 200
 
+/datum/prize_item/headpat
+	name = "Gloves of Headpats"
+	desc = "Gloves that fill you with an irresistable urge to give headpats."
+	typepath = /obj/item/clothing/gloves/fingerless/rapid/headpat
+	cost = 150
+
 /datum/prize_item/bike
 	name = "Awesome Bike!"
 	desc = "WOAH."
-	typepath = /obj/structure/stool/bed/chair/wheelchair/bike
+	typepath = /obj/structure/chair/wheelchair/bike
 	cost = 10000	//max stack + 1 tickets.

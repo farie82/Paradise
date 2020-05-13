@@ -3,7 +3,7 @@
 	endWhen = 10
 
 /datum/event/mundane_news/announce()
-	var/datum/trade_destination/affected_dest = pickweight(weighted_mundaneevent_locations)
+	var/datum/trade_destination/affected_dest = pickweight(GLOB.weighted_mundaneevent_locations)
 	var/event_type = 0
 	if(affected_dest.viable_mundane_events.len)
 		event_type = pick(affected_dest.viable_mundane_events)
@@ -109,9 +109,9 @@
 					newMsg.body += "and their partner announced the birth of their [pick("first","second","third")] child on [affected_dest.name] early this morning. \
 					Doctors say the child is well, and the parents are considering "
 					if(prob(50))
-						newMsg.body += capitalize(pick(first_names_female))
+						newMsg.body += capitalize(pick(GLOB.first_names_female))
 					else
-						newMsg.body += capitalize(pick(first_names_male))
+						newMsg.body += capitalize(pick(GLOB.first_names_male))
 					newMsg.body += " for the name."
 				else if(prob(50))
 					newMsg.body += "announced their [pick("split","break up","marriage","engagement")] with [pick("TV host","webcast personality","superstar","model","actor","singer")] \
@@ -126,11 +126,11 @@
 				Nyx Daily is offering discount tickets for two to see [random_name(pick(MALE,FEMALE))] live in return for eyewitness reports and up to the minute coverage."
 
 
-	for(var/datum/feed_channel/FC in news_network.network_channels)
+	for(var/datum/feed_channel/FC in GLOB.news_network.network_channels)
 		if(FC.channel_name == "Nyx Daily")
 			FC.messages += newMsg
 			break
-	for(var/obj/machinery/newscaster/NEWSCASTER in allCasters)
+	for(var/obj/machinery/newscaster/NEWSCASTER in GLOB.allNewscasters)
 		NEWSCASTER.newsAlert("Nyx Daily")
 
 /datum/event/trivial_news
@@ -141,13 +141,13 @@
 	var/datum/feed_message/newMsg = new /datum/feed_message
 	newMsg.author = "Editor Mike Hammers"
 	//newMsg.is_admin_message = 1
-	var/datum/trade_destination/affected_dest = pick(weighted_mundaneevent_locations)
+	var/datum/trade_destination/affected_dest = pick(GLOB.weighted_mundaneevent_locations)
 	newMsg.body = pick(file2list("config/news/trivial.txt"))
 	newMsg.body = replacetext(newMsg.body,"{{AFFECTED}}",affected_dest.name)
 
-	for(var/datum/feed_channel/FC in news_network.network_channels)
+	for(var/datum/feed_channel/FC in GLOB.news_network.network_channels)
 		if(FC.channel_name == "The Gibson Gazette")
 			FC.messages += newMsg
 			break
-	for(var/obj/machinery/newscaster/NEWSCASTER in allCasters)
+	for(var/obj/machinery/newscaster/NEWSCASTER in GLOB.allNewscasters)
 		NEWSCASTER.newsAlert("The Gibson Gazette")

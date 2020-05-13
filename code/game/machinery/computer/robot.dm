@@ -4,7 +4,7 @@
 	icon = 'icons/obj/computer.dmi'
 	icon_keyboard = "tech_key"
 	icon_screen = "robot"
-	req_access = list(access_robotics)
+	req_access = list(ACCESS_ROBOTICS)
 	circuit = /obj/item/circuitboard/robotics
 	var/temp = null
 
@@ -20,12 +20,7 @@
 		return
 	if(stat & (NOPOWER|BROKEN))
 		return
-	var/datum/game_mode/nations/mode = get_nations_mode()
-	if(!mode)
-		ui_interact(user)
-	else
-		if(mode.kickoff)
-			to_chat(user, "<span class='warning'>You have been locked out from this console!</span>")
+	ui_interact(user)
 
 /obj/machinery/computer/robotics/proc/is_authenticated(var/mob/user as mob)
 	if(user.can_admin_interact())
@@ -41,7 +36,7 @@
 		ui.open()
 		ui.set_auto_update(1)
 
-/obj/machinery/computer/robotics/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/computer/robotics/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 	var/list/robots = get_cyborgs(user)
 	if(robots.len)
@@ -172,7 +167,7 @@
 		message_admins("<span class='notice'>[key_name_admin(usr)] detonated all cyborgs!</span>")
 		log_game("\<span class='notice'>[key_name(usr)] detonated all cyborgs!</span>")
 
-		for(var/mob/living/silicon/robot/R in mob_list)
+		for(var/mob/living/silicon/robot/R in GLOB.mob_list)
 			if(istype(R, /mob/living/silicon/robot/drone))
 				continue
 			// Ignore antagonistic cyborgs
@@ -190,7 +185,7 @@
 /obj/machinery/computer/robotics/proc/get_cyborgs(var/mob/operator)
 	var/list/robots = list()
 
-	for(var/mob/living/silicon/robot/R in mob_list)
+	for(var/mob/living/silicon/robot/R in GLOB.mob_list)
 		// Ignore drones
 		if(istype(R, /mob/living/silicon/robot/drone))
 			continue
@@ -240,6 +235,6 @@
 /obj/machinery/computer/robotics/proc/get_cyborg_by_name(var/name)
 	if(!name)
 		return
-	for(var/mob/living/silicon/robot/R in mob_list)
+	for(var/mob/living/silicon/robot/R in GLOB.mob_list)
 		if(R.name == name)
 			return R

@@ -2,8 +2,8 @@
 // General-purpose CC official. Can hear out grievances, investigate cases, issue demotions, etc.
 /datum/job/ntnavyofficer
 	title = "Nanotrasen Navy Officer"
-	flag = CENTCOM
-	department_flag = CENTCOM
+	flag = JOB_CENTCOM
+	department_flag = JOB_CENTCOM // This gets its job as its own flag because admin jobs dont have flags
 	total_positions = 5
 	spawn_positions = 5
 	supervisors = "the admins"
@@ -34,14 +34,25 @@
 		/obj/item/implant/dust
 	)
 	backpack = /obj/item/storage/backpack/satchel
+	backpack_contents = list(
+		/obj/item/stamp/centcom = 1,
+	)
 	box = /obj/item/storage/box/centcomofficer
+	cybernetic_implants = list(
+		/obj/item/organ/internal/cyberimp/chest/nutriment/plus
+	)
 
+/datum/outfit/job/ntnavyofficer/post_equip(mob/living/carbon/human/H, visualsOnly = FALSE)
+	. = ..()
+	if(visualsOnly)
+		return
+	H.mind.offstation_role = TRUE
 
 // CC Officials who lead ERTs, Death Squads, etc.
 /datum/job/ntspecops
 	title = "Special Operations Officer"
-	flag = CENTCOM
-	department_flag = CENTCOM
+	flag = JOB_CENTCOM
+	department_flag = JOB_CENTCOM // This gets its job as its own flag because admin jobs dont have flags
 	total_positions = 5
 	spawn_positions = 5
 	supervisors = "the admins"
@@ -58,10 +69,10 @@
 /datum/outfit/job/ntspecops
 	name = "Special Operations Officer"
 	jobtype = /datum/job/ntspecops
-	uniform = /obj/item/clothing/under/rank/centcom_commander
+	uniform = /obj/item/clothing/under/rank/centcom/captain
 	suit = /obj/item/clothing/suit/space/deathsquad/officer
-	back = /obj/item/storage/backpack/security
-	belt = /obj/item/gun/energy/pulse/pistol/m1911
+	back = /obj/item/storage/backpack/ert/security
+	belt = /obj/item/storage/belt/military/assault
 	gloves = /obj/item/clothing/gloves/combat
 	shoes = /obj/item/clothing/shoes/combat
 	mask = /obj/item/clothing/mask/cigarette/cigar/cohiba
@@ -75,7 +86,6 @@
 	backpack = /obj/item/storage/backpack/satchel
 	backpack_contents = list(
 		/obj/item/clothing/shoes/magboots/advance = 1,
-		/obj/item/twohanded/dualsaber/red = 1,
 		/obj/item/storage/box/zipties = 1
 	)
 	implants = list(
@@ -84,7 +94,13 @@
 	)
 	cybernetic_implants = list(
 		/obj/item/organ/internal/cyberimp/eyes/xray,
-		/obj/item/organ/internal/cyberimp/brain/anti_drop,
 		/obj/item/organ/internal/cyberimp/brain/anti_stun,
-		/obj/item/organ/internal/cyberimp/chest/nutriment/plus
+		/obj/item/organ/internal/cyberimp/chest/nutriment/plus,
+		/obj/item/organ/internal/cyberimp/arm/combat/centcom
 	)
+
+/datum/outfit/job/ntspecops/post_equip(mob/living/carbon/human/H, visualsOnly = FALSE)
+	. = ..()
+	if(visualsOnly)
+		return
+	H.mind.offstation_role = TRUE

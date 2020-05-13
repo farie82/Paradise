@@ -12,7 +12,7 @@
 	speed = 0
 	var/phasing = 0
 	see_in_dark = 8
-	see_invisible = SEE_INVISIBLE_MINIMUM
+	lighting_alpha = LIGHTING_PLANE_ALPHA_MOSTLY_INVISIBLE
 
 	universal_speak = 1
 
@@ -49,7 +49,7 @@
 
 /mob/living/simple_animal/ascendant_shadowling/proc/announce(var/text, var/size = 4, var/new_sound = null)
 	var/message = "<font size=[size]><span class='shadowling'><b>\"[text]\"</font></span>"
-	for(var/mob/M in player_list)
+	for(var/mob/M in GLOB.player_list)
 		if(!isnewplayer(M) && M.client)
 			to_chat(M, message)
 			if(new_sound)

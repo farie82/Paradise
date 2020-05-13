@@ -7,11 +7,12 @@
 	var/turf/teleport_target
 
 /obj/machinery/abductor/pad/proc/Warp(mob/living/target)
-	target.Move(src.loc)
+	if(!target.buckled)
+		target.forceMove(get_turf(src))
 
 /obj/machinery/abductor/pad/proc/Send()
 	if(teleport_target == null)
-		teleport_target = teleportlocs[pick(teleportlocs)]
+		teleport_target = GLOB.teleportlocs[pick(GLOB.teleportlocs)]
 	flick("alien-pad", src)
 	for(var/mob/living/target in loc)
 		target.forceMove(teleport_target)
@@ -46,7 +47,5 @@
 	duration = 80
 
 /obj/effect/temp_visual/teleport_abductor/New()
-	var/datum/effect_system/spark_spread/S = new
-	S.set_up(10,0,loc)
-	S.start()
+	do_sparks(10, 0, loc)
 	..()

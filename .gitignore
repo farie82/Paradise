@@ -10,6 +10,7 @@
 !config/**/*/
 
 #ignore other, specific files and folers
+*.before
 data/
 /_maps/map_files/backup/*
 /_maps/map_files/**/backup/*
@@ -20,3 +21,17 @@ data/
 *.db
 stddef.dm
 .atom-build.json
+*.vscode/*
+!/.vscode/extensions.json
+
+# ignore DMI tool build cache
+/tools/dmitool/bin/
+/tools/dmitool/.gradle/
+/tools/dmitool/.settings/
+/tools/dmitool/.classpath
+/tools/dmitool/.project
+
+# ignore midi2piano build cache
+/tools/midi2piano/midi2piano/obj/*
+
+

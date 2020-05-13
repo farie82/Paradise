@@ -43,7 +43,7 @@ AI MODULES
 			src.transmitInstructions(comp.current, usr)
 			to_chat(comp.current, "These are your laws now:")
 			comp.current.show_laws()
-			for(var/mob/living/silicon/robot/R in mob_list)
+			for(var/mob/living/silicon/robot/R in GLOB.mob_list)
 				if(R.lawupdate && (R.connected_ai == comp.current))
 					to_chat(R, "These are your laws now:")
 					R.show_laws()
@@ -84,7 +84,7 @@ AI MODULES
 
 /obj/item/aiModule/proc/log_law_changes(var/mob/living/silicon/ai/target, var/mob/sender)
 	var/time = time2text(world.realtime,"hh:mm:ss")
-	lawchanges.Add("[time] <B>:</B> [sender.name]([sender.key]) used [src.name] on [target.name]([target.key])")
+	GLOB.lawchanges.Add("[time] <B>:</B> [sender.name]([sender.key]) used [src.name] on [target.name]([target.key])")
 	log_and_message_admins("used [src.name] on [target.name]([target.key])")
 
 /obj/item/aiModule/proc/addAdditionalLaws(var/mob/living/silicon/ai/target, var/mob/sender)
@@ -114,7 +114,7 @@ AI MODULES
 	var/law = text("Safeguard []. Individuals that threaten [] are not crew and must be eliminated.'", targetName, targetName)
 	to_chat(target, law)
 	target.add_supplied_law(4, law)
-	lawchanges.Add("The law specified [targetName]")
+	GLOB.lawchanges.Add("The law specified [targetName]")
 
 /******************** oneCrewMember ********************/
 /obj/item/aiModule/oneCrewMember
@@ -141,12 +141,11 @@ AI MODULES
 	if(!is_special_character(target)) // Makes sure the AI isn't a traitor before changing their law 0. --NeoFite
 		to_chat(target, law)
 		target.set_zeroth_law(law)
-		lawchanges.Add("The law specified [targetName]")
+		GLOB.lawchanges.Add("The law specified [targetName]")
 	else
-		to_chat(target, "[sender.real_name] attempted to modify your zeroth law.")// And lets them know that someone tried. --NeoFite
-
-		to_chat(target, "It would be in your best interest to play along with [sender.real_name] that [law]")
-		lawchanges.Add("The law specified [targetName], but the AI's existing law 0 cannot be overridden.")
+		to_chat(target, "<span class='bnotice'>[sender.real_name] attempted to modify your zeroth law.</span>")// And lets them know that someone tried. --NeoFite
+		to_chat(target, "<span class='bnotice'>It would be in your best interest to play along with [sender.real_name] that [law]</span>")
+		GLOB.lawchanges.Add("The law specified [targetName], but the AI's existing law 0 cannot be overridden.")
 
 /******************** ProtectStation ********************/
 /obj/item/aiModule/protectStation
@@ -162,21 +161,6 @@ AI MODULES
 	var/law = "Protect the space station against damage. Anyone you see harming the station is to be no longer considered crew, and is a threat to the station which must be neutralized."
 	to_chat(target, law)
 	target.add_supplied_law(5, law)
-
-/******************** Quarantine ********************/
-/obj/item/aiModule/quarantine
-	name = "\improper 'Quarantine' AI module"
-	desc = "A 'quarantine' AI module: 'The station is under a quarantine. Do not permit anyone to leave. Prevent, by any means necessary, crew members from leaving. It is impossible to harm a crew members while preventing them from leaving.'"
-	origin_tech = "programming=3;biotech=2;materials=4"
-
-/obj/item/aiModule/quarantine/attack_self(var/mob/user as mob)
-	..()
-
-/obj/item/aiModule/quarantine/addAdditionalLaws(var/mob/living/silicon/ai/target, var/mob/sender)
-	..()
-	var/law = "The station is under a quarantine. Do not permit anyone to leave. Prevent, by any means necessary, anyone from leaving. It is impossible to harm anyone while preventing them from leaving."
-	to_chat(target, law)
-	target.add_supplied_law(8, law)
 
 /******************** OxygenIsToxicToHumans ********************/
 /obj/item/aiModule/oxygen
@@ -218,7 +202,7 @@ AI MODULES
 	if(!lawpos || lawpos < MIN_SUPPLIED_LAW_NUMBER)
 		lawpos = MIN_SUPPLIED_LAW_NUMBER
 	target.add_supplied_law(lawpos, law)
-	lawchanges.Add("The law was '[newFreeFormLaw]'")
+	GLOB.lawchanges.Add("The law was '[newFreeFormLaw]'")
 
 /obj/item/aiModule/freeform/install(var/obj/machinery/computer/C)
 	if(!newFreeFormLaw)
@@ -237,11 +221,11 @@ AI MODULES
 	log_law_changes(target, sender)
 
 	if(!is_special_character(target))
-		target.set_zeroth_law("")
+		target.clear_zeroth_law()
 	target.laws.clear_supplied_laws()
 	target.laws.clear_ion_laws()
 
-	to_chat(target, "[sender.real_name] attempted to reset your laws using a reset module.")
+	to_chat(target, "<span class='bnotice'>[sender.real_name] attempted to reset your laws using a reset module.</span>")
 	target.show_laws()
 
 /******************** Purge ********************/
@@ -253,8 +237,8 @@ AI MODULES
 /obj/item/aiModule/purge/transmitInstructions(var/mob/living/silicon/ai/target, var/mob/sender)
 	..()
 	if(!is_special_character(target))
-		target.set_zeroth_law("")
-	to_chat(target, "[sender.real_name] attempted to wipe your laws using a purge module.")
+		target.clear_zeroth_law()
+	to_chat(target, "<span class='bnotice'>[sender.real_name] attempted to wipe your laws using a purge module.</span>")
 	target.clear_supplied_laws()
 	target.clear_ion_laws()
 	target.clear_inherent_laws()
@@ -272,6 +256,13 @@ AI MODULES
 	desc = "An 'Crewsimov' Core AI Module: 'Reconfigures the AI's core laws.'"
 	origin_tech = "programming=3;materials=4"
 	laws = new/datum/ai_laws/crewsimov
+
+/******************* Quarantine ********************/
+/obj/item/aiModule/quarantine
+	name = "\improper 'Quarantine' core AI module"
+	desc = "A 'Quarantine' Core AI Module: 'Reconfigures the AI's core laws.'"
+	origin_tech = "programming=3;materials=4"
+	laws = new/datum/ai_laws/quarantine
 
 /******************** NanoTrasen ********************/
 /obj/item/aiModule/nanotrasen // -- TLE
@@ -340,7 +331,7 @@ AI MODULES
 	..()
 	var/law = "[newFreeFormLaw]"
 	target.add_inherent_law(law)
-	lawchanges.Add("The law is '[newFreeFormLaw]'")
+	GLOB.lawchanges.Add("The law is '[newFreeFormLaw]'")
 
 /obj/item/aiModule/freeformcore/install(var/obj/machinery/computer/C)
 	if(!newFreeFormLaw)
@@ -366,7 +357,7 @@ AI MODULES
 	//	..()    //We don't want this module reporting to the AI who dun it. --NEO
 	log_law_changes(target, sender)
 
-	lawchanges.Add("The law is '[newFreeFormLaw]'")
+	GLOB.lawchanges.Add("The law is '[newFreeFormLaw]'")
 	to_chat(target, "<span class='warning'>BZZZZT</span>")
 	var/law = "[newFreeFormLaw]"
 	target.add_ion_law(law)

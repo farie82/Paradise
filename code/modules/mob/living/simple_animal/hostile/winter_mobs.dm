@@ -32,19 +32,18 @@
 	bodytemperature = 73.0		//it's made of snow and hatred, so it's pretty cold.
 	maxbodytemp = 280.15		//at roughly 7 C, these will start melting (dying) from the warmth. Mind over matter or something.
 	heat_damage_per_tick = 10	//Now With Rapid Thawing Action!
-	gold_core_spawnable = CHEM_MOB_SPAWN_HOSTILE
+	gold_core_spawnable = HOSTILE_SPAWN
 
 
 /mob/living/simple_animal/hostile/winter/snowman/death(gibbed)
-	if(prob(50) && !ranged)		//50% chance to drop candy cane sword on death, if it has one to drop
-		loot = list(/obj/item/melee/candy_sword)
-	if(prob(20))	//chance to become a stationary snowman structure instead of a corpse
-		loot.Add(/obj/structure/snowman)
-		deathmessage = "shimmers as its animating magic fades away!"
-		del_on_death = 1
-		..()		//this is just to make sure it gets properly killed before we qdel it
-	else
-		..()
+	if(can_die())
+		if(prob(50) && !ranged)		//50% chance to drop candy cane sword on death, if it has one to drop
+			loot = list(/obj/item/melee/candy_sword)
+		if(prob(20))	//chance to become a stationary snowman structure instead of a corpse
+			loot.Add(/obj/structure/snowman)
+			deathmessage = "shimmers as its animating magic fades away!"
+			del_on_death = 1
+	return ..()
 
 /mob/living/simple_animal/hostile/winter/snowman/ranged
 	maxHealth = 50
@@ -65,7 +64,7 @@
 	health = 80
 	melee_damage_lower = 5
 	melee_damage_upper = 10
-	gold_core_spawnable = CHEM_MOB_SPAWN_HOSTILE
+	gold_core_spawnable = HOSTILE_SPAWN
 
 /mob/living/simple_animal/hostile/winter/santa
 	maxHealth = 150		//if this seems low for a "boss", it's because you have to fight him multiple times, with him fully healing between stages
@@ -79,7 +78,10 @@
 	icon_dead = "santa-dead"
 
 /mob/living/simple_animal/hostile/winter/santa/death(gibbed)
-	..()
+	// Only execute the below if we successfully died
+	. = ..(gibbed)
+	if(!.)
+		return FALSE
 	if(death_message)
 		visible_message(death_message)
 	if(next_stage)
@@ -115,7 +117,7 @@
 	maxHealth = 250
 	health = 250
 	ranged = 1
-	rapid = 1
+	rapid = 3
 	speed = 0	//he's lost some weight from the fighting
 	projectiletype = /obj/item/projectile/ornament
 	retreat_distance = 3
@@ -133,11 +135,15 @@
 	melee_damage_upper = 30		//that's gonna leave a mark, for sure
 
 /mob/living/simple_animal/hostile/winter/santa/stage_4/death(gibbed)
-	to_chat(world, "<span class='notice'><hr></span>")
-	to_chat(world, "<span class='notice'>THE FAT MAN HAS FALLEN!</span>")
-	to_chat(world, "<span class='notice'>SANTA CLAUS HAS BEEN DEFEATED!</span>")
-	to_chat(world, "<span class='notice'><hr></span>")
-	..()
+	if(can_die())
+		to_chat(world, "<span class='notice'><hr></span>")
+		to_chat(world, "<span class='notice'>THE FAT MAN HAS FALLEN!</span>")
+		to_chat(world, "<span class='notice'>SANTA CLAUS HAS BEEN DEFEATED!</span>")
+		to_chat(world, "<span class='notice'><hr></span>")
+	// Only execute the below if we successfully died
+	. = ..()
+	if(!.)
+		return FALSE
 	var/obj/item/grenade/clusterbuster/xmas/X = new /obj/item/grenade/clusterbuster/xmas(get_turf(src))
 	var/obj/item/grenade/clusterbuster/xmas/Y = new /obj/item/grenade/clusterbuster/xmas(get_turf(src))
 	X.prime()

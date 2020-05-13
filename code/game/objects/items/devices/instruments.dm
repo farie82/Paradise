@@ -4,7 +4,8 @@
 	icon = 'icons/obj/musician.dmi'
 	lefthand_file = 'icons/mob/inhands/equipment/instruments_lefthand.dmi'
 	righthand_file = 'icons/mob/inhands/equipment/instruments_righthand.dmi'
-	burn_state = FLAMMABLE
+	resistance_flags = FLAMMABLE
+	max_integrity = 100
 	var/datum/song/handheld/song
 	var/instrumentId = "generic"
 	var/instrumentExt = "mid"
@@ -19,7 +20,7 @@
 
 /obj/item/instrument/suicide_act(mob/user)
 	user.visible_message("<span class='suicide'>[user] begins to play 'Gloomy Sunday'! It looks like [user.p_theyre()] trying to commit suicide!</span>")
-	return (BRUTELOSS)
+	return BRUTELOSS
 
 /obj/item/instrument/Initialize(mapload)
 	song.tempo = song.sanitize_tempo(song.tempo) // tick_lag isn't set when the map is loaded
@@ -34,7 +35,7 @@
 
 	song.ui_interact(user, ui_key, ui, force_open)
 
-/obj/item/instrument/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/item/instrument/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	return song.ui_data(user, ui_key, state)
 
 /obj/item/instrument/Topic(href, href_list)
@@ -55,7 +56,7 @@
 	desc = "A golden musical instrument with four strings and a bow. \"The devil went down to space, he was looking for an assistant to grief.\""
 	icon_state = "golden_violin"
 	item_state = "golden_violin"
-	burn_state = LAVA_PROOF
+	resistance_flags = LAVA_PROOF | FIRE_PROOF | ACID_PROOF
 
 /obj/item/instrument/piano_synth
 	name = "synthesizer"
@@ -166,8 +167,9 @@
 	reqs = list(/obj/item/stack/sheet/wood = 5,
 				/obj/item/stack/cable_coil = 6,
 				/obj/item/stack/tape_roll = 5)
-	tools = list(/obj/item/screwdriver, /obj/item/wirecutters)
+	tools = list(TOOL_SCREWDRIVER, TOOL_WIRECUTTER)
 	time = 80
+	category = CAT_MISC
 
 /datum/crafting_recipe/guitar
 	name = "Guitar"
@@ -175,8 +177,9 @@
 	reqs = list(/obj/item/stack/sheet/wood = 5,
 				/obj/item/stack/cable_coil = 6,
 				/obj/item/stack/tape_roll = 5)
-	tools = list(/obj/item/screwdriver, /obj/item/wirecutters)
+	tools = list(TOOL_SCREWDRIVER, TOOL_WIRECUTTER)
 	time = 80
+	category = CAT_MISC
 
 /datum/crafting_recipe/eguitar
 	name = "Electric Guitar"
@@ -184,5 +187,6 @@
 	reqs = list(/obj/item/stack/sheet/metal = 5,
 				/obj/item/stack/cable_coil = 6,
 				/obj/item/stack/tape_roll = 5)
-	tools = list(/obj/item/screwdriver, /obj/item/wirecutters)
+	tools = list(TOOL_SCREWDRIVER, TOOL_WIRECUTTER)
 	time = 80
+	category = CAT_MISC

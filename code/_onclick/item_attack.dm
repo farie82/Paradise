@@ -1,20 +1,34 @@
 /obj/item/proc/melee_attack_chain(mob/user, atom/target, params)
-	if(pre_attackby(target, user, params))
+	if(!tool_attack_chain(user, target) && pre_attackby(target, user, params))
 		// Return 1 in attackby() to prevent afterattack() effects (when safely moving items for example)
 		var/resolved = target.attackby(src, user, params)
 		if(!resolved && target && !QDELETED(src))
 			afterattack(target, user, 1, params) // 1: clicking something Adjacent
 
+//Checks if the item can work as a tool, calling the appropriate tool behavior on the target
+//Note that if tool_act returns TRUE, then the tool won't call attack_by.
+/obj/item/proc/tool_attack_chain(mob/user, atom/target)
+	if(!tool_behaviour)
+		return FALSE
+	return target.tool_act(user, src, tool_behaviour)
+
 // Called when the item is in the active hand, and clicked; alternately, there is an 'activate held object' verb or you can hit pagedown.
 /obj/item/proc/attack_self(mob/user)
+	if(SEND_SIGNAL(src, COMSIG_ITEM_ATTACK_SELF, user) & COMPONENT_NO_INTERACT)
+		return
 	return
 
 /obj/item/proc/pre_attackby(atom/A, mob/living/user, params) //do stuff before attackby!
+	if(is_hot(src) && A.reagents && !ismob(A))
+		to_chat(user, "<span class='notice'>You heat [A] with [src].</span>")
+		A.reagents.temperature_reagents(is_hot(src))
 	return TRUE //return FALSE to avoid calling attackby after this proc does stuff
 
 // No comment
 /atom/proc/attackby(obj/item/W, mob/user, params)
-	return SendSignal(COMSIG_PARENT_ATTACKBY, W, user, params)
+	if(SEND_SIGNAL(src, COMSIG_PARENT_ATTACKBY, W, user, params) & COMPONENT_NO_AFTERATTACK)
+		return TRUE
+	return FALSE
 
 /obj/attackby(obj/item/I, mob/living/user, params)
 	return ..() || (can_be_hit && I.attack_obj(src, user))
@@ -26,9 +40,10 @@
 	return I.attack(src, user)
 
 /obj/item/proc/attack(mob/living/M, mob/living/user, def_zone)
+	SEND_SIGNAL(src, COMSIG_ITEM_ATTACK, M, user)
+	SEND_SIGNAL(user, COMSIG_MOB_ITEM_ATTACK, M, user)
 	if(flags & (NOBLUDGEON))
 		return 0
-
 	if(can_operate(M))  //Checks if mob is lying down on table for surgery
 		if(istype(src,/obj/item/robot_parts))//popup override for direct attach
 			if(!attempt_initiate_surgery(src, M, user,1))
@@ -42,28 +57,29 @@
 					return 0
 				else
 					return 1
+		var/obj/item/organ/external/O = M.get_organ(user.zone_selected)
+		if((is_sharp(src) || (isscrewdriver(src) && O.is_robotic())) && user.a_intent == INTENT_HELP)
+			if(!attempt_initiate_surgery(src, M, user))
+				return FALSE
+			else
+				return TRUE
 
-		if(isscrewdriver(src) && ismachine(M))
-			if(!attempt_initiate_surgery(src, M, user))
-				return 0
-			else
-				return 1
-		if(is_sharp(src))
-			if(!attempt_initiate_surgery(src, M, user))
-				return 0
-			else
-				return 1
+	if(force && HAS_TRAIT(user, TRAIT_PACIFISM))
+		to_chat(user, "<span class='warning'>You don't want to harm other living beings!</span>")
+		return
 
 	if(!force)
 		playsound(loc, 'sound/weapons/tap.ogg', get_clamped_volume(), 1, -1)
-	else if(hitsound)
-		playsound(loc, hitsound, get_clamped_volume(), 1, -1)
+	else
+		SEND_SIGNAL(M, COMSIG_ITEM_ATTACK)
+		if(hitsound)
+			playsound(loc, hitsound, get_clamped_volume(), 1, -1)
 
 	user.lastattacked = M
 	M.lastattacker = user
 
 	user.do_attack_animation(M)
-	M.attacked_by(src, user, def_zone)
+	. = M.attacked_by(src, user, def_zone)
 
 	add_attack_logs(user, M, "Attacked with [name] (INTENT: [uppertext(user.a_intent)]) (DAMTYPE: [uppertext(damtype)])", (M.ckey && force > 0 && damtype != STAMINA) ? null : ATKLOG_ALMOSTALL)
 
@@ -72,6 +88,8 @@
 
 //the equivalent of the standard version of attack() but for object targets.
 /obj/item/proc/attack_obj(obj/O, mob/living/user)
+	if(SEND_SIGNAL(src, COMSIG_ITEM_ATTACK_OBJ, O, user) & COMPONENT_NO_ATTACK_OBJ)
+		return
 	if(flags & (NOBLUDGEON))
 		return
 	user.changeNext_move(CLICK_CD_MELEE)

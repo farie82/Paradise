@@ -14,7 +14,7 @@
 	..(newloc)
 	if(model_info && model)
 		model_info = model
-		var/datum/robolimb/R = all_robolimbs[model]
+		var/datum/robolimb/R = GLOB.all_robolimbs[model]
 		if(R)
 			name = "[R.company] [initial(name)]"
 			desc = "[R.desc]"
@@ -24,7 +24,7 @@
 		name = "robot [initial(name)]"
 
 /obj/item/robot_parts/attack_self(mob/user)
-	var/choice = input(user, "Select the company appearance for this limb.", "Limb Company Selection") as null|anything in selectable_robolimbs
+	var/choice = input(user, "Select the company appearance for this limb.", "Limb Company Selection") as null|anything in GLOB.selectable_robolimbs
 	if(!choice)
 		return
 	if(loc != user)
@@ -229,12 +229,12 @@
 			if(!M.brainmob.key)
 				var/ghost_can_reenter = 0
 				if(M.brainmob.mind)
-					for(var/mob/dead/observer/G in player_list)
+					for(var/mob/dead/observer/G in GLOB.player_list)
 						if(G.can_reenter_corpse && G.mind == M.brainmob.mind)
 							ghost_can_reenter = 1
 							break
-					for(var/mob/living/simple_animal/S in player_list)
-						if(S in respawnable_list)
+					for(var/mob/living/simple_animal/S in GLOB.player_list)
+						if(S in GLOB.respawnable_list)
 							ghost_can_reenter = 1
 							break
 				if(!ghost_can_reenter)
@@ -245,7 +245,7 @@
 				to_chat(user, "<span class='warning'>Sticking a dead [M] into the frame would sort of defeat the purpose.</span>")
 				return
 
-			if(M.brainmob.mind in ticker.mode.head_revolutionaries)
+			if(M.brainmob.mind in SSticker.mode.head_revolutionaries)
 				to_chat(user, "<span class='warning'>The frame's firmware lets out a shrill sound, and flashes 'Abnormal Memory Engram'. It refuses to accept the [M].</span>")
 				return
 
@@ -306,7 +306,6 @@
 			O.Namepick()
 
 			feedback_inc("cyborg_birth",1)
-			callHook("borgify", list(O))
 
 			forceMove(O)
 			O.robot_suit = src

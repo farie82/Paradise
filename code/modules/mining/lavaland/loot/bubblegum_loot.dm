@@ -3,6 +3,8 @@
 
 /obj/structure/closet/crate/necropolis/bubblegum/New()
 	..()
+	new /obj/item/clothing/suit/space/hostile_environment(src)
+	new /obj/item/clothing/head/helmet/space/hostile_environment(src)
 	var/loot = rand(1,3)
 	switch(loot)
 		if(1)
@@ -11,9 +13,16 @@
 			new /obj/item/blood_contract(src)
 		if(3)
 			new /obj/item/gun/magic/staff/spellblade(src)
-		
+
+/obj/structure/closet/crate/necropolis/bubblegum/crusher
+	name = "bloody bubblegum chest"
+
+/obj/structure/closet/crate/necropolis/bubblegum/crusher/New()
+	..()
+	new /obj/item/crusher_trophy/demon_claws(src)
+
 // Mayhem
-		
+
 /obj/item/mayhem
 	name = "mayhem in a bottle"
 	desc = "A magically infused bottle of blood, the scent of which will drive anyone nearby into a murderous frenzy."
@@ -26,9 +35,9 @@
 			var/obj/effect/mine/pickup/bloodbath/B = new(H)
 			B.mineEffect(H)
 	to_chat(user, "<span class='notice'>You shatter the bottle!</span>")
-	playsound(user.loc, 'sound/effects/Glassbr1.ogg', 100, 1)
+	playsound(user.loc, 'sound/effects/glassbr1.ogg', 100, 1)
 	qdel(src)
-	
+
 // Blood Contract
 
 /obj/item/blood_contract
@@ -42,9 +51,9 @@
 /obj/item/blood_contract/attack_self(mob/user)
 	if(used)
 		return
-		
+
 	used = TRUE
-	var/choice = input(user,"Who do you want dead?","Choose Your Victim") as null|anything in player_list
+	var/choice = input(user,"Who do you want dead?","Choose Your Victim") as null|anything in GLOB.player_list
 
 	if(!choice)
 		used = FALSE
@@ -72,7 +81,7 @@
 			var/obj/effect/mine/pickup/bloodbath/B = new(L)
 			B.mineEffect(L)
 
-		for(var/mob/living/carbon/human/H in player_list)
+		for(var/mob/living/carbon/human/H in GLOB.player_list)
 			if(H == L)
 				continue
 			to_chat(H, "<span class='userdanger'>You have an overwhelming desire to kill [L]. [L.p_they(TRUE)] [L.p_have()] been marked red! Go kill [L.p_them()]!</span>")

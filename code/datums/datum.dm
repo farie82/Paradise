@@ -2,8 +2,13 @@
 	var/gc_destroyed //Time when this object was destroyed.
 	var/list/active_timers  //for SStimer
 	var/list/datum_components //for /datum/components
+	/// Status traits attached to this datum
+	var/list/status_traits
+	var/list/comp_lookup
+	var/list/list/datum/callback/signal_procs
+	var/signal_enabled = FALSE
+	var/datum_flags = NONE
 	var/var_edited = FALSE //Warranty void if seal is broken
-
 	var/tmp/unique_datum_id = null
 
 #ifdef TESTING
@@ -25,6 +30,9 @@
 			continue
 		qdel(timer)
 
+	//BEGIN: ECS SHIT
+	signal_enabled = FALSE
+
 	var/list/dc = datum_components
 	if(dc)
 		var/all_components = dc[/datum/component]
@@ -36,6 +44,23 @@
 			var/datum/component/C = all_components
 			qdel(C, FALSE, TRUE)
 		dc.Cut()
+
+	var/list/lookup = comp_lookup
+	if(lookup)
+		for(var/sig in lookup)
+			var/list/comps = lookup[sig]
+			if(length(comps))
+				for(var/i in comps)
+					var/datum/component/comp = i
+					comp.UnregisterSignal(src, sig)
+			else
+				var/datum/component/comp = comps
+				comp.UnregisterSignal(src, sig)
+		comp_lookup = lookup = null
+
+	for(var/target in signal_procs)
+		UnregisterSignal(target, signal_procs[target])
+	//END: ECS SHIT
 
 	return QDEL_HINT_QUEUE
 

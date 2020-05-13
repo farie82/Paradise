@@ -10,7 +10,7 @@
 	icon_screen = "medlaptop"
 	density = 0
 	light_color = LIGHT_COLOR_GREEN
-	req_one_access = list(access_heads)
+	req_one_access = list(ACCESS_HEADS)
 	circuit = /obj/item/circuitboard/skills
 	var/obj/item/card/id/scan = null
 	var/authenticated = null
@@ -33,7 +33,8 @@
 		O.forceMove(src)
 		scan = O
 		ui_interact(user)
-	..()
+		return
+	return ..()
 
 //Someone needs to break down the dat += into chunks instead of long ass lines.
 /obj/machinery/computer/skills/attack_hand(mob/user)
@@ -51,7 +52,7 @@
 		ui = new(user, src, ui_key, "skills_data.tmpl", name, 800, 380)
 		ui.open()
 
-/obj/machinery/computer/skills/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/computer/skills/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 	data["temp"] = temp
 	data["scan"] = scan ? scan.name : null
@@ -60,13 +61,13 @@
 	if(authenticated)
 		switch(screen)
 			if(SKILL_DATA_R_LIST)
-				if(!isnull(data_core.general))
-					for(var/datum/data/record/R in sortRecord(data_core.general, sortBy, order))
+				if(!isnull(GLOB.data_core.general))
+					for(var/datum/data/record/R in sortRecord(GLOB.data_core.general, sortBy, order))
 						data["records"] += list(list("ref" = "\ref[R]", "id" = R.fields["id"], "name" = R.fields["name"], "rank" = R.fields["rank"], "fingerprint" = R.fields["fingerprint"]))
 			if(SKILL_DATA_RECORD)
 				var/list/general = list()
 				data["general"] = general
-				if(istype(active1, /datum/data/record) && data_core.general.Find(active1))
+				if(istype(active1, /datum/data/record) && GLOB.data_core.general.Find(active1))
 					var/list/fields = list()
 					general["fields"] = fields
 					fields[++fields.len] = list("field" = "Name:", "value" = active1.fields["name"], "name" = "name")
@@ -92,7 +93,7 @@
 	if(..())
 		return 1
 
-	if(!data_core.general.Find(active1))
+	if(!GLOB.data_core.general.Find(active1))
 		active1 = null
 
 	if(href_list["temp"])
@@ -102,26 +103,26 @@
 		var/temp_list = splittext(href_list["temp_action"], "=")
 		switch(temp_list[1])
 			if("del_all2")
-				if(PDA_Manifest && PDA_Manifest.len)
-					PDA_Manifest.Cut()
-				for(var/datum/data/record/R in data_core.security)
+				if(GLOB.PDA_Manifest && GLOB.PDA_Manifest.len)
+					GLOB.PDA_Manifest.Cut()
+				for(var/datum/data/record/R in GLOB.data_core.security)
 					qdel(R)
 				setTemp("<h3>All employment records deleted.</h3>")
 			if("del_rg2")
 				if(active1)
-					if(PDA_Manifest && PDA_Manifest.len)
-						PDA_Manifest.Cut()
-					for(var/datum/data/record/R in data_core.medical)
+					if(GLOB.PDA_Manifest && GLOB.PDA_Manifest.len)
+						GLOB.PDA_Manifest.Cut()
+					for(var/datum/data/record/R in GLOB.data_core.medical)
 						if(R.fields["name"] == active1.fields["name"] && R.fields["id"] == active1.fields["id"])
 							qdel(R)
 					QDEL_NULL(active1)
 				screen = SKILL_DATA_R_LIST
 			if("rank")
 				if(active1)
-					if(PDA_Manifest && PDA_Manifest.len)
-						PDA_Manifest.Cut()
+					if(GLOB.PDA_Manifest && GLOB.PDA_Manifest.len)
+						GLOB.PDA_Manifest.Cut()
 					active1.fields["rank"] = temp_list[2]
-					if(temp_list[2] in joblist)
+					if(temp_list[2] in GLOB.joblist)
 						active1.fields["real_rank"] = temp_list[2]
 
 	if(href_list["scan"])
@@ -181,7 +182,7 @@
 
 		else if(href_list["d_rec"])
 			var/datum/data/record/R = locate(href_list["d_rec"])
-			if(!data_core.general.Find(R))
+			if(!GLOB.data_core.general.Find(R))
 				setTemp("<h3><span class='bad'>Record not found!</span></h3>")
 				return 1
 			active1 = R
@@ -201,8 +202,8 @@
 				setTemp("<h3>Are you sure you wish to delete the record (ALL)?</h3>", buttons)
 
 		else if(href_list["new_g"])
-			if(PDA_Manifest.len)
-				PDA_Manifest.Cut()
+			if(GLOB.PDA_Manifest.len)
+				GLOB.PDA_Manifest.Cut()
 			var/datum/data/record/G = new /datum/data/record()
 			G.fields["name"] = "New Record"
 			G.fields["id"] = "[add_zero(num2hex(rand(1, 1.6777215E7)), 6)]"
@@ -214,7 +215,7 @@
 			G.fields["p_stat"] = "Active"
 			G.fields["m_stat"] = "Stable"
 			G.fields["species"] = "Human"
-			data_core.general += G
+			GLOB.data_core.general += G
 			active1 = G
 
 		else if(href_list["print_r"])
@@ -224,7 +225,7 @@
 				sleep(50)
 				var/obj/item/paper/P = new /obj/item/paper(loc)
 				P.info = "<CENTER><B>Employment Record</B></CENTER><BR>"
-				if(istype(active1, /datum/data/record) && data_core.general.Find(active1))
+				if(istype(active1, /datum/data/record) && GLOB.data_core.general.Find(active1))
 					P.info += {"Name: [active1.fields["name"]] ID: [active1.fields["id"]]
 							<BR>\nSex: [active1.fields["sex"]]
 							<BR>\nAge: [active1.fields["age"]]
@@ -245,7 +246,7 @@
 			switch(href_list["field"])
 				if("name")
 					if(istype(active1, /datum/data/record))
-						var/t1 = reject_bad_name(input("Please input name:", "Secure. records", active1.fields["name"], null) as text)
+						var/t1 = reject_bad_name(clean_input("Please input name:", "Secure. records", active1.fields["name"], null))
 						if(!t1 || !length(trim(t1)) || incapable || active1 != a1)
 							return 1
 						active1.fields["name"] = t1
@@ -278,7 +279,7 @@
 					//This was so silly before the change. Now it actually works without beating your head against the keyboard. /N
 					if(istype(active1, /datum/data/record) && L.Find(rank))
 						var/list/buttons = list()
-						for(var/rank in joblist)
+						for(var/rank in GLOB.joblist)
 							buttons[++buttons.len] = list("name" = rank, "icon" = null, "val" = "rank=[rank]", "status" = (active1.fields["rank"] == rank ? "selected" : null))
 						setTemp("<h3>Rank</h3>", buttons)
 					else
@@ -299,11 +300,11 @@
 		..(severity)
 		return
 
-	for(var/datum/data/record/R in data_core.security)
+	for(var/datum/data/record/R in GLOB.data_core.security)
 		if(prob(10/severity))
 			switch(rand(1,6))
 				if(1)
-					R.fields["name"] = "[pick(pick(first_names_male), pick(first_names_female))] [pick(last_names)]"
+					R.fields["name"] = "[pick(pick(GLOB.first_names_male), pick(GLOB.first_names_female))] [pick(GLOB.last_names)]"
 				if(2)
 					R.fields["sex"] = pick("Male", "Female")
 				if(3)

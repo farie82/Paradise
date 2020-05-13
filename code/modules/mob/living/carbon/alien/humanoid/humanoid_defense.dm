@@ -1,5 +1,8 @@
 /mob/living/carbon/alien/humanoid/attack_hulk(mob/living/carbon/human/user, does_attack_animation = FALSE)
 	if(user.a_intent == INTENT_HARM)
+		if(HAS_TRAIT(user, TRAIT_PACIFISM))
+			to_chat(user, "<span class='warning'>You don't want to hurt [src]!</span>")
+			return FALSE
 		..(user, TRUE)
 		adjustBruteLoss(15)
 		var/hitverb = "punched"
@@ -30,7 +33,6 @@
 								"<span class='danger'>You hear someone fall.</span>")
 					adjustBruteLoss(damage)
 					add_attack_logs(M, src, "Melee attacked with fists")
-					updatehealth()
 				else
 					playsound(loc, 'sound/weapons/punchmiss.ogg', 25, 1, -1)
 					visible_message("<span class='danger'>[M] has attempted to punch [src]!</span>")

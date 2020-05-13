@@ -9,6 +9,7 @@
 	throw_speed = 4
 	throw_range = 20
 	materials = list(MAT_METAL=500)
+	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | ACID_PROOF
 	var/obj/item/disk/nuclear/the_disk = null
 	var/active = 0
 	var/shows_nuke_timer = TRUE
@@ -21,10 +22,10 @@
 
 /obj/item/pinpointer/New()
 	..()
-	pinpointer_list += src
+	GLOB.pinpointer_list += src
 
 /obj/item/pinpointer/Destroy()
-	pinpointer_list -= src
+	GLOB.pinpointer_list -= src
 	active = 0
 	the_disk = null
 	return ..()
@@ -77,18 +78,17 @@
 		.()
 
 /obj/item/pinpointer/examine(mob/user)
-	..(user)
-	if(!shows_nuke_timer)
-		return
-
-	for(var/obj/machinery/nuclearbomb/bomb in machines)
-		if(bomb.timing)
-			to_chat(user, "Extreme danger.  Arming signal detected.   Time remaining: [bomb.timeleft]")
+	. = ..()
+	if(shows_nuke_timer)
+		for(var/obj/machinery/nuclearbomb/bomb in GLOB.machines)
+			if(bomb.timing)
+				. += "Extreme danger.  Arming signal detected.   Time remaining: [bomb.timeleft]"
 
 /obj/item/pinpointer/advpinpointer
 	name = "advanced pinpointer"
 	desc = "A larger version of the normal pinpointer, this unit features a helpful quantum entanglement detection system to locate various objects that do not broadcast a locator signal."
 	var/mode = 0  // Mode 0 locates disk, mode 1 locates coordinates.
+	var/modelocked = FALSE // If true, user cannot change mode.
 	var/turf/location = null
 	var/obj/target = null
 
@@ -120,6 +120,10 @@
 	set src in usr
 
 	if(usr.stat || usr.restrained())
+		return
+
+	if(modelocked)
+		to_chat(usr, "<span class='warning'>[src] is locked. It can only track one specific target.</span>")
 		return
 
 	active = 0
@@ -157,7 +161,7 @@
 				if("Item")
 					var/list/item_names[0]
 					var/list/item_paths[0]
-					for(var/objective in potential_theft_objectives)
+					for(var/objective in GLOB.potential_theft_objectives)
 						var/datum/theft_objective/T = objective
 						var/name = initial(T.name)
 						item_names += name
@@ -165,7 +169,13 @@
 					var/targetitem = input("Select item to search for.", "Item Mode Select","") as null|anything in item_names
 					if(!targetitem)
 						return
-					target = locate(item_paths[targetitem])
+
+					var/list/target_candidates = get_all_of_type(item_paths[targetitem], subtypes = TRUE)
+					for(var/obj/item/candidate in target_candidates)
+						if(!is_admin_level((get_turf(candidate)).z))
+							target = candidate
+							break
+
 					if(!target)
 						to_chat(usr, "<span class='warning'>Failed to locate [targetitem]!</span>")
 						return
@@ -174,7 +184,7 @@
 					var/DNAstring = input("Input DNA string to search for." , "Please Enter String." , "")
 					if(!DNAstring)
 						return
-					for(var/mob/living/carbon/C in mob_list)
+					for(var/mob/living/carbon/C in GLOB.mob_list)
 						if(!C.dna)
 							continue
 						if(C.dna.unique_enzymes == DNAstring)
@@ -210,7 +220,7 @@
 	if(mode)		//Check in case the mode changes while operating
 		worklocation()
 		return
-	if(bomb_set)	//If the bomb is set, lead to the shuttle
+	if(GLOB.bomb_set)	//If the bomb is set, lead to the shuttle
 		mode = 1	//Ensures worklocation() continues to work
 		worklocation()
 		playsound(loc, 'sound/machines/twobeep.ogg', 50, 1)	//Plays a beep
@@ -239,7 +249,7 @@
 	if(!mode)
 		workdisk()
 		return
-	if(!bomb_set)
+	if(!GLOB.bomb_set)
 		mode = 0
 		workdisk()
 		playsound(loc, 'sound/machines/twobeep.ogg', 50, 1)
@@ -273,7 +283,7 @@
 	var/mob/living/carbon/nearest_op = null
 
 /obj/item/pinpointer/operative/attack_self()
-	if(!usr.mind || !(usr.mind in ticker.mode.syndicates))
+	if(!usr.mind || !(usr.mind in SSticker.mode.syndicates))
 		to_chat(usr, "<span class='danger'>AUTHENTICATION FAILURE. ACCESS DENIED.</span>")
 		return 0
 	if(!active)
@@ -289,8 +299,8 @@
 	if(active)
 		nearest_op = null //Resets nearest_op every time it scans
 		var/closest_distance = 1000
-		for(var/mob/living/carbon/M in mob_list)
-			if(M.mind && (M.mind in ticker.mode.syndicates))
+		for(var/mob/living/carbon/M in GLOB.mob_list)
+			if(M.mind && (M.mind in SSticker.mode.syndicates))
 				if(get_dist(M, get_turf(src)) < closest_distance) //Actually points toward the nearest op, instead of a random one like it used to
 					nearest_op = M
 
@@ -304,12 +314,12 @@
 		return 0
 
 /obj/item/pinpointer/operative/examine(mob/user)
-	..()
+	. = ..()
 	if(active)
 		if(nearest_op)
-			to_chat(user, "Nearest operative detected is <i>[nearest_op.real_name].</i>")
+			. += "Nearest operative detected is <i>[nearest_op.real_name].</i>"
 		else
-			to_chat(user, "No operatives detected within scanning range.")
+			. += "No operatives detected within scanning range."
 
 /obj/item/pinpointer/crew
 	name = "crew pinpointer"
@@ -347,7 +357,7 @@
 	var/list/name_counts = list()
 	var/list/names = list()
 
-	for(var/mob/living/carbon/human/H in mob_list)
+	for(var/mob/living/carbon/human/H in GLOB.mob_list)
 		if(!trackable(H))
 			continue
 
@@ -389,5 +399,11 @@
 		spawn(5)
 			.()
 
-/obj/item/pinpointer/crew/examine(mob/user)
-	..(user)
+/obj/item/pinpointer/crew/centcom
+	name = "centcom pinpointer"
+	desc = "A handheld tracking device that tracks crew based on remote centcom sensors."
+
+/obj/item/pinpointer/crew/centcom/trackable(mob/living/carbon/human/H)
+	var/turf/here = get_turf(src)
+	var/turf/there = get_turf(H)
+	return there && there.z == here.z

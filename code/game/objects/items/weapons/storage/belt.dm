@@ -4,22 +4,22 @@
 	icon = 'icons/obj/clothing/belts.dmi'
 	icon_state = "utilitybelt"
 	item_state = "utility"
+	lefthand_file = 'icons/mob/inhands/equipment/belt_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/equipment/belt_righthand.dmi'
 	slot_flags = SLOT_BELT
 	attack_verb = list("whipped", "lashed", "disciplined")
+	max_integrity = 300
 	var/use_item_overlays = 0 // Do we have overlays for items held inside the belt?
-
 
 /obj/item/storage/belt/update_icon()
 	if(use_item_overlays)
 		overlays.Cut()
 		for(var/obj/item/I in contents)
 			overlays += "[I.name]"
-
 	..()
 
 /obj/item/storage/belt/proc/can_use()
 	return is_equipped()
-
 
 /obj/item/storage/belt/MouseDrop(obj/over_object as obj, src_location, over_location)
 	var/mob/M = usr
@@ -68,7 +68,7 @@
 	new /obj/item/weldingtool(src)
 	new /obj/item/crowbar(src)
 	new /obj/item/wirecutters(src)
-	new /obj/item/stack/cable_coil(src, 30, pick(COLOR_RED, COLOR_YELLOW, COLOR_ORANGE))
+	new /obj/item/stack/cable_coil/random(src, 30)
 	update_icon()
 
 /obj/item/storage/belt/utility/full/multitool/New()
@@ -88,7 +88,7 @@
 	update_icon()
 
 /obj/item/storage/belt/utility/chief
-	name = "Chief Engineer's toolbelt"
+	name = "advanced toolbelt"
 	desc = "Holds tools, looks snazzy"
 	icon_state = "utilitybelt_ce"
 	item_state = "utility_ce"
@@ -99,7 +99,7 @@
 	new /obj/item/crowbar/power(src)
 	new /obj/item/weldingtool/experimental(src)//This can be changed if this is too much
 	new /obj/item/multitool(src)
-	new /obj/item/stack/cable_coil(src, 30, pick(COLOR_RED, COLOR_YELLOW, COLOR_ORANGE))
+	new /obj/item/stack/cable_coil/random(src, 30)
 	new /obj/item/extinguisher/mini(src)
 	new /obj/item/analyzer(src)
 	update_icon()
@@ -112,6 +112,7 @@
 	icon_state = "medicalbelt"
 	item_state = "medical"
 	use_item_overlays = 1
+	max_w_class = WEIGHT_CLASS_NORMAL
 	can_hold = list(
 		/obj/item/healthanalyzer,
 		/obj/item/dnainjector,
@@ -133,13 +134,15 @@
 		/obj/item/rad_laser,
 		/obj/item/sensor_device,
 		/obj/item/wrench/medical,
+		/obj/item/handheld_defibrillator,
+		/obj/item/reagent_containers/applicator
 	)
 
 /obj/item/storage/belt/medical/surgery
 	max_w_class = WEIGHT_CLASS_NORMAL
 	max_combined_w_class = 17
 	use_to_pickup = 1
-	name = "Surgical Belt"
+	name = "surgical belt"
 	desc = "Can hold various surgical tools."
 	storage_slots = 9
 	use_item_overlays = 1
@@ -182,7 +185,6 @@
 	new /obj/item/reagent_containers/food/pill/salicylic(src)
 	update_icon()
 
-
 /obj/item/storage/belt/botany
 	name = "botanist belt"
 	desc = "Can hold various botanical supplies."
@@ -204,7 +206,6 @@
 		/obj/item/wirecutters,
         /obj/item/wrench,
 	)
-
 
 /obj/item/storage/belt/security
 	name = "security belt"
@@ -243,6 +244,15 @@
 	new /obj/item/melee/baton/loaded(src)
 	new /obj/item/flash(src)
 	new /obj/item/melee/classic_baton/telescopic(src)
+	new /obj/item/grenade/flashbang(src)
+	update_icon()
+
+/obj/item/storage/belt/security/response_team_gamma/New()
+	..()
+	new /obj/item/melee/baton/loaded(src)
+	new /obj/item/reagent_containers/spray/pepper(src)
+	new /obj/item/flash(src)
+	new /obj/item/grenade/flashbang(src)
 	new /obj/item/grenade/flashbang(src)
 	update_icon()
 
@@ -285,6 +295,61 @@
 	icon_state = "militarybelt"
 	item_state = "military"
 	max_w_class = WEIGHT_CLASS_SMALL
+	resistance_flags = FIRE_PROOF
+
+/obj/item/storage/belt/military/sst
+	icon_state = "assaultbelt"
+	item_state = "assault"
+
+/obj/item/storage/belt/military/traitor
+	name = "tool-belt"
+	desc = "Can hold various tools. This model seems to have additional compartments."
+	icon_state = "utilitybelt"
+	item_state = "utility"
+	use_item_overlays = 1 // So it will still show tools in it in case sec get lazy and just glance at it.
+
+/obj/item/storage/belt/grenade
+	name = "grenadier belt"
+	desc = "A belt for holding grenades."
+	icon_state = "assaultbelt"
+	item_state = "assault"
+	storage_slots = 30
+	max_combined_w_class = 60
+	display_contents_with_number = 1
+	can_hold = list(
+		/obj/item/grenade,
+		/obj/item/lighter,
+		/obj/item/reagent_containers/food/drinks/bottle/molotov
+		)
+
+/obj/item/storage/belt/grenade/full/New()
+	..()
+	new /obj/item/grenade/smokebomb(src) //4
+	new /obj/item/grenade/smokebomb(src)
+	new /obj/item/grenade/smokebomb(src)
+	new /obj/item/grenade/smokebomb(src)
+	new /obj/item/grenade/empgrenade(src) //2
+	new /obj/item/grenade/empgrenade(src)
+	new /obj/item/grenade/gluon(src) //4
+	new /obj/item/grenade/gluon(src)
+	new /obj/item/grenade/gluon(src)
+	new /obj/item/grenade/gluon(src)
+	new /obj/item/grenade/chem_grenade/facid(src) //1
+	new /obj/item/grenade/chem_grenade/saringas(src) //1
+	new /obj/item/grenade/gas/plasma(src) //2
+	new /obj/item/grenade/gas/plasma(src)
+	new /obj/item/grenade/frag(src) //10
+	new /obj/item/grenade/frag(src)
+	new /obj/item/grenade/frag(src)
+	new /obj/item/grenade/frag(src)
+	new /obj/item/grenade/frag(src)
+	new /obj/item/grenade/frag(src)
+	new /obj/item/grenade/frag(src)
+	new /obj/item/grenade/frag(src)
+	new /obj/item/grenade/frag(src)
+	new /obj/item/grenade/frag(src)
+	new /obj/item/grenade/syndieminibomb(src) //2
+	new /obj/item/grenade/syndieminibomb(src)
 
 /obj/item/storage/belt/military/abductor
 	name = "agent belt"
@@ -324,17 +389,19 @@
 		/obj/item/flashlight,
 		/obj/item/reagent_containers/spray,
 		/obj/item/soap,
-		/obj/item/holosign_creator
+		/obj/item/holosign_creator,
+		/obj/item/melee/flyswatter,
 		)
 
 /obj/item/storage/belt/janitor/full/New()
 	..()
 	new /obj/item/lightreplacer(src)
 	new /obj/item/holosign_creator(src)
-	new /obj/item/reagent_containers/spray(src)
+	new /obj/item/reagent_containers/spray/cleaner(src)
 	new /obj/item/soap(src)
 	new /obj/item/grenade/chem_grenade/cleaner(src)
 	new /obj/item/grenade/chem_grenade/cleaner(src)
+	new /obj/item/melee/flyswatter(src)
 	update_icon()
 
 /obj/item/storage/belt/lazarus
@@ -408,7 +475,6 @@
 	..()
 	update_icon()
 
-
 /obj/item/storage/belt/holster
 	name = "shoulder holster"
 	desc = "A holster to conceal a carried handgun. WARNING: Badasses only."
@@ -445,7 +511,6 @@
 		W.max_charges = initial(W.max_charges)
 		W.charges = W.max_charges
 	update_icon()
-
 
 /obj/item/storage/belt/fannypack
 	name = "fannypack"
@@ -535,7 +600,6 @@
 //     Bluespace Belt
 // -------------------------------------
 
-
 /obj/item/storage/belt/bluespace
 	name = "Belt of Holding"
 	desc = "The greatest in pants-supporting technology."
@@ -568,8 +632,6 @@
 	var/bolacount = 0
 	var/cooldown = 0
 
-
-
 /obj/item/storage/belt/bluespace/owlman/New()
 	..()
 	new /obj/item/grenade/smokebomb(src)
@@ -578,8 +640,12 @@
 	new /obj/item/grenade/smokebomb(src)
 	new /obj/item/restraints/legcuffs/bola(src)
 	new /obj/item/restraints/legcuffs/bola(src)
-	processing_objects.Add(src)
+	START_PROCESSING(SSobj, src)
 	cooldown = world.time
+
+/obj/item/storage/belt/bluespace/owlman/Destroy()
+	STOP_PROCESSING(SSobj, src)
+	return ..()
 
 /obj/item/storage/belt/bluespace/owlman/process()
 	if(cooldown < world.time - 600)
@@ -622,21 +688,21 @@
 	max_combined_w_class = 280
 	can_hold = list()
 
-	New()
-		..()
-		new /obj/item/crowbar(src)
-		new /obj/item/screwdriver(src)
-		new /obj/item/weldingtool/hugetank(src)
-		new /obj/item/wirecutters(src)
-		new /obj/item/wrench(src)
-		new /obj/item/multitool(src)
-		new /obj/item/stack/cable_coil(src)
+/obj/item/storage/belt/bluespace/admin/New()
+	..()
+	new /obj/item/crowbar(src)
+	new /obj/item/screwdriver(src)
+	new /obj/item/weldingtool/hugetank(src)
+	new /obj/item/wirecutters(src)
+	new /obj/item/wrench(src)
+	new /obj/item/multitool(src)
+	new /obj/item/stack/cable_coil(src)
 
-		new /obj/item/restraints/handcuffs(src)
-		new /obj/item/dnainjector/xraymut(src)
-		new /obj/item/dnainjector/firemut(src)
-		new /obj/item/dnainjector/telemut(src)
-		new /obj/item/dnainjector/hulkmut(src)
+	new /obj/item/restraints/handcuffs(src)
+	new /obj/item/dnainjector/xraymut(src)
+	new /obj/item/dnainjector/firemut(src)
+	new /obj/item/dnainjector/telemut(src)
+	new /obj/item/dnainjector/hulkmut(src)
 //		new /obj/item/spellbook(src) // for smoke effects, door openings, etc
 //		new /obj/item/magic/spellbook(src)
 
@@ -651,15 +717,78 @@
 	max_combined_w_class = 280
 	can_hold = list()
 
-	New()
-		..()
-		new /obj/item/crowbar(src)
-		new /obj/item/screwdriver(src)
-		new /obj/item/weldingtool/hugetank(src)
-		new /obj/item/wirecutters(src)
-		new /obj/item/wrench(src)
-		new /obj/item/multitool(src)
-		new /obj/item/stack/cable_coil(src)
+/obj/item/storage/belt/bluespace/sandbox/New()
+	..()
+	new /obj/item/crowbar(src)
+	new /obj/item/screwdriver(src)
+	new /obj/item/weldingtool/hugetank(src)
+	new /obj/item/wirecutters(src)
+	new /obj/item/wrench(src)
+	new /obj/item/multitool(src)
+	new /obj/item/stack/cable_coil(src)
 
-		new /obj/item/analyzer(src)
-		new /obj/item/healthanalyzer(src)
+	new /obj/item/analyzer(src)
+	new /obj/item/healthanalyzer(src)
+
+/obj/item/storage/belt/mining
+	name = "explorer's webbing"
+	desc = "A versatile chest rig, cherished by miners and hunters alike."
+	icon_state = "explorer1"
+	item_state = "explorer1"
+	storage_slots = 6
+	max_w_class = WEIGHT_CLASS_BULKY
+	max_combined_w_class = 20
+	use_item_overlays = 0
+	can_hold = list(
+		/obj/item/crowbar,
+		/obj/item/screwdriver,
+		/obj/item/weldingtool,
+		/obj/item/wirecutters,
+		/obj/item/wrench,
+		/obj/item/multitool,
+		/obj/item/flashlight,
+		/obj/item/stack/cable_coil,
+		/obj/item/analyzer,
+		/obj/item/extinguisher/mini,
+		/obj/item/radio,
+		/obj/item/clothing/gloves,
+		/obj/item/resonator,
+		/obj/item/mining_scanner,
+		/obj/item/pickaxe,
+		/obj/item/shovel,
+		/obj/item/stack/sheet/animalhide,
+		/obj/item/stack/sheet/sinew,
+		/obj/item/stack/sheet/bone,
+		/obj/item/lighter,
+		/obj/item/storage/fancy/cigarettes,
+		/obj/item/reagent_containers/food/drinks/bottle,
+		/obj/item/stack/medical,
+		/obj/item/kitchen/knife,
+		/obj/item/reagent_containers/hypospray,
+		/obj/item/gps,
+		/obj/item/storage/bag/ore,
+		/obj/item/survivalcapsule,
+		/obj/item/t_scanner/adv_mining_scanner,
+		/obj/item/reagent_containers/food/pill,
+		/obj/item/storage/pill_bottle,
+		/obj/item/stack/ore,
+		/obj/item/reagent_containers/food/drinks,
+		/obj/item/organ/internal/regenerative_core,
+		/obj/item/wormhole_jaunter,
+		/obj/item/storage/bag/plants,
+		/obj/item/stack/marker_beacon)
+
+/obj/item/storage/belt/mining/vendor/Initialize(mapload)
+	. = ..()
+	new /obj/item/survivalcapsule(src)
+
+/obj/item/storage/belt/mining/alt
+	icon_state = "explorer2"
+	item_state = "explorer2"
+
+/obj/item/storage/belt/mining/primitive
+	name = "hunter's belt"
+	desc = "A versatile belt, woven from sinew."
+	icon_state = "ebelt"
+	item_state = "ebelt"
+	storage_slots = 5

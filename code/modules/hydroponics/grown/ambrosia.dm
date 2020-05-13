@@ -7,6 +7,7 @@
 	slot_flags = SLOT_HEAD
 	filling_color = "#008000"
 	bitesize_mod = 2
+	tastes = list("ambrosia" = 1)
 
 // Ambrosia Vulgaris
 /obj/item/seeds/ambrosia
@@ -30,6 +31,7 @@
 	name = "ambrosia vulgaris branch"
 	desc = "This is a plant containing various healing chemicals."
 	origin_tech = "biotech=2"
+	wine_power = 0.2
 
 // Ambrosia Deus
 /obj/item/seeds/ambrosia/deus
@@ -50,6 +52,8 @@
 	icon_state = "ambrosiadeus"
 	filling_color = "#008B8B"
 	origin_tech = "biotech=4;materials=3"
+	wine_power = 0.5
+	tastes = list("ambrosia deus" = 1)
 
 //Ambrosia Gaia
 /obj/item/seeds/ambrosia/gaia
@@ -74,6 +78,9 @@
 	origin_tech = "biotech=6;materials=5"
 	light_range = 3
 	seed = /obj/item/seeds/ambrosia/gaia
+	wine_power = 0.7
+	wine_flavor = "the earthmother's blessing"
+	tastes = list("ambrosia gaia" = 1)
 
 // Ambrosia Cruciatus
 /obj/item/seeds/ambrosia/cruciatus
@@ -84,3 +91,5 @@
 
 /obj/item/reagent_containers/food/snacks/grown/ambrosia/cruciatus
 	seed = /obj/item/seeds/ambrosia/cruciatus
+	wine_power = 0.7
+	tastes = list("ambrosia cruciatus" = 1)

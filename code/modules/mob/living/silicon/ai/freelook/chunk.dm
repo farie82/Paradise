@@ -21,10 +21,11 @@
 
 // Add an AI eye to the chunk, then update if changed.
 
-/datum/camerachunk/proc/add(mob/camera/aiEye/eye)
-	var/client/client = eye.GetViewerClient()
-	if(client)
-		client.images += obscured
+/datum/camerachunk/proc/add(mob/camera/aiEye/eye, add_images = TRUE)
+	if(add_images)
+		var/client/client = eye.GetViewerClient()
+		if(client)
+			client.images += obscured
 	eye.visibleCameraChunks += src
 	visible++
 	seenby += eye
@@ -33,10 +34,11 @@
 
 // Remove an AI eye from the chunk, then update if changed.
 
-/datum/camerachunk/proc/remove(mob/camera/aiEye/eye)
-	var/client/client = eye.GetViewerClient()
-	if(client)
-		client.images -= obscured
+/datum/camerachunk/proc/remove(mob/camera/aiEye/eye, remove_images = TRUE)
+	if(remove_images)
+		var/client/client = eye.GetViewerClient()
+		if(client)
+			client.images -= obscured
 	eye.visibleCameraChunks -= src
 	seenby -= eye
 	if(visible > 0)
@@ -114,7 +116,8 @@
 		var/turf/t = turf
 		if(obscuredTurfs[t])
 			if(!t.obscured)
-				t.obscured = image('icons/effects/cameravis.dmi', t, null, 15)
+				t.obscured = image('icons/effects/cameravis.dmi', t, null, BYOND_LIGHTING_LAYER + 0.1)
+				t.obscured.plane = BYOND_LIGHTING_PLANE + 1
 
 			obscured += t.obscured
 			for(var/eye in seenby)
@@ -167,7 +170,8 @@
 	for(var/turf in obscuredTurfs)
 		var/turf/t = turf
 		if(!t.obscured)
-			t.obscured = image('icons/effects/cameravis.dmi', t, "black", 15)
+			t.obscured = image('icons/effects/cameravis.dmi', t, "black", BYOND_LIGHTING_LAYER + 0.1)
+			t.obscured.plane = BYOND_LIGHTING_PLANE + 1
 		obscured += t.obscured
 
 #undef UPDATE_BUFFER

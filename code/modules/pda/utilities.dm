@@ -29,7 +29,7 @@
 	var/remote_door_id = ""
 
 /datum/data/pda/utility/toggle_door/start()
-	for(var/obj/machinery/door/poddoor/M in airlocks)
+	for(var/obj/machinery/door/poddoor/M in GLOB.airlocks)
 		if(M.id_tag == remote_door_id)
 			if(M.density)
 				M.open()
@@ -40,25 +40,10 @@
 	base_name = "Med Scanner"
 	icon = "heart-o"
 
-/datum/data/pda/utility/scanmode/medical/scan_mob(mob/living/C as mob, mob/living/user as mob)
-	C.visible_message("<span class='warning'>[user] has analyzed [C]'s vitals!</span>")
+/datum/data/pda/utility/scanmode/medical/scan_mob(mob/living/M, mob/living/user)
+	user.visible_message("<span class='notice'>[user] analyzes [M]'s vitals.</span>", "<span class='notice'>You analyze [M]'s vitals.</span>")
 
-	user.show_message("<span class='notice'>Analyzing Results for [C]:</span>")
-	user.show_message("<span class='notice'>\t Overall Status: [C.stat > 1 ? "dead" : "[C.health]% healthy"]</span>", 1)
-	user.show_message("<span class='notice'>\t Damage Specifics: [C.getOxyLoss() > 50 ? "</span><span class='warning'>" : ""][C.getOxyLoss()]-[C.getToxLoss() > 50 ? "</span><span class='warning'>" : "</span><span class='notice'>"][C.getToxLoss()]-[C.getFireLoss() > 50 ? "</span><span class='warning'>" : "</span><span class='notice'>"][C.getFireLoss()]-[C.getBruteLoss() > 50 ? "</span><span class='warning'>" : "</span><span class='notice'>"][C.getBruteLoss()]</span>", 1)
-	user.show_message("<span class='notice'>\t Key: Suffocation/Toxin/Burns/Brute</span>", 1)
-	user.show_message("<span class='notice'>\t Body Temperature: [C.bodytemperature-T0C]&deg;C ([C.bodytemperature*1.8-459.67]&deg;F)</span>", 1)
-	if(C.timeofdeath && (C.stat == DEAD || (C.status_flags & FAKEDEATH)))
-		user.show_message("<span class='notice'>\t Time of Death: [station_time_timestamp("hh:mm:ss", C.timeofdeath)]</span>")
-	if(istype(C, /mob/living/carbon/human))
-		var/mob/living/carbon/human/H = C
-		var/list/damaged = H.get_damaged_organs(1,1)
-		user.show_message("<span class='notice'>Localized Damage, Brute/Burn:</span>",1)
-		if(length(damaged)>0)
-			for(var/obj/item/organ/external/org in damaged)
-				user.show_message("<span class='notice'>\t [capitalize(org.name)]: [org.brute_dam > 0 ? "<span class='warning'>[org.brute_dam]</span>" : "0"]-[org.burn_dam > 0 ? "<span class='warning'>[org.burn_dam]</span>" : "0"]", 1)
-		else
-			user.show_message("<span class='notice'>\t Limbs are OK.",1)
+	healthscan(user, M, 1)
 
 /datum/data/pda/utility/scanmode/dna
 	base_name = "DNA Scanner"
@@ -109,8 +94,12 @@
 		if(A.reagents.reagent_list.len > 0)
 			var/reagents_length = A.reagents.reagent_list.len
 			to_chat(user, "<span class='notice'>[reagents_length] chemical agent[reagents_length > 1 ? "s" : ""] found.</span>")
-			for(var/re in A.reagents.reagent_list)
-				to_chat(user, "<span class='notice'>\t [re]</span>")
+			for(var/datum/reagent/R in A.reagents.reagent_list)
+				if(R.id != "blood")
+					to_chat(user, "<span class='notice'>\t [R]</span>")
+				else
+					var/blood_type = R.data["blood_type"]
+					to_chat(user, "<span class='notice'>\t [R] [blood_type]</span>")
 		else
 			to_chat(user, "<span class='notice'>No active chemical agents found in [A].</span>")
 	else

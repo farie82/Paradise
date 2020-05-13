@@ -29,13 +29,13 @@ client/proc/one_click_antag()
   // You pass in ROLE define (optional), the applicant, and the gamemode, and it will return true / false depending on whether the applicant qualify for the candidacy in question
 	if(jobban_isbanned(M, "Syndicate"))
 		return FALSE
-	if(M.stat || !M.mind || M.mind.special_role)
+	if(M.stat || !M.mind || M.mind.special_role || M.mind.offstation_role)
 		return FALSE
 	if(temp)
 		if((M.mind.assigned_role in temp.restricted_jobs) || (M.client.prefs.species in temp.protected_species))
 			return FALSE
 	if(role) // Don't even bother evaluating if there's no role
-		if(player_old_enough_antag(M.client,role) && (role in M.client.prefs.be_special) && (!jobban_isbanned(M, role)))
+		if(player_old_enough_antag(M.client,role) && (role in M.client.prefs.be_special) && !M.client.skip_antag && (!jobban_isbanned(M, role)))
 			return TRUE
 		else
 			return FALSE
@@ -57,7 +57,7 @@ client/proc/one_click_antag()
 	log_admin("[key_name(owner)] tried making [antnum] traitors with One-Click-Antag")
 	message_admins("[key_name_admin(owner)] tried making [antnum] traitors with One-Click-Antag")
 
-	for(var/mob/living/carbon/human/applicant in player_list)
+	for(var/mob/living/carbon/human/applicant in GLOB.player_list)
 		if(CandCheck(ROLE_TRAITOR, applicant, temp))
 			candidates += applicant
 
@@ -88,7 +88,7 @@ client/proc/one_click_antag()
 	log_admin("[key_name(owner)] tried making [antnum] changelings with One-Click-Antag")
 	message_admins("[key_name_admin(owner)] tried making [antnum] changelings with One-Click-Antag")
 
-	for(var/mob/living/carbon/human/applicant in player_list)
+	for(var/mob/living/carbon/human/applicant in GLOB.player_list)
 		if(CandCheck(ROLE_CHANGELING, applicant, temp))
 			candidates += applicant
 
@@ -118,7 +118,7 @@ client/proc/one_click_antag()
 	log_admin("[key_name(owner)] tried making [antnum] revolutionaries with One-Click-Antag")
 	message_admins("[key_name_admin(owner)] tried making [antnum] revolutionaries with One-Click-Antag")
 
-	for(var/mob/living/carbon/human/applicant in player_list)
+	for(var/mob/living/carbon/human/applicant in GLOB.player_list)
 		if(CandCheck(ROLE_REV, applicant, temp))
 			candidates += applicant
 
@@ -166,7 +166,7 @@ client/proc/one_click_antag()
 	log_admin("[key_name(owner)] tried making a Cult with One-Click-Antag")
 	message_admins("[key_name_admin(owner)] tried making a Cult with One-Click-Antag")
 
-	for(var/mob/living/carbon/human/applicant in player_list)
+	for(var/mob/living/carbon/human/applicant in GLOB.player_list)
 		if(CandCheck(ROLE_CULTIST, applicant, temp))
 			candidates += applicant
 
@@ -175,8 +175,13 @@ client/proc/one_click_antag()
 
 		for(var/i = 0, i<numCultists, i++)
 			H = pick(candidates)
-			ticker.mode.add_cultist(H.mind)
+			SSticker.mode.add_cultist(H.mind)
 			candidates.Remove(H)
+			if(!GLOB.summon_spots.len)
+				while(GLOB.summon_spots.len < SUMMON_POSSIBILITIES)
+					var/area/summon = pick(return_sorted_areas() - GLOB.summon_spots)
+					if(summon && is_station_level(summon.z) && summon.valid_territory)
+						GLOB.summon_spots += summon
 
 		return 1
 	return 0
@@ -195,7 +200,7 @@ client/proc/one_click_antag()
 	log_admin("[key_name(owner)] tried making a [antnum] person Nuke Op Team with One-Click-Antag")
 	message_admins("[key_name_admin(owner)] tried making a [antnum] person Nuke Op Team with One-Click-Antag")
 
-	for(var/mob/G in respawnable_list)
+	for(var/mob/G in GLOB.respawnable_list)
 		if(istype(G) && G.client && (ROLE_OPERATIVE in G.client.prefs.be_special))
 			if(!jobban_isbanned(G, "operative") && !jobban_isbanned(G, "Syndicate"))
 				if(player_old_enough_antag(G.client,ROLE_OPERATIVE))
@@ -247,28 +252,17 @@ client/proc/one_click_antag()
 		if(closet_spawn)
 			new /obj/structure/closet/syndicate/nuclear(closet_spawn.loc)
 
-		for(var/obj/effect/landmark/A in /area/syndicate_station/start)//Because that's the only place it can BE -Sieve
-			if(A.name == "Syndicate-Gear-Closet")
-				new /obj/structure/closet/syndicate/personal(A.loc)
-				qdel(A)
-				continue
-
-			if(A.name == "Syndicate-Bomb")
-				new /obj/effect/spawner/newbomb/timer/syndicate(A.loc)
-				qdel(A)
-				continue
-
-		for(var/datum/mind/synd_mind in ticker.mode.syndicates)
+		for(var/datum/mind/synd_mind in SSticker.mode.syndicates)
 			if(synd_mind.current)
 				if(synd_mind.current.client)
 					for(var/image/I in synd_mind.current.client.images)
 						if(I.icon_state == "synd")
 							qdel(I)
 
-		for(var/datum/mind/synd_mind in ticker.mode.syndicates)
+		for(var/datum/mind/synd_mind in SSticker.mode.syndicates)
 			if(synd_mind.current)
 				if(synd_mind.current.client)
-					for(var/datum/mind/synd_mind_1 in ticker.mode.syndicates)
+					for(var/datum/mind/synd_mind_1 in SSticker.mode.syndicates)
 						if(synd_mind_1.current)
 							var/I = image('icons/mob/mob.dmi', loc = synd_mind_1.current, icon_state = "synd")
 							synd_mind.current.client.images += I
@@ -328,7 +322,7 @@ client/proc/one_click_antag()
 		var/syndicate_leader_selected = 0 //when the leader is chosen. The last person spawned.
 
 		//Generates a list of commandos from active ghosts. Then the user picks which characters to respawn as the commandos.
-		for(var/mob/G in respawnable_list)
+		for(var/mob/G in GLOB.respawnable_list)
 			if(!jobban_isbanned(G, "Syndicate"))
 				spawn(0)
 					switch(alert(G,"Do you wish to be considered for an elite syndicate strike team being sent in?","Please answer in 30 seconds!","Yes","No"))
@@ -385,7 +379,7 @@ client/proc/one_click_antag()
 	if(!G_found || !G_found.key)	return
 
 	//First we spawn a dude.
-	var/mob/living/carbon/human/new_character = new(pick(latejoin))//The mob being spawned.
+	var/mob/living/carbon/human/new_character = new(pick(GLOB.latejoin))//The mob being spawned.
 
 	var/datum/preferences/A = new(G_found.client)
 	A.copy_to(new_character)
@@ -399,7 +393,7 @@ client/proc/one_click_antag()
 	var/mob/living/carbon/human/new_syndicate_commando = new(spawn_location.loc)
 	var/syndicate_commando_leader_rank = pick("Lieutenant", "Captain", "Major")
 	var/syndicate_commando_rank = pick("Corporal", "Sergeant", "Staff Sergeant", "Sergeant 1st Class", "Master Sergeant", "Sergeant Major")
-	var/syndicate_commando_name = pick(last_names)
+	var/syndicate_commando_name = pick(GLOB.last_names)
 
 	var/datum/preferences/A = new()//Randomize appearance for the commando.
 	if(syndicate_leader_selected)
@@ -415,9 +409,9 @@ client/proc/one_click_antag()
 	new_syndicate_commando.mind_initialize()
 	new_syndicate_commando.mind.assigned_role = SPECIAL_ROLE_SYNDICATE_DEATHSQUAD
 	new_syndicate_commando.mind.special_role = SPECIAL_ROLE_SYNDICATE_DEATHSQUAD
-
+	new_syndicate_commando.mind.offstation_role = TRUE
 	//Adds them to current traitor list. Which is really the extra antagonist list.
-	ticker.mode.traitors += new_syndicate_commando.mind
+	SSticker.mode.traitors += new_syndicate_commando.mind
 	new_syndicate_commando.equip_syndicate_commando(syndicate_leader_selected)
 
 	return new_syndicate_commando
@@ -437,7 +431,7 @@ client/proc/one_click_antag()
 	log_admin("[key_name(owner)] tried making Vox Raiders with One-Click-Antag")
 	message_admins("[key_name_admin(owner)] tried making Vox Raiders with One-Click-Antag")
 //Generates a list of candidates from active ghosts.
-	for(var/mob/G in respawnable_list)
+	for(var/mob/G in GLOB.respawnable_list)
 		if(istype(G) && G.client && (ROLE_RAIDER in G.client.prefs.be_special))
 			if(player_old_enough_antag(G.client,ROLE_RAIDER))
 				if(!jobban_isbanned(G, "raider") && !jobban_isbanned(G, "Syndicate"))
@@ -477,7 +471,7 @@ client/proc/one_click_antag()
 					break
 
 				new_vox.key = theghost.key
-				ticker.mode.traitors += new_vox.mind
+				SSticker.mode.traitors += new_vox.mind
 
 				to_chat(new_vox, "<span class='notice'>You are a Vox Primalis, fresh out of the Shoal. Your ship has arrived at the Tau Ceti system hosting the NSV Exodus... or was it the Luna? NSS? Utopia? Nobody is really sure, but everyong is raring to start pillaging! Your current goal is: <span class='danger'> [input]</span></span>")
 				to_chat(new_vox, "<span class='warning'>Don't forget to turn on your nitrogen internals!</span>")
@@ -519,7 +513,7 @@ client/proc/one_click_antag()
 	//Now apply cortical stack.
 	var/obj/item/implant/cortical/I = new(new_vox)
 	I.implant(new_vox)
-	cortical_stacks += I
+	GLOB.cortical_stacks += I
 
 	new_vox.equip_vox_raider()
 	new_vox.regenerate_icons()
@@ -542,7 +536,7 @@ client/proc/one_click_antag()
 	log_admin("[key_name(owner)] tried making Vampires with One-Click-Antag")
 	message_admins("[key_name_admin(owner)] tried making Vampires with One-Click-Antag")
 
-	for(var/mob/living/carbon/human/applicant in player_list)
+	for(var/mob/living/carbon/human/applicant in GLOB.player_list)
 		if(CandCheck(ROLE_VAMPIRE, applicant, temp))
 			candidates += applicant
 
@@ -567,7 +561,7 @@ client/proc/one_click_antag()
 	message_admins("[key_name_admin(owner)] tried making Thunderdone Teams with One-Click-Antag")
 
 	//Generates a list of candidates from active ghosts.
-	for(var/mob/G in respawnable_list)
+	for(var/mob/G in GLOB.respawnable_list)
 		spawn(0)
 			switch(alert(G,"Do you wish to be considered for a Thunderdome match about to start?","Please answer in 30 seconds!","Yes","No"))
 				if("Yes")

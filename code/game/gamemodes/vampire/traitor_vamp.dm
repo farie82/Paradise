@@ -20,7 +20,7 @@
 
 	var/list/datum/mind/possible_vampires = get_players_for_role(ROLE_VAMPIRE)
 
-	for(var/mob/new_player/player in player_list)
+	for(var/mob/new_player/player in GLOB.player_list)
 		if((player.mind in possible_vampires) && (player.client.prefs.species in protected_species_vampire))
 			possible_vampires -= player.mind
 
@@ -32,6 +32,7 @@
 		slaved.masters += vampire
 		vampire.som = slaved //we MIGT want to mindslave someone
 		vampire.restricted_roles = restricted_jobs
+		vampire.special_role = SPECIAL_ROLE_VAMPIRE
 		..()
 		return 1
 	else
@@ -43,4 +44,5 @@
 		vampire.special_role = SPECIAL_ROLE_VAMPIRE
 		forge_vampire_objectives(vampire)
 		greet_vampire(vampire)
+		update_vampire_icons_added(vampire)
 	..()

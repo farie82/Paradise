@@ -1,10 +1,10 @@
 /client/proc/only_one()
-	if(!ticker)
+	if(!SSticker)
 		alert("The game hasn't started yet!")
 		return
 
 	var/list/incompatible_species = list(/datum/species/plasmaman, /datum/species/vox)
-	for(var/mob/living/carbon/human/H in player_list)
+	for(var/mob/living/carbon/human/H in GLOB.player_list)
 		if(H.stat == DEAD || !(H.client))
 			continue
 		if(is_special_character(H))
@@ -14,7 +14,7 @@
 			var/datum/preferences/A = new()	// Randomize appearance
 			A.copy_to(H)
 
-		ticker.mode.traitors += H.mind
+		SSticker.mode.traitors += H.mind
 		H.mind.special_role = SPECIAL_ROLE_TRAITOR
 
 		var/datum/objective/hijack/hijack_objective = new
@@ -54,19 +54,19 @@
 
 	message_admins("[key_name_admin(usr)] used THERE CAN BE ONLY ONE! -NO ATTACK LOGS WILL BE SENT TO ADMINS FROM THIS POINT FORTH-", 1)
 	log_admin("[key_name(usr)] used there can be only one.")
-	nologevent = 1
-	world << sound('sound/music/THUNDERDOME.ogg')
+	GLOB.nologevent = 1
+	world << sound('sound/music/thunderdome.ogg')
 
 /client/proc/only_me()
-	if(!ticker)
+	if(!SSticker)
 		alert("The game hasn't started yet!")
 		return
 
-	for(var/mob/living/carbon/human/H in player_list)
+	for(var/mob/living/carbon/human/H in GLOB.player_list)
 		if(H.stat == 2 || !(H.client)) continue
 		if(is_special_character(H)) continue
 
-		ticker.mode.traitors += H.mind
+		SSticker.mode.traitors += H.mind
 		H.mind.special_role = "[H.real_name] Prime"
 
 		var/datum/objective/hijackclone/hijack_objective = new /datum/objective/hijackclone
@@ -100,5 +100,5 @@
 
 	message_admins("[key_name_admin(usr)] used THERE CAN BE ONLY ME! -NO ATTACK LOGS WILL BE SENT TO ADMINS FROM THIS POINT FORTH-", 1)
 	log_admin("[key_name(usr)] used there can be only me.")
-	nologevent = 1
-	world << sound('sound/music/THUNDERDOME.ogg')
+	GLOB.nologevent = 1
+	world << sound('sound/music/thunderdome.ogg')

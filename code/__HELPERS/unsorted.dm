@@ -166,6 +166,18 @@ Turf and target are seperate in case you want to teleport some distance from a t
 
 	return destination
 
+
+/proc/is_in_teleport_proof_area(atom/O)
+	if(!O)
+		return FALSE
+	var/area/A = get_area(O)
+	if(!A)
+		return FALSE
+	if(A.tele_proof)
+		return TRUE
+	else
+		return FALSE
+
 // Returns true if direction is blocked from loc
 // Checks if doors are open
 /proc/DirBlocked(turf/loc,var/dir)
@@ -216,6 +228,23 @@ Turf and target are seperate in case you want to teleport some distance from a t
 			line+=locate(px,py,M.z)
 	return line
 
+//Same as the thing below just for density and without support for atoms.
+/proc/can_line(atom/source, atom/target, length = 5)
+	var/turf/current = get_turf(source)
+	var/turf/target_turf = get_turf(target)
+	var/steps = 0
+
+	while(current != target_turf)
+		if(steps > length)
+			return FALSE
+		if(!current)
+			return FALSE
+		if(current.density)
+			return FALSE
+		current = get_step_towards(current, target_turf)
+		steps++
+	return TRUE
+
 //Returns whether or not a player is a guest using their ckey as an input
 /proc/IsGuestKey(key)
 	if(findtext(key, "Guest-", 1, 7) != 1) //was findtextEx
@@ -248,7 +277,7 @@ Turf and target are seperate in case you want to teleport some distance from a t
 	var/pressure = air_contents.return_pressure()
 	var/total_moles = air_contents.total_moles()
 
-	to_chat(user, "<span class='notice'>Results of analysis of [bicon(icon)] [target].</span>")
+	user.show_message("<span class='notice'>Results of analysis of [bicon(icon)] [target].</span>", 1)
 	if(total_moles>0)
 		var/o2_concentration = air_contents.oxygen/total_moles
 		var/n2_concentration = air_contents.nitrogen/total_moles
@@ -257,16 +286,17 @@ Turf and target are seperate in case you want to teleport some distance from a t
 
 		var/unknown_concentration =  1-(o2_concentration+n2_concentration+co2_concentration+plasma_concentration)
 
-		to_chat(user, "<span class='notice'>Pressure: [round(pressure,0.1)] kPa</span>")
-		to_chat(user, "<span class='notice'>Nitrogen: [round(n2_concentration*100)] %</span>")
-		to_chat(user, "<span class='notice'>Oxygen: [round(o2_concentration*100)] %</span>")
-		to_chat(user, "<span class='notice'>CO2: [round(co2_concentration*100)] %</span>")
-		to_chat(user, "<span class='notice'>Plasma: [round(plasma_concentration*100)] %</span>")
+		user.show_message("<span class='notice'>Pressure: [round(pressure,0.1)] kPa</span>", 1)
+		user.show_message("<span class='notice'>Nitrogen: [round(n2_concentration*100)] % ([round(air_contents.nitrogen,0.01)] moles)</span>", 1)
+		user.show_message("<span class='notice'>Oxygen: [round(o2_concentration*100)] % ([round(air_contents.oxygen,0.01)] moles)</span>", 1)
+		user.show_message("<span class='notice'>CO2: [round(co2_concentration*100)] % ([round(air_contents.carbon_dioxide,0.01)] moles)</span>", 1)
+		user.show_message("<span class='notice'>Plasma: [round(plasma_concentration*100)] % ([round(air_contents.toxins,0.01)] moles)</span>", 1)
 		if(unknown_concentration>0.01)
-			to_chat(user, "<span class='danger'>Unknown: [round(unknown_concentration*100)] %</span>")
-		to_chat(user, "<span class='notice'>Temperature: [round(air_contents.temperature-T0C)] &deg;C</span>")
+			user.show_message("<span class='danger'>Unknown: [round(unknown_concentration*100)] % ([round(unknown_concentration*total_moles,0.01)] moles)</span>", 1)
+		user.show_message("<span class='notice'>Total: [round(total_moles,0.01)] moles</span>", 1)
+		user.show_message("<span class='notice'>Temperature: [round(air_contents.temperature-T0C)] &deg;C</span>", 1)
 	else
-		to_chat(user, "<span class='notice'>[target] is empty!</span>")
+		user.show_message("<span class='notice'>[target] is empty!</span>", 1)
 	return
 
 //Picks a string of symbols to display as the law number for hacked or ion laws
@@ -277,7 +307,7 @@ Turf and target are seperate in case you want to teleport some distance from a t
 /proc/freeborg()
 	var/select = null
 	var/list/borgs = list()
-	for(var/mob/living/silicon/robot/A in player_list)
+	for(var/mob/living/silicon/robot/A in GLOB.player_list)
 		if(A.stat == 2 || A.connected_ai || A.scrambledcodes || istype(A,/mob/living/silicon/robot/drone))
 			continue
 		var/name = "[A.real_name] ([A.modtype] [A.braintype])"
@@ -290,7 +320,7 @@ Turf and target are seperate in case you want to teleport some distance from a t
 //When a borg is activated, it can choose which AI it wants to be slaved to
 /proc/active_ais()
 	. = list()
-	for(var/mob/living/silicon/ai/A in living_mob_list)
+	for(var/mob/living/silicon/ai/A in GLOB.living_mob_list)
 		if(A.stat == DEAD)
 			continue
 		if(A.control_disabled == 1)
@@ -372,7 +402,7 @@ Turf and target are seperate in case you want to teleport some distance from a t
 //Orders mobs by type then by name
 /proc/sortmobs()
 	var/list/moblist = list()
-	var/list/sortmob = sortAtom(mob_list)
+	var/list/sortmob = sortAtom(GLOB.mob_list)
 	for(var/mob/living/silicon/ai/M in sortmob)
 		moblist.Add(M)
 		if(M.eyeobj)
@@ -391,7 +421,7 @@ Turf and target are seperate in case you want to teleport some distance from a t
 		moblist.Add(M)
 	for(var/mob/new_player/M in sortmob)
 		moblist.Add(M)
-	for(var/mob/living/carbon/slime/M in sortmob)
+	for(var/mob/living/simple_animal/slime/M in sortmob)
 		moblist.Add(M)
 	for(var/mob/living/simple_animal/M in sortmob)
 		moblist.Add(M)
@@ -427,7 +457,7 @@ Turf and target are seperate in case you want to teleport some distance from a t
 /proc/get_mob_by_ckey(key)
 	if(!key)
 		return
-	for(var/mob/M in mob_list)
+	for(var/mob/M in GLOB.mob_list)
 		if(M.ckey == key)
 			return M
 
@@ -510,9 +540,20 @@ Returns 1 if the chain up to the area contains the given typepath
 /proc/between(var/low, var/middle, var/high)
 	return max(min(middle, high), low)
 
-proc/arctan(x)
+
+
+#if DM_VERSION > 513
+#warn 513 is definitely stable now, remove this
+#endif
+#if DM_VERSION < 513
+/proc/arctan(x)
 	var/y=arcsin(x/sqrt(1+x*x))
 	return y
+/proc/islist(list/list)
+	if(istype(list))
+		return 1
+	return 0
+#endif
 
 //returns random gauss number
 proc/GaussRand(var/sigma)
@@ -569,13 +610,14 @@ proc/GaussRandRound(var/sigma,var/roundto)
 
 	return 1
 
-/proc/is_blocked_turf(var/turf/T)
-	var/cant_pass = 0
-	if(T.density) cant_pass = 1
-	for(var/atom/A in T)
-		if(A.density)//&&A.anchored
-			cant_pass = 1
-	return cant_pass
+proc/is_blocked_turf(turf/T, exclude_mobs)
+	if(T.density)
+		return 1
+	for(var/i in T)
+		var/atom/A = i
+		if(A.density && (!exclude_mobs || !ismob(A)))
+			return 1
+	return 0
 
 /proc/get_step_towards2(var/atom/ref , var/atom/trg)
 	var/base_dir = get_dir(ref, get_step_towards(ref,trg))
@@ -790,7 +832,7 @@ proc/GaussRandRound(var/sigma,var/roundto)
 					if(turftoleave)
 						fromupdate += T.ChangeTurf(turftoleave)
 					else
-						T.ChangeTurf(/turf/space)
+						T.ChangeTurf(T.baseturf)
 
 					refined_src -= T
 					refined_trg -= B
@@ -996,7 +1038,7 @@ proc/oview_or_orange(distance = world.view , center = usr , type)
 
 proc/get_mob_with_client_list()
 	var/list/mobs = list()
-	for(var/mob/M in mob_list)
+	for(var/mob/M in GLOB.mob_list)
 		if(M.client)
 			mobs += M
 	return mobs
@@ -1087,9 +1129,9 @@ proc/get_mob_with_client_list()
 
 //For objects that should embed, but make no sense being is_sharp or is_pointed()
 //e.g: rods
-var/list/can_embed_types = typecacheof(list(
+GLOBAL_LIST_INIT(can_embed_types, typecacheof(list(
 	/obj/item/stack/rods,
-	/obj/item/pipe))
+	/obj/item/pipe)))
 
 /proc/can_embed(obj/item/W)
 	if(is_sharp(W))
@@ -1097,69 +1139,13 @@ var/list/can_embed_types = typecacheof(list(
 	if(is_pointed(W))
 		return 1
 
-	if(is_type_in_typecache(W, can_embed_types))
+	if(is_type_in_typecache(W, GLOB.can_embed_types))
 		return 1
-
-//Quick type checks for some tools
-var/global/list/common_tools = list(
-/obj/item/stack/cable_coil,
-/obj/item/wrench,
-/obj/item/weldingtool,
-/obj/item/screwdriver,
-/obj/item/wirecutters,
-/obj/item/multitool,
-/obj/item/crowbar)
-
-/proc/istool(O)
-	if(O && is_type_in_list(O, common_tools))
-		return 1
-	return 0
-
-/proc/iswrench(O)
-	if(istype(O, /obj/item/wrench))
-		return 1
-	return 0
-
-/proc/iswelder(O)
-	if(istype(O, /obj/item/weldingtool))
-		return 1
-	return 0
-
-/proc/iscoil(O)
-	if(istype(O, /obj/item/stack/cable_coil))
-		return 1
-	return 0
-
-/proc/iswirecutter(O)
-	if(istype(O, /obj/item/wirecutters))
-		return 1
-	return 0
-
-/proc/isscrewdriver(O)
-	if(istype(O, /obj/item/screwdriver))
-		return 1
-	return 0
-
-/proc/ismultitool(O)
-	if(istype(O, /obj/item/multitool))
-		return 1
-	return 0
-
-/proc/iscrowbar(O)
-	if(istype(O, /obj/item/crowbar))
-		return 1
-	return 0
-
-/proc/iswire(O)
-	if(istype(O, /obj/item/stack/cable_coil))
-		return 1
-	return 0
 
 /proc/is_hot(obj/item/W as obj)
-	if(istype(W, /obj/item/weldingtool))
-		var/obj/item/weldingtool/O = W
-		if(O.isOn())
-			return 3800
+	if(W.tool_behaviour == TOOL_WELDER)
+		if(W.tool_enabled)
+			return 2500
 		else
 			return 0
 	if(istype(W, /obj/item/lighter))
@@ -1201,7 +1187,7 @@ var/global/list/common_tools = list(
 		else
 			return 0
 	if(istype(W, /obj/item/assembly/igniter))
-		return 1000
+		return 20000
 	else
 		return 0
 
@@ -1212,24 +1198,6 @@ var/global/list/common_tools = list(
 	if(O.sharp)
 		return 1
 	return 0
-
-/proc/is_surgery_tool(obj/item/W as obj)
-	return (	\
-	istype(W, /obj/item/scalpel)			||	\
-	istype(W, /obj/item/hemostat)		||	\
-	istype(W, /obj/item/retractor)		||	\
-	istype(W, /obj/item/cautery)			||	\
-	istype(W, /obj/item/bonegel)			||	\
-	istype(W, /obj/item/bonesetter)
-	)
-
-//check if mob is lying down on something we can operate him on.
-/proc/can_operate(mob/living/carbon/M)
-	return (locate(/obj/machinery/optable, M.loc) && (M.lying || M.resting)) || \
-	(locate(/obj/structure/stool/bed/roller, M.loc) && 	\
-	(M.buckled || M.lying || M.weakened || M.stunned || M.paralysis || M.sleeping || M.stat)) && prob(75) || 	\
-	(locate(/obj/structure/table/, M.loc) && 	\
-	(M.lying || M.weakened || M.stunned || M.paralysis || M.sleeping || M.stat) && prob(66))
 
 /proc/reverse_direction(var/dir)
 	switch(dir)
@@ -1253,18 +1221,18 @@ var/global/list/common_tools = list(
 /*
 Checks if that loc and dir has a item on the wall
 */
-var/list/static/global/wall_items = typecacheof(list(/obj/machinery/power/apc, /obj/machinery/alarm,
+GLOBAL_LIST_INIT(wall_items, typecacheof(list(/obj/machinery/power/apc, /obj/machinery/alarm,
 	/obj/item/radio/intercom, /obj/structure/extinguisher_cabinet, /obj/structure/reagent_dispensers/peppertank,
 	/obj/machinery/status_display, /obj/machinery/requests_console, /obj/machinery/light_switch, /obj/structure/sign,
 	/obj/machinery/newscaster, /obj/machinery/firealarm, /obj/structure/noticeboard, /obj/machinery/door_control,
 	/obj/machinery/computer/security/telescreen, /obj/machinery/embedded_controller/radio/airlock,
 	/obj/item/storage/secure/safe, /obj/machinery/door_timer, /obj/machinery/flasher, /obj/machinery/keycard_auth,
 	/obj/structure/mirror, /obj/structure/closet/fireaxecabinet, /obj/machinery/computer/security/telescreen/entertainment,
-	/obj/structure/sign))
+	/obj/structure/sign)))
 
 /proc/gotwallitem(loc, dir)
 	for(var/obj/O in loc)
-		if(is_type_in_typecache(O, wall_items))
+		if(is_type_in_typecache(O, GLOB.wall_items))
 			//Direction works sometimes
 			if(O.dir == dir)
 				return 1
@@ -1286,7 +1254,7 @@ var/list/static/global/wall_items = typecacheof(list(/obj/machinery/power/apc, /
 
 	//Some stuff is placed directly on the wallturf (signs)
 	for(var/obj/O in get_step(loc, dir))
-		if(is_type_in_typecache(O, wall_items))
+		if(is_type_in_typecache(O, GLOB.wall_items))
 			if(abs(O.pixel_x) <= 10 && abs(O.pixel_y) <= 10)
 				return 1
 	return 0
@@ -1298,31 +1266,6 @@ proc/get_angle(atom/a, atom/b)
 proc/atan2(x, y)
 	if(!x && !y) return 0
 	return y >= 0 ? arccos(x / sqrt(x * x + y * y)) : -arccos(x / sqrt(x * x + y * y))
-
-proc/rotate_icon(file, state, step = 1, aa = FALSE)
-	var icon/base = icon(file, state)
-
-	var w, h, w2, h2
-
-	if(aa)
-		aa++
-		w = base.Width()
-		w2 = w * aa
-		h = base.Height()
-		h2 = h * aa
-
-	var icon{result = icon(base); temp}
-
-	for(var/angle in 0 to 360 step step)
-		if(angle == 0  ) continue
-		if(angle == 360)   continue
-		temp = icon(base)
-		if(aa) temp.Scale(w2, h2)
-		temp.Turn(angle)
-		if(aa) temp.Scale(w,   h)
-		result.Insert(temp, "[angle]")
-
-	return result
 
 /proc/format_text(text)
 	return replacetext(replacetext(text,"\proper ",""),"\improper ","")
@@ -1438,7 +1381,7 @@ atom/proc/GetTypeInAllContents(typepath)
 	var/initial_chance = chance
 	while(steps > 0)
 		if(prob(chance))
-			step(AM, pick(alldirs))
+			step(AM, pick(GLOB.alldirs))
 		chance = max(chance - (initial_chance / steps), 0)
 		steps--
 
@@ -1472,27 +1415,28 @@ atom/proc/GetTypeInAllContents(typepath)
 
 	return locate(dest_x,dest_y,dest_z)
 
-var/mob/dview/dview_mob = new
+GLOBAL_DATUM_INIT(dview_mob, /mob/dview, new)
 
 //Version of view() which ignores darkness, because BYOND doesn't have it.
 /proc/dview(var/range = world.view, var/center, var/invis_flags = 0)
 	if(!center)
 		return
 
-	dview_mob.loc = center
+	GLOB.dview_mob.loc = center
 
-	dview_mob.see_invisible = invis_flags
+	GLOB.dview_mob.see_invisible = invis_flags
 
-	. = view(range, dview_mob)
-	dview_mob.loc = null
+	. = view(range, GLOB.dview_mob)
+	GLOB.dview_mob.loc = null
 
 /mob/dview
 	invisibility = 101
 	density = 0
-
-	anchored = 1
+	move_force = 0
+	pull_force = 0
+	move_resist = INFINITY
 	simulated = 0
-
+	canmove = FALSE
 	see_in_dark = 1e6
 
 /mob/dview/New() //For whatever reason, if this isn't called, then BYOND will throw a type mismatch runtime when attempting to add this to the mobs list. -Fox
@@ -1525,6 +1469,23 @@ var/mob/dview/dview_mob = new
 			if(W.ini_dir == dir_to_check || W.ini_dir == FULLTILE_WINDOW_DIR || dir_to_check == FULLTILE_WINDOW_DIR)
 				return FALSE
 	return TRUE
+
+//datum may be null, but it does need to be a typed var
+#define NAMEOF(datum, X) (#X || ##datum.##X)
+
+#define VARSET_LIST_CALLBACK(target, var_name, var_value) CALLBACK(GLOBAL_PROC, /proc/___callbackvarset, ##target, ##var_name, ##var_value)
+//dupe code because dm can't handle 3 level deep macros
+#define VARSET_CALLBACK(datum, var, var_value) CALLBACK(GLOBAL_PROC, /proc/___callbackvarset, ##datum, NAMEOF(##datum, ##var), ##var_value)
+
+/proc/___callbackvarset(list_or_datum, var_name, var_value)
+	if(length(list_or_datum))
+		list_or_datum[var_name] = var_value
+		return
+	var/datum/D = list_or_datum
+	if(IsAdminAdvancedProcCall())
+		D.vv_edit_var(var_name, var_value)	//same result generally, unless badmemes
+	else
+		D.vars[var_name] = var_value
 
 //Get the dir to the RIGHT of dir if they were on a clock
 //NORTH --> NORTHEAST
@@ -1726,8 +1687,8 @@ var/mob/dview/dview_mob = new
 /proc/turf_clear(turf/T)
 	for(var/atom/A in T)
 		if(A.simulated)
-			return 0
-	return 1
+			return FALSE
+	return TRUE
 
 /proc/screen_loc2turf(scr_loc, turf/origin)
 	var/tX = splittext(scr_loc, ",")
@@ -1785,28 +1746,99 @@ var/mob/dview/dview_mob = new
 	for(var/type in types)
 		var/typename = "[type]"
 		var/static/list/TYPES_SHORTCUTS = list(
+			//longest paths comes first - otherwise they get shadowed by the more generic ones
 			/obj/effect/decal/cleanable = "CLEANABLE",
-			/obj/item/radio/headset = "HEADSET",
-			/obj/item/clothing/head/helmet/space = "SPESSHELMET",
-			/obj/item/book/manual = "MANUAL",
-			/obj/item/reagent_containers/food/drinks = "DRINK", //longest paths comes first
-			/obj/item/reagent_containers/food = "FOOD",
-			/obj/item/reagent_containers = "REAGENT_CONTAINERS",
-			/obj/item = "WEAPON",
-			/obj/machinery/atmospherics = "ATMOS_MECH",
-			/obj/machinery/portable_atmospherics = "PORT_ATMOS",
-			/obj/item/mecha_parts/mecha_equipment/weapon/ballistic/missile_rack = "MECHA_MISSILE_RACK",
-			/obj/item/mecha_parts/mecha_equipment = "MECHA_EQUIP",
-			/obj/item/organ = "ORGAN",
-			/obj/item = "ITEM",
-			/obj/machinery = "MACHINERY",
 			/obj/effect = "EFFECT",
+			/obj/item/ammo_casing = "AMMO",
+			/obj/item/book/manual = "MANUAL",
+			/obj/item/borg/upgrade = "BORG_UPGRADE",
+			/obj/item/cartridge = "PDA_CART",
+			/obj/item/clothing/head/helmet/space = "SPESSHELMET",
+			/obj/item/clothing/head = "HEAD",
+			/obj/item/clothing/under = "UNIFORM",
+			/obj/item/clothing/shoes = "SHOES",
+			/obj/item/clothing/suit = "SUIT",
+			/obj/item/clothing/gloves = "GLOVES",
+			/obj/item/clothing/mask/cigarette = "CIGARRETE", // oof
+			/obj/item/clothing/mask = "MASK",
+			/obj/item/clothing/glasses = "GLASSES",
+			/obj/item/clothing = "CLOTHING",
+			/obj/item/grenade/clusterbuster = "CLUSTERBUSTER",
+			/obj/item/grenade = "GRENADE",
+			/obj/item/gun = "GUN",
+			/obj/item/implant = "IMPLANT",
+			/obj/item/mecha_parts/mecha_equipment/weapon/ballistic/missile_rack = "MECHA_MISSILE_RACK",
+			/obj/item/mecha_parts/mecha_equipment/weapon = "MECHA_WEAPON",
+			/obj/item/mecha_parts/mecha_equipment = "MECHA_EQUIP",
+			/obj/item/melee = "MELEE",
+			/obj/item/mmi = "MMI",
+			/obj/item/nullrod = "NULLROD",
+			/obj/item/organ/external = "EXT_ORG",
+			/obj/item/organ/internal/cyberimp = "CYBERIMP",
+			/obj/item/organ/internal = "INT_ORG",
+			/obj/item/organ = "ORGAN",
+			/obj/item/pda = "PDA",
+			/obj/item/projectile = "PROJ",
+			/obj/item/radio/headset = "HEADSET",
+			/obj/item/reagent_containers/glass/beaker = "BEAKER",
+			/obj/item/reagent_containers/glass/bottle = "BOTTLE",
+			/obj/item/reagent_containers/food/pill/patch = "PATCH",
+			/obj/item/reagent_containers/food/pill = "PILL",
+			/obj/item/reagent_containers/food/drinks = "DRINK",
+			/obj/item/reagent_containers/food = "FOOD",
+			/obj/item/reagent_containers/syringe = "SYRINGE",
+			/obj/item/reagent_containers = "REAGENT_CONTAINERS",
+			/obj/item/robot_parts = "ROBOT_PARTS",
+			/obj/item/seeds = "SEED",
+			/obj/item/slime_extract = "SLIME_CORE",
+			/obj/item/spacepod_equipment/weaponry = "POD_WEAPON",
+			/obj/item/spacepod_equipment = "POD_EQUIP",
+			/obj/item/stack/sheet/mineral = "MINERAL",
+			/obj/item/stack/sheet = "SHEET",
+			/obj/item/stack/tile = "TILE",
+			/obj/item/stack = "STACK",
+			/obj/item/stock_parts/cell = "POWERCELL",
+			/obj/item/stock_parts = "STOCK_PARTS",
+			/obj/item/storage/firstaid = "FIRSTAID",
+			/obj/item/storage = "STORAGE",
+			/obj/item/tank = "GAS_TANK",
+			/obj/item/toy/crayon = "CRAYON",
+			/obj/item/toy = "TOY",
+			/obj/item = "ITEM",
+			/obj/machinery/atmospherics = "ATMOS_MACH",
+			/obj/machinery/computer = "CONSOLE",
+			/obj/machinery/door/airlock = "AIRLOCK",
+			/obj/machinery/door = "DOOR",
+			/obj/machinery/kitchen_machine = "KITCHEN",
+			/obj/machinery/portable_atmospherics/canister = "CANISTER",
+			/obj/machinery/portable_atmospherics = "PORT_ATMOS",
+			/obj/machinery/power = "POWER",
+			/obj/machinery/telecomms = "TCOMMS",
+			/obj/machinery = "MACHINERY",
+			/obj/mecha = "MECHA",
+			/obj/structure/closet/crate = "CRATE",
+			/obj/structure/closet = "CLOSET",
+			/obj/structure/statue = "STATUE",
+			/obj/structure/chair = "CHAIR", // oh no
+			/obj/structure/bed = "BED",
+			/obj/structure/chair/stool = "STOOL",
+			/obj/structure/table = "TABLE",
+			/obj/structure = "STRUCTURE",
+			/obj/vehicle = "VEHICLE",
 			/obj = "O",
 			/datum = "D",
-			/turf/simulated/floor = "FLOOR",
-			/turf/simulated/wall = "WALL",
+			/turf/simulated/floor = "SIM_FLOOR",
+			/turf/simulated/wall = "SIM_WALL",
+			/turf/unsimulated/floor = "UNSIM_FLOOR",
+			/turf/unsimulated/wall = "UNSIM_WALL",
 			/turf = "T",
+			/mob/living/carbon/alien = "XENO",
+			/mob/living/carbon/human = "HUMAN",
 			/mob/living/carbon = "CARBON",
+			/mob/living/silicon/robot = "CYBORG",
+			/mob/living/silicon/ai = "AI",
+			/mob/living/silicon = "SILICON",
+			/mob/living/simple_animal/bot = "BOT",
 			/mob/living/simple_animal = "SIMPLE",
 			/mob/living = "LIVING",
 			/mob = "M"
@@ -1841,20 +1873,37 @@ var/mob/dview/dview_mob = new
 	return matches
 
 //Key thing that stops lag. Cornerstone of performance in ss13, Just sitting here, in unsorted.dm.
-/proc/stoplag()
-	. = 1
-	sleep(world.tick_lag)
-	if(world.tick_usage > TICK_LIMIT_TO_RUN) //woke up, still not enough tick, sleep for more.
-		. += 2
-		sleep(world.tick_lag*2)
-		if(world.tick_usage > TICK_LIMIT_TO_RUN) //woke up, STILL not enough tick, sleep for more.
-			. += 4
-			sleep(world.tick_lag*4)
-			//you might be thinking of adding more steps to this, or making it use a loop and a counter var
-			//	not worth it.
 
-// This proc gets a list of all "points of interest" (poi's) that can be used by admins to track valuable mobs or atoms (such as the nuke disk).
-/proc/getpois(mobs_only=0,skip_mindless=0)
+//Increases delay as the server gets more overloaded,
+//as sleeps aren't cheap and sleeping only to wake up and sleep again is wasteful
+#define DELTA_CALC max(((max(TICK_USAGE, world.cpu) / 100) * max(Master.sleep_delta-1,1)), 1)
+
+//returns the number of ticks slept
+/proc/stoplag(initial_delay)
+	if(!Master || !(Master.current_runlevel & RUNLEVELS_DEFAULT))
+		sleep(world.tick_lag)
+		return 1
+	if(!initial_delay)
+		initial_delay = world.tick_lag
+	. = 0
+	var/i = DS2TICKS(initial_delay)
+	do
+		. += CEILING(i*DELTA_CALC, 1)
+		sleep(i*world.tick_lag*DELTA_CALC)
+		i *= 2
+	while(TICK_USAGE > min(TICK_LIMIT_TO_RUN, Master.current_ticklimit))
+
+#undef DELTA_CALC
+
+/*
+ * This proc gets a list of all "points of interest" (poi's) that can be used by admins to track valuable mobs or atoms (such as the nuke disk).
+ * @param mobs_only if set to TRUE it won't include locations to the returned list
+ * @param skip_mindless if set to TRUE it will skip mindless mobs
+ * @param force_include_bots if set to TRUE it will include bots even if skip_mindless is set to TRUE
+ * @param force_include_cameras if set to TRUE it will include camera eyes even if skip_mindless is set to TRUE
+ * @return returns a list with the found points of interest
+*/
+/proc/getpois(mobs_only = FALSE, skip_mindless = FALSE, force_include_bots = FALSE, force_include_cameras = FALSE)
 	var/list/mobs = sortmobs()
 	var/list/names = list()
 	var/list/pois = list()
@@ -1862,7 +1911,7 @@ var/mob/dview/dview_mob = new
 
 	for(var/mob/M in mobs)
 		if(skip_mindless && (!M.mind && !M.ckey))
-			if(!isbot(M) && !istype(M, /mob/camera/))
+			if(!(force_include_bots && isbot(M)) && !(force_include_cameras && istype(M, /mob/camera)))
 				continue
 		if(M.client && M.client.holder && M.client.holder.fakekey) //stealthmins
 			continue
@@ -1883,7 +1932,7 @@ var/mob/dview/dview_mob = new
 		pois[name] = M
 
 	if(!mobs_only)
-		for(var/atom/A in poi_list)
+		for(var/atom/A in GLOB.poi_list)
 			if(!A || !A.loc)
 				continue
 			var/name = A.name
@@ -1967,3 +2016,26 @@ var/mob/dview/dview_mob = new
 
 /proc/pass()
 	return
+
+/atom/proc/Shake(pixelshiftx = 15, pixelshifty = 15, duration = 250)
+	var/initialpixelx = pixel_x
+	var/initialpixely = pixel_y
+	var/shiftx = rand(-pixelshiftx,pixelshiftx)
+	var/shifty = rand(-pixelshifty,pixelshifty)
+	animate(src, pixel_x = pixel_x + shiftx, pixel_y = pixel_y + shifty, time = 0.2, loop = duration)
+	pixel_x = initialpixelx
+	pixel_y = initialpixely
+
+/proc/params2turf(scr_loc, turf/origin, client/C)
+	if(!scr_loc)
+		return null
+	var/tX = splittext(scr_loc, ",")
+	var/tY = splittext(tX[2], ":")
+	var/tZ = origin.z
+	tY = tY[1]
+	tX = splittext(tX[1], ":")
+	tX = tX[1]
+	var/list/actual_view = getviewsize(C ? C.view : world.view)
+	tX = Clamp(origin.x + text2num(tX) - round(actual_view[1] / 2) - 1, 1, world.maxx)
+	tY = Clamp(origin.y + text2num(tY) - round(actual_view[2] / 2) - 1, 1, world.maxy)
+	return locate(tX, tY, tZ)

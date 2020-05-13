@@ -7,13 +7,15 @@
 	icon_state = "mecha_equip"
 	force = 5
 	origin_tech = "materials=2;engineering=2"
+	max_integrity = 300
 	var/equip_cooldown = 0
 	var/equip_ready = 1
 	var/energy_drain = 0
 	var/obj/mecha/chassis = null
-	var/range = MELEE //bitflags
+	var/range = MECHA_MELEE //bitflags
 	var/salvageable = 1
 	var/selectable = 1	// Set to 0 for passive equipment such as mining scanner or armor plates
+	var/harmful = FALSE //Controls if equipment can be used to attack by a pacifist.
 
 
 /obj/item/mecha_parts/mecha_equipment/proc/update_chassis_page()
@@ -31,19 +33,13 @@
 
 /obj/item/mecha_parts/mecha_equipment/Destroy()//missiles detonating, teleporter creating singularity?
 	if(chassis)
-		detach(chassis)
-		chassis.equipment -= src
-		listclearnulls(chassis.equipment)
-		if(chassis.selected == src)
-			chassis.selected = null
-		src.update_chassis_page()
 		chassis.occupant_message("<span class='danger'>The [src] is destroyed!</span>")
 		chassis.log_append_to_last("[src] is destroyed.",1)
 		if(istype(src, /obj/item/mecha_parts/mecha_equipment/weapon))
-			chassis.occupant << sound('sound/mecha/weapdestr.ogg', volume = 50)
+			chassis.occupant << sound(chassis.weapdestrsound, volume = 50)
 		else
-			chassis.occupant << sound('sound/mecha/critdestr.ogg', volume = 50)
-		chassis = null
+			chassis.occupant << sound(chassis.critdestrsound, volume = 50)
+		detach(chassis)
 	return ..()
 
 /obj/item/mecha_parts/mecha_equipment/proc/critfail()
@@ -65,10 +61,10 @@
 	return txt
 
 /obj/item/mecha_parts/mecha_equipment/proc/is_ranged()//add a distance restricted equipment. Why not?
-	return range&RANGED
+	return range & MECHA_RANGED
 
 /obj/item/mecha_parts/mecha_equipment/proc/is_melee()
-	return range&MELEE
+	return range & MECHA_MELEE
 
 /obj/item/mecha_parts/mecha_equipment/proc/action_checks(atom/target)
 	if(!target)
@@ -97,10 +93,18 @@
 	var/C = chassis.loc
 	set_ready_state(0)
 	chassis.use_power(energy_drain)
-	. = do_after(chassis.occupant, equip_cooldown, target=target)
+	. = do_after(chassis.occupant, equip_cooldown, target = target)
 	set_ready_state(1)
-	if(!chassis || 	chassis.loc != C || src != chassis.selected)
-		return 0
+	if(!chassis || 	chassis.loc != C || src != chassis.selected || !(get_dir(chassis, target) & chassis.dir))
+		return FALSE
+
+/obj/item/mecha_parts/mecha_equipment/proc/do_after_mecha(atom/target, delay)
+	if(!chassis)
+		return
+	var/C = chassis.loc
+	. = do_after(chassis.occupant, delay, target = target)
+	if(!chassis || 	chassis.loc != C || src != chassis.selected || !(get_dir(chassis, target) & chassis.dir))
+		return FALSE
 
 /obj/item/mecha_parts/mecha_equipment/proc/can_attach(obj/mecha/M)
 	if(istype(M))

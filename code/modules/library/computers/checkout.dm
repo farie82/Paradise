@@ -91,7 +91,7 @@
 				<A href='?src=[UID()];switchscreen=0'>(Return to main menu)</A><BR>"}
 		if(4)
 			dat += "<h3>External Archive</h3>"
-			if(!dbcon.IsConnected())
+			if(!GLOB.dbcon.IsConnected())
 				dat += "<font color=red><b>ERROR</b>: Unable to contact External Archive. Please contact your system administrator for assistance.</font>"
 			else
 				num_results = src.get_num_results()
@@ -199,6 +199,9 @@
 		to_chat(user, "<span class='notice'>You override the library computer's printing restrictions.</span>")
 
 /obj/machinery/computer/library/checkout/attackby(obj/item/W as obj, mob/user as mob)
+	if(default_unfasten_wrench(user, W))
+		power_change()
+		return
 	if(istype(W, /obj/item/barcodescanner))
 		var/obj/item/barcodescanner/scanner = W
 		scanner.computer = src
@@ -234,7 +237,7 @@
 		else
 			query.title = null
 	if(href_list["setcategory"])
-		var/newcategory = input("Choose a category to search for:") in (list("Any") + library_section_names)
+		var/newcategory = input("Choose a category to search for:") in (list("Any") + GLOB.library_section_names)
 		if(newcategory == "Any")
 			query.category = null
 		else if(newcategory)
@@ -258,7 +261,7 @@
 		var/datum/cachedbook/target = getBookByID(href_list["del"]) // Sanitized in getBookByID
 		var/ans = alert(usr, "Are you sure you wish to delete \"[target.title]\", by [target.author]? This cannot be undone.", "Library System", "Yes", "No")
 		if(ans=="Yes")
-			var/DBQuery/query = dbcon.NewQuery("DELETE FROM [format_table_name("library")] WHERE id=[target.id]")
+			var/DBQuery/query = GLOB.dbcon.NewQuery("DELETE FROM [format_table_name("library")] WHERE id=[target.id]")
 			var/response = query.Execute()
 			if(!response)
 				to_chat(usr, query.ErrorMsg())
@@ -274,7 +277,7 @@
 		var/tckey = ckey(href_list["delbyckey"])
 		var/ans = alert(usr,"Are you sure you wish to delete all books by [tckey]? This cannot be undone.", "Library System", "Yes", "No")
 		if(ans=="Yes")
-			var/DBQuery/query = dbcon.NewQuery("DELETE FROM [format_table_name("library")] WHERE ckey='[sanitizeSQL(tckey)]'")
+			var/DBQuery/query = GLOB.dbcon.NewQuery("DELETE FROM [format_table_name("library")] WHERE ckey='[sanitizeSQL(tckey)]'")
 			var/response = query.Execute()
 			if(!response)
 				to_chat(usr, query.ErrorMsg())
@@ -289,7 +292,7 @@
 			return
 
 	if(href_list["flag"])
-		if(!dbcon.IsConnected())
+		if(!GLOB.dbcon.IsConnected())
 			alert("Connection to Archive has been severed. Aborting.")
 			return
 		var/id = href_list["flag"]
@@ -297,7 +300,7 @@
 			var/datum/cachedbook/B = getBookByID(id)
 			if(B)
 				if((input(usr, "Are you sure you want to flag [B.title] as having inappropriate content?", "Flag Book #[B.id]") in list("Yes", "No")) == "Yes")
-					library_catalog.flag_book_by_id(usr, id)
+					GLOB.library_catalog.flag_book_by_id(usr, id)
 
 	if(href_list["switchscreen"])
 		switch(href_list["switchscreen"])
@@ -317,11 +320,11 @@
 				if(!bibledelay)
 
 					var/obj/item/storage/bible/B = new /obj/item/storage/bible(src.loc)
-					if(ticker && ( ticker.Bible_icon_state && ticker.Bible_item_state) )
-						B.icon_state = ticker.Bible_icon_state
-						B.item_state = ticker.Bible_item_state
-						B.name = ticker.Bible_name
-						B.deity_name = ticker.Bible_deity_name
+					if(SSticker && ( SSticker.Bible_icon_state && SSticker.Bible_item_state) )
+						B.icon_state = SSticker.Bible_icon_state
+						B.item_state = SSticker.Bible_item_state
+						B.name = SSticker.Bible_name
+						B.deity_name = SSticker.Bible_deity_name
 
 					bibledelay = 1
 					spawn(60)
@@ -375,14 +378,14 @@
 				var/choice = input("Are you certain you wish to upload this title to the Archive?") in list("Confirm", "Abort")
 				if(choice == "Confirm")
 					establish_db_connection()
-					if(!dbcon.IsConnected())
+					if(!GLOB.dbcon.IsConnected())
 						alert("Connection to Archive has been severed. Aborting.")
 					else
 						var/sqltitle = sanitizeSQL(scanner.cache.name)
 						var/sqlauthor = sanitizeSQL(scanner.cache.author)
 						var/sqlcontent = sanitizeSQL(scanner.cache.dat)
 						var/sqlcategory = sanitizeSQL(upload_category)
-						var/DBQuery/query = dbcon.NewQuery("INSERT INTO [format_table_name("library")] (author, title, content, category, ckey, flagged) VALUES ('[sqlauthor]', '[sqltitle]', '[sqlcontent]', '[sqlcategory]', '[ckey(usr.key)]', 0)")
+						var/DBQuery/query = GLOB.dbcon.NewQuery("INSERT INTO [format_table_name("library")] (author, title, content, category, ckey, flagged) VALUES ('[sqlauthor]', '[sqltitle]', '[sqlcontent]', '[sqlcategory]', '[ckey(usr.key)]', 0)")
 						var/response = query.Execute()
 						if(!response)
 							to_chat(usr, query.ErrorMsg())
@@ -396,7 +399,7 @@
 			if(!href_list["id"])
 				return
 
-		if(!dbcon.IsConnected())
+		if(!GLOB.dbcon.IsConnected())
 			alert("Connection to Archive has been severed. Aborting.")
 			return
 
@@ -419,7 +422,7 @@
 		if(!href_list["manual"]) return
 		var/bookid = href_list["manual"]
 
-		if(!dbcon.IsConnected())
+		if(!GLOB.dbcon.IsConnected())
 			alert("Connection to Archive has been severed. Aborting.")
 			return
 

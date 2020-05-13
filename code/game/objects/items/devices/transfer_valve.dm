@@ -75,10 +75,10 @@
 		return
 	attached_device.HasProximity(AM)
 
-/obj/item/transfer_valve/hear_talk(mob/living/M, msg)
+/obj/item/transfer_valve/hear_talk(mob/living/M, list/message_pieces)
 	..()
 	for(var/obj/O in contents)
-		O.hear_talk(M, msg)
+		O.hear_talk(M, message_pieces)
 
 /obj/item/transfer_valve/hear_message(mob/living/M, msg)
 	..()
@@ -100,7 +100,7 @@
 		// auto update every Master Controller tick
 		//ui.set_auto_update(1)
 
-/obj/item/transfer_valve/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/item/transfer_valve/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 
 	data["attachmentOne"] = tank_one ? tank_one.name : null

@@ -12,6 +12,7 @@
 	var/turf/target //Used for one-time-use teleport cards (such as clown planet coordinates.)
 						 //Setting this to 1 will set src.locked to null after a player enters the portal and will not allow hand-teles to open portals to that location.
 	var/area_bypass = FALSE
+	var/cc_beacon = FALSE
 
 /obj/machinery/computer/teleporter/New()
 	src.id = "[rand(1000, 9999)]"
@@ -75,7 +76,7 @@
 		ui = new(user, src, ui_key, "teleporter_console.tmpl", "Teleporter Console UI", 400, 400)
 		ui.open()
 
-/obj/machinery/computer/teleporter/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/computer/teleporter/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 	data["powerstation"] = power_station
 	if(power_station)
@@ -178,11 +179,11 @@
 		var/list/L = list()
 		var/list/areaindex = list()
 
-		for(var/obj/item/radio/beacon/R in beacons)
+		for(var/obj/item/radio/beacon/R in GLOB.beacons)
 			var/turf/T = get_turf(R)
 			if(!T)
 				continue
-			if(!is_teleport_allowed(T.z))
+			if(!is_teleport_allowed(T.z) && !R.cc_beacon)
 				continue
 			if(R.syndicate == 1 && emagged == 0)
 				continue
@@ -193,7 +194,7 @@
 				areaindex[tmpname] = 1
 			L[tmpname] = R
 
-		for(var/obj/item/implant/tracking/I in tracked_implants)
+		for(var/obj/item/implant/tracking/I in GLOB.tracked_implants)
 			if(!I.implanted || !ismob(I.loc))
 				continue
 			else
@@ -217,6 +218,7 @@
 			var/obj/item/radio/beacon/B = target
 			if(B.area_bypass)
 				area_bypass = TRUE
+			cc_beacon = B.cc_beacon
 	else
 		var/list/L = list()
 		var/list/areaindex = list()
@@ -281,9 +283,7 @@
 	link_power_station()
 	component_parts = list()
 	component_parts += new /obj/item/circuitboard/teleporter_hub(null)
-	component_parts += new /obj/item/ore/bluespace_crystal/artificial(null)
-	component_parts += new /obj/item/ore/bluespace_crystal/artificial(null)
-	component_parts += new /obj/item/ore/bluespace_crystal/artificial(null)
+	component_parts += new /obj/item/stack/ore/bluespace_crystal/artificial(null, 3)
 	component_parts += new /obj/item/stock_parts/matter_bin(null)
 	RefreshParts()
 
@@ -291,9 +291,7 @@
 	..()
 	component_parts = list()
 	component_parts += new /obj/item/circuitboard/teleporter_hub(null)
-	component_parts += new /obj/item/ore/bluespace_crystal/artificial(null)
-	component_parts += new /obj/item/ore/bluespace_crystal/artificial(null)
-	component_parts += new /obj/item/ore/bluespace_crystal/artificial(null)
+	component_parts += new /obj/item/stack/ore/bluespace_crystal/artificial(null, 3)
 	component_parts += new /obj/item/stock_parts/matter_bin/super(null)
 	RefreshParts()
 
@@ -350,16 +348,17 @@
 	return
 
 /obj/machinery/teleport/hub/attackby(obj/item/I, mob/user, params)
-	if(default_deconstruction_screwdriver(user, "tele-o", "tele0", I))
-		return
-
 	if(exchange_parts(user, I))
 		return
-
-	if(default_deconstruction_crowbar(I))
-		return
-
 	return ..()
+
+/obj/machinery/teleport/hub/crowbar_act(mob/user, obj/item/I)
+	if(default_deconstruction_crowbar(user, I))
+		return TRUE
+
+/obj/machinery/teleport/hub/screwdriver_act(mob/user, obj/item/I)
+	if(default_deconstruction_screwdriver(user, "tele-o", "tele0", I))
+		return TRUE
 
 /obj/machinery/teleport/hub/proc/teleport(atom/movable/M as mob|obj, turf/T)
 	. = TRUE
@@ -370,7 +369,9 @@
 		visible_message("<span class='alert'>Cannot authenticate locked on coordinates. Please reinstate coordinate matrix.</span>")
 		return
 	if(istype(M, /atom/movable))
-		if(!calibrated && prob(25 - ((accurate) * 10))) //oh dear a problem
+		if(!calibrated && com.cc_beacon)
+			visible_message("<span class='alert'>Cannot lock on target. Please calibrate the teleporter before attempting long range teleportation.</span>")
+		else if(!calibrated && prob(25 - ((accurate) * 10)) && !com.cc_beacon) //oh dear a problem
 			. = do_teleport(M, locate(rand((2*TRANSITIONEDGE), world.maxx - (2*TRANSITIONEDGE)), rand((2*TRANSITIONEDGE), world.maxy - (2*TRANSITIONEDGE)), 3), 2, bypass_area_flag = com.area_bypass)
 		else
 			. = do_teleport(M, com.target, bypass_area_flag = com.area_bypass)
@@ -450,16 +451,17 @@
 		icon_state = "tele0"
 
 /obj/machinery/teleport/perma/attackby(obj/item/I, mob/user, params)
-	if(default_deconstruction_screwdriver(user, "tele-o", "tele0", I))
-		return
-
 	if(exchange_parts(user, I))
 		return
-
-	if(default_deconstruction_crowbar(I))
-		return
-
 	return ..()
+
+/obj/machinery/teleport/perma/crowbar_act(mob/user, obj/item/I)
+	if(default_deconstruction_crowbar(user, I))
+		return TRUE
+
+/obj/machinery/teleport/perma/screwdriver_act(mob/user, obj/item/I)
+	if(default_deconstruction_screwdriver(user, "tele-o", "tele0", I))
+		return TRUE
 
 /obj/machinery/teleport/station
 	name = "station"
@@ -478,11 +480,10 @@
 	..()
 	component_parts = list()
 	component_parts += new /obj/item/circuitboard/teleporter_station(null)
-	component_parts += new /obj/item/ore/bluespace_crystal/artificial(null)
-	component_parts += new /obj/item/ore/bluespace_crystal/artificial(null)
+	component_parts += new /obj/item/stack/ore/bluespace_crystal/artificial(null, 2)
 	component_parts += new /obj/item/stock_parts/capacitor(null)
 	component_parts += new /obj/item/stock_parts/capacitor(null)
-	component_parts += new /obj/item/stock_parts/console_screen(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
 	RefreshParts()
 	link_console_and_hub()
 
@@ -521,8 +522,27 @@
 	return ..()
 
 /obj/machinery/teleport/station/attackby(obj/item/I, mob/user, params)
-	if(ismultitool(I) && !panel_open)
-		var/obj/item/multitool/M = I
+	if(exchange_parts(user, I))
+		return
+	if(panel_open && istype(I, /obj/item/circuitboard/teleporter_perma))
+		var/obj/item/circuitboard/teleporter_perma/C = I
+		C.target = teleporter_console.target
+		to_chat(user, "<span class='caution'>You copy the targeting information from [src] to [C]</span>")
+		return
+	return ..()
+
+/obj/machinery/teleport/station/crowbar_act(mob/user, obj/item/I)
+	if(default_deconstruction_crowbar(user, I))
+		return TRUE
+
+/obj/machinery/teleport/station/multitool_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	if(!I.multitool_check_buffer(user))
+		return
+	var/obj/item/multitool/M = I
+	if(!panel_open)
 		if(M.buffer && istype(M.buffer, /obj/machinery/teleport/station) && M.buffer != src)
 			if(linked_stations.len < efficiency)
 				linked_stations.Add(M.buffer)
@@ -531,34 +551,21 @@
 			else
 				to_chat(user, "<span class='alert'>This station can't hold more information, try to use better parts.</span>")
 		return
+	M.set_multitool_buffer(user, src)
 
+/obj/machinery/teleport/station/screwdriver_act(mob/user, obj/item/I)
 	if(default_deconstruction_screwdriver(user, "controller-o", "controller", I))
 		update_icon()
-		return
+		return TRUE
 
-	if(exchange_parts(user, I))
+/obj/machinery/teleport/station/wirecutter_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
 		return
-
-	if(default_deconstruction_crowbar(I))
-		return
-
 	if(panel_open)
-		if(ismultitool(I))
-			var/obj/item/multitool/M = I
-			M.buffer = src
-			to_chat(user, "<span class='caution'>You download the data to the [M]'s buffer.</span>")
-			return
-		if(iswirecutter(I))
-			link_console_and_hub()
-			to_chat(user, "<span class='caution'>You reconnect the station to nearby machinery.</span>")
-			return
-		if(istype(I, /obj/item/circuitboard/teleporter_perma))
-			var/obj/item/circuitboard/teleporter_perma/C = I
-			C.target = teleporter_console.target
-			to_chat(user, "<span class='caution'>You copy the targeting information from [src] to [C]</span>")
-			return
+		link_console_and_hub()
+		to_chat(user, "<span class='caution'>You reconnect the station to nearby machinery.</span>")
 
-	return ..()
 
 /obj/machinery/teleport/station/attack_ai()
 	src.attack_hand()

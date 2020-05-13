@@ -36,6 +36,7 @@
 	density = 1
 	anchored = 0
 	light_range = 4
+	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | UNACIDABLE | ACID_PROOF | FREEZE_PROOF
 
 
 	var/gasefficency = 0.125
@@ -99,7 +100,7 @@
 
 /obj/machinery/power/supermatter_shard/New()
 	. = ..()
-	poi_list |= src
+	GLOB.poi_list |= src
 	//Added to the atmos_machine process as the SM is highly coupled with the atmospherics system.
 	//Having the SM run at a different rate then atmospherics causes odd behavior.
 	SSair.atmos_machinery += src
@@ -137,7 +138,7 @@
 	if(damage > emergency_point)
 		emergency_lighting(0)
 	QDEL_NULL(radio)
-	poi_list.Remove(src)
+	GLOB.poi_list.Remove(src)
 	SSair.atmos_machinery -= src
 	return ..()
 
@@ -182,7 +183,7 @@
 		if(damage > explosion_point)
 			if(get_turf(src))
 				var/turf/position = get_turf(src)
-				for(var/mob/living/mob in living_mob_list)
+				for(var/mob/living/mob in GLOB.living_mob_list)
 					var/turf/mob_pos = get_turf(mob)
 					if(mob_pos && mob_pos.z == position.z)
 						if(ishuman(mob))
@@ -301,7 +302,7 @@
 	investigate_log("Supermatter shard consumed by singularity.","singulo")
 	message_admins("Singularity has consumed a supermatter shard and can now become stage six.<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[x];Y=[y];Z=[z]'>(JMP)</a>.")
 	visible_message("<span class='userdanger'>[src] is consumed by the singularity!</span>")
-	for(var/mob/M in mob_list)
+	for(var/mob/M in GLOB.mob_list)
 		M << 'sound/effects/supermatter.ogg' //everyone gunna know bout this
 		to_chat(M, "<span class='boldannounce'>A horrible screeching fills your ears, and a wave of dread washes over you...</span>")
 	qdel(src)
@@ -343,7 +344,7 @@
 		ui.open()
 		ui.set_auto_update(1)
 
-/obj/machinery/power/supermatter_shard/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/power/supermatter_shard/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 
 	data["integrity_percentage"] = round(get_integrity())
@@ -365,7 +366,7 @@
 	return data
 
 /obj/machinery/power/supermatter_shard/proc/transfer_energy()
-	for(var/obj/machinery/power/rad_collector/R in rad_collectors)
+	for(var/obj/machinery/power/rad_collector/R in GLOB.rad_collectors)
 		if(get_dist(R, src) <= 15) // Better than using orange() every process
 			R.receive_pulse(power/10)
 	return
@@ -470,5 +471,5 @@
         post_status("shuttle")
 
 /obj/machinery/power/supermatter_shard/proc/supermatter_zap()
-	playsound(src.loc, 'sound/magic/LightningShock.ogg', 100, 1, extrarange = 5)
+	playsound(src.loc, 'sound/magic/lightningshock.ogg', 100, 1, extrarange = 5)
 	tesla_zap(src, 10, max(1000,power * damage / explosion_point))

@@ -4,6 +4,9 @@
 
 #define RPD_COOLDOWN_TIME		4 //How long should we have to wait between dispensing pipes?
 #define RPD_WALLBUILD_TIME		40 //How long should drilling into a wall take?
+#define RPD_MENU_ROTATE "Rotate pipes" //Stuff for radial menu
+#define RPD_MENU_FLIP "Flip pipes" //Stuff for radial menu
+#define RPD_MENU_DELETE "Delete pipes" //Stuff for radial menu
 
 /obj/item/rpd
 	name = "rapid pipe dispenser"
@@ -20,6 +23,8 @@
 	throw_range = 5
 	w_class = WEIGHT_CLASS_NORMAL
 	materials = list(MAT_METAL = 75000, MAT_GLASS = 37500)
+	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 100, "acid" = 50)
+	resistance_flags = FIRE_PROOF
 	origin_tech = "engineering=4;materials=2"
 	var/datum/effect_system/spark_spread/spark_system
 	var/lastused
@@ -30,6 +35,24 @@
 	var/whatdpipe = PIPE_DISPOSALS_STRAIGHT //What kind of disposals pipe is it?
 	var/spawndelay = RPD_COOLDOWN_TIME
 	var/walldelay = RPD_WALLBUILD_TIME
+	var/ranged = FALSE
+	var/primary_sound = 'sound/machines/click.ogg'
+	var/alt_sound = null
+
+	//Lists of things
+	var/list/mainmenu = list(
+		list("category" = "Atmospherics", "mode" = RPD_ATMOS_MODE, "icon" = "wrench"),
+		list("category" = "Disposals", "mode" = RPD_DISPOSALS_MODE, "icon" = "recycle"),
+		list("category" = "Rotate", "mode" = RPD_ROTATE_MODE, "icon" = "rotate-right"),
+		list("category" = "Flip", "mode" = RPD_FLIP_MODE, "icon" = "exchange"),
+		list("category" = "Recycle", "mode" = RPD_DELETE_MODE, "icon" = "trash"))
+	var/list/pipemenu = list(
+		list("category" = "Normal", "pipemode" = RPD_ATMOS_PIPING),
+		list("category" = "Supply", "pipemode" = RPD_SUPPLY_PIPING),
+		list("category" = "Scrubber", "pipemode" = RPD_SCRUBBERS_PIPING),
+		list("category" = "Devices", "pipemode" = RPD_DEVICES),
+		list("category" = "Heat exchange", "pipemode" = RPD_HEAT_PIPING))
+
 
 /obj/item/rpd/New()
 	..()
@@ -41,11 +64,24 @@
 	QDEL_NULL(spark_system)
 	return ..()
 
+/obj/item/rpd/bluespace
+	name = "bluespace rapid pipe dispenser"
+	desc = "This device can rapidly dispense atmospherics and disposals piping, manipulate loose piping, and recycle any detached pipes it is applied to, at any range."
+	icon_state = "brpd"
+	materials = list(MAT_METAL = 75000, MAT_GLASS = 37500, MAT_SILVER = 3000)
+	origin_tech = "engineering=4;materials=2;bluespace=3"
+	ranged = TRUE
+	primary_sound = 'sound/items/PSHOOM.ogg'
+	alt_sound = 'sound/items/PSHOOM_2.ogg'
+
 //Procs
 
 /obj/item/rpd/proc/activate_rpd(delay) //Maybe makes sparks and activates cooldown if there is a delay
-	playsound(loc, "sound/machines/click.ogg", 50, 1)
-	if(prob(15))
+	if(alt_sound && prob(3))
+		playsound(src, alt_sound, 50, 1)
+	else
+		playsound(src, primary_sound, 50, 1)
+	if(prob(15) && !ranged)
 		spark_system.start()
 	if(delay)
 		lastused = world.time
@@ -70,8 +106,8 @@
 		P = new(T, whatpipe, iconrotation) //Make the pipe, BUT WAIT! There's more!
 		if(!iconrotation && P.is_bent_pipe()) //Automatically rotates dispensed pipes if the user selected auto-rotation
 			P.dir = turn(user.dir, 135)
-		else if(!iconrotation && P.pipe_type in list(PIPE_CONNECTOR, PIPE_UVENT, PIPE_SCRUBBER, PIPE_HEAT_EXCHANGE, PIPE_CAP, PIPE_SUPPLY_CAP, PIPE_SCRUBBERS_CAP, PIPE_INJECTOR, PIPE_PASV_VENT)) //Some pipes dispense oppositely to what you'd expect, but we don't want to do anything if they selected a direction
-			P.flip()
+		else if(!iconrotation && (P.pipe_type in list(PIPE_CONNECTOR, PIPE_UVENT, PIPE_SCRUBBER, PIPE_HEAT_EXCHANGE, PIPE_CAP, PIPE_SUPPLY_CAP, PIPE_SCRUBBERS_CAP, PIPE_INJECTOR, PIPE_PASV_VENT))) //Some pipes dispense oppositely to what you'd expect, but we don't want to do anything if they selected a direction
+			P.dir = turn(user.dir, -180)
 		else if(iconrotation && P.is_bent_pipe()) //If user selected a rotation and the pipe is bent
 			P.dir = turn(iconrotation, -45)
 		else if(!iconrotation) //If user selected a rotation
@@ -129,34 +165,22 @@
 	QDEL_NULL(P)
 	activate_rpd()
 
-//Lists of things
-
-var/list/mainmenu = list(
-	list("category" = "Atmospherics", "mode" = RPD_ATMOS_MODE, "icon" = "wrench"),
-	list("category" = "Disposals", "mode" = RPD_DISPOSALS_MODE, "icon" = "recycle"),
-	list("category" = "Rotate", "mode" = RPD_ROTATE_MODE, "icon" = "rotate-right"),
-	list("category" = "Flip", "mode" = RPD_FLIP_MODE, "icon" = "exchange"),
-	list("category" = "Recycle", "mode" = RPD_DELETE_MODE, "icon" = "trash"))
-var/list/pipemenu = list(
-	list("category" = "Normal", "pipemode" = RPD_ATMOS_PIPING),
-	list("category" = "Supply", "pipemode" = RPD_SUPPLY_PIPING),
-	list("category" = "Scrubber", "pipemode" = RPD_SCRUBBERS_PIPING),
-	list("category" = "Devices", "pipemode" = RPD_DEVICES),
-	list("category" = "Heat exchange", "pipemode" = RPD_HEAT_PIPING))
-
 //NanoUI stuff
 
 /obj/item/rpd/attack_self(mob/user)
 	ui_interact(user)
 
-/obj/item/rpd/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = inventory_state)
+/obj/item/rpd/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = GLOB.inventory_state)
 	ui = SSnanoui.try_update_ui(user, src, ui_key, ui, force_open)
 	if(!ui)
 		ui = new(user, src, ui_key, "rpd.tmpl", "[name]", 400, 650, state = state)
 		ui.open()
 		ui.set_auto_update(1)
 
-/obj/item/rpd/ui_data(mob/user, ui_key = "main", datum/topic_state/state = inventory_state)
+/obj/item/rpd/AltClick(mob/user)
+	radial_menu(user)
+
+/obj/item/rpd/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.inventory_state)
 	var/data[0]
 	data["iconrotation"] = iconrotation
 	data["mainmenu"] = mainmenu
@@ -184,11 +208,49 @@ var/list/pipemenu = list(
 		return
 	SSnanoui.update_uis(src)
 
+//RPD radial menu
+
+/obj/item/rpd/proc/check_menu(mob/living/user)
+	if(!istype(user))
+		return
+	if(user.incapacitated())
+		return
+	if(loc != user)
+		return
+	return TRUE
+
+/obj/item/rpd/proc/radial_menu(mob/user)
+	if(!check_menu(user))
+		to_chat(user, "<span class='notice'>You can't do that right now!</span>")
+		return
+	var/list/choices = list(
+		RPD_MENU_ROTATE = image(icon = 'icons/obj/interface.dmi', icon_state = "rpd_rotate"),
+		RPD_MENU_FLIP = image(icon = 'icons/obj/interface.dmi', icon_state = "rpd_flip"),
+		RPD_MENU_DELETE = image(icon = 'icons/obj/interface.dmi', icon_state = "rpd_delete"),
+		"UI" = image(icon = 'icons/obj/interface.dmi', icon_state = "ui_interact")
+	)
+	var/selected_mode = show_radial_menu(user, src, choices, custom_check = CALLBACK(src, .proc/check_menu, user))
+	if(!check_menu(user))
+		return
+	if(selected_mode == "UI")
+		ui_interact(user)
+	else
+		switch(selected_mode)
+			if(RPD_MENU_ROTATE)
+				mode = RPD_ROTATE_MODE
+			if(RPD_MENU_FLIP)
+				mode = RPD_FLIP_MODE
+			if(RPD_MENU_DELETE)
+				mode = RPD_DELETE_MODE
+			else
+				return //Either nothing was selected, or an invalid mode was selected
+		to_chat(user, "<span class='notice'>You set [src]'s mode.</span>")
+
 /obj/item/rpd/afterattack(atom/target, mob/user, proximity)
 	..()
 	if(loc != user)
 		return
-	if(!proximity)
+	if(!proximity && !ranged)
 		return
 	if(world.time < lastused + spawndelay)
 		return
@@ -201,6 +263,8 @@ var/list/pipemenu = list(
 		if(target.rpd_act(user, src) == TRUE)
 			// If the object we are clicking on has a valid RPD interaction for just that specific object, do that and nothing else.
 			// Example: clicking on a pipe with a RPD in rotate mode should rotate that pipe and ignore everything else on the tile.
+			if(ranged)
+				user.Beam(T, icon_state="rped_upgrade", icon='icons/effects/effects.dmi', time=5)
 			return
 
 	// If we get this far, we have to check every object in the tile, to make sure that none of them block RPD usage on this tile.
@@ -212,7 +276,12 @@ var/list/pipemenu = list(
 			return
 
 	// If we get here, then we're effectively acting on the turf, probably placing a pipe.
+	if(ranged) //woosh beam if bluespaced at a distance
+		user.Beam(T,icon_state="rped_upgrade", icon='icons/effects/effects.dmi', time=5)
 	T.rpd_act(user, src)
 
 #undef RPD_COOLDOWN_TIME
 #undef RPD_WALLBUILD_TIME
+#undef RPD_MENU_ROTATE
+#undef RPD_MENU_FLIP
+#undef RPD_MENU_DELETE

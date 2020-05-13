@@ -2,7 +2,7 @@
 	name = "alien"
 	icon_state = "alien_s"
 
-	butcher_results = list(/obj/item/reagent_containers/food/snacks/xenomeat = 5, /obj/item/stack/sheet/animalhide/xeno = 1)
+	butcher_results = list(/obj/item/reagent_containers/food/snacks/monstermeat/xenomeat= 5, /obj/item/stack/sheet/animalhide/xeno = 1)
 	var/obj/item/r_store = null
 	var/obj/item/l_store = null
 	var/caste = ""
@@ -14,8 +14,6 @@
 	var/custom_pixel_x_offset = 0 //for admin fuckery.
 	var/custom_pixel_y_offset = 0
 	pass_flags = PASSTABLE
-	pressure_resistance = 100    //100 kPa difference required to push
-	throw_pressure_limit = 120  //120 kPa difference required to throw
 
 //This is fine right now, if we're adding organ specific damage this needs to be updated
 /mob/living/carbon/alien/humanoid/New()
@@ -26,11 +24,6 @@
 	add_language("Xenomorph")
 	add_language("Hivemind")
 	..()
-
-
-/mob/living/carbon/alien/humanoid/movement_delay()
-	. = ..()
-	. += move_delay_add + config.alien_delay //move_delay_add is used to slow aliens with stuns
 
 /mob/living/carbon/alien/humanoid/Process_Spacemove(var/check_drift = 0)
 	if(..())
@@ -63,30 +56,14 @@
 
 			f_loss += 60
 
-			AdjustEarDamage(30)
-			AdjustEarDeaf(120)
-
+			AdjustEarDamage(30, 120)
 		if(3.0)
 			b_loss += 30
 			if(prob(50) && !shielded)
 				Paralyse(1)
-			AdjustEarDamage(15)
-			AdjustEarDeaf(60)
+			AdjustEarDamage(15, 60)
 
-	adjustBruteLoss(b_loss)
-	adjustFireLoss(f_loss)
-
-	updatehealth()
-
-/mob/living/carbon/alien/humanoid/attack_slime(mob/living/carbon/slime/M)
-	..()
-	var/damage = rand(5, 35)
-	if(M.is_adult)
-		damage = rand(10, 40)
-	adjustBruteLoss(damage)
-	add_attack_logs(src, M, "Slime'd for [damage] damage")
-	updatehealth()
-	return
+	take_overall_damage(b_loss, f_loss)
 
 /mob/living/carbon/alien/humanoid/restrained()
 	if(handcuffed)

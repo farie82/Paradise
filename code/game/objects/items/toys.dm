@@ -38,6 +38,7 @@
 	item_state = "balloon-empty"
 
 /obj/item/toy/balloon/New()
+	..()
 	create_reagents(10)
 
 /obj/item/toy/balloon/attack(mob/living/carbon/human/M as mob, mob/user as mob)
@@ -208,8 +209,9 @@
 	origin_tech = null
 	attack_verb = list("attacked", "struck", "hit")
 	brightness_on = 0
+	sharp_when_wielded = FALSE // It's a toy
 
-/obj/item/twohanded/dualsaber/toy/hit_reaction()
+/obj/item/twohanded/dualsaber/toy/hit_reaction(mob/living/carbon/human/owner, atom/movable/hitby, attack_text = "the attack", final_block_chance = 0, damage = 0, attack_type = MELEE_ATTACK)
 	return 0
 
 /obj/item/twohanded/dualsaber/toy/IsReflect()//Stops Toy Dualsabers from reflecting energy projectiles
@@ -231,7 +233,7 @@
 /obj/item/toy/katana/suicide_act(mob/user)
 	var/dmsg = pick("[user] tries to stab \the [src] into [user.p_their()] abdomen, but it shatters! [user.p_they(TRUE)] look[user.p_s()] as if [user.p_they()] might die from the shame.","[user] tries to stab \the [src] into [user.p_their()] abdomen, but \the [src] bends and breaks in half! [user.p_they(TRUE)] look[user.p_s()] as if [user.p_they()] might die from the shame.","[user] tries to slice [user.p_their()] own throat, but the plastic blade has no sharpness, causing [user.p_them()] to lose [user.p_their()] balance, slip over, and break [user.p_their()] neck with a loud snap!")
 	user.visible_message("<span class='suicide'>[dmsg] It looks like [user.p_theyre()] trying to commit suicide.</span>")
-	return (BRUTELOSS)
+	return BRUTELOSS
 
 
 /*
@@ -250,9 +252,7 @@
 
 /obj/item/toy/snappop/virus/throw_impact(atom/hit_atom)
 	..()
-	var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
-	s.set_up(3, 1, src)
-	s.start()
+	do_sparks(3, 1, src)
 	new /obj/effect/decal/cleanable/ash(src.loc)
 	visible_message("<span class='warning'>The [name] explodes!</span>","<span class='warning'>You hear a bang!</span>")
 	playsound(src, 'sound/effects/snap.ogg', 50, 1)
@@ -270,23 +270,22 @@
 	var/ash_type = /obj/effect/decal/cleanable/ash
 
 /obj/item/toy/snappop/proc/pop_burst(var/n=3, var/c=1)
-	var/datum/effect_system/spark_spread/s = new()
-	s.set_up(n, c, src)
-	s.start()
+	do_sparks(n, c, src)
 	new ash_type(loc)
 	visible_message("<span class='warning'>[src] explodes!</span>",
 		"<span class='italics'>You hear a snap!</span>")
 	playsound(src, 'sound/effects/snap.ogg', 50, 1)
 	qdel(src)
 
-/obj/item/toy/snappop/fire_act()
+/obj/item/toy/snappop/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume, global_overlay = TRUE)
+	..()
 	pop_burst()
 
 /obj/item/toy/snappop/throw_impact(atom/hit_atom)
 	..()
 	pop_burst()
 
-/obj/item/toy/snappop/Crossed(H as mob|obj)
+/obj/item/toy/snappop/Crossed(H as mob|obj, oldloc)
 	if(ishuman(H) || issilicon(H)) //i guess carp and shit shouldn't set them off
 		var/mob/living/carbon/M = H
 		if(issilicon(H) || M.m_intent == MOVE_INTENT_RUN)
@@ -301,7 +300,7 @@
 /obj/effect/decal/cleanable/ash/snappop_phoenix
 	var/respawn_time = 300
 
-/obj/effect/decal/cleanable/ash/snappop_phoenix/New()
+/obj/effect/decal/cleanable/ash/snappop_phoenix/Initialize(mapload)
 	. = ..()
 	addtimer(CALLBACK(src, .proc/respawn), respawn_time)
 
@@ -406,8 +405,8 @@
 
 
 obj/item/toy/cards
-	burn_state = FLAMMABLE
-	burntime = 5
+	resistance_flags = FLAMMABLE
+	max_integrity = 50
 	var/parentdeck = null
 	var/deckstyle = "nanotrasen"
 	var/card_hitsound = null
@@ -629,6 +628,7 @@ obj/item/toy/cards/cardhand/apply_card_vars(obj/item/toy/cards/newobj,obj/item/t
 	newobj.card_throw_speed = sourceobj.card_throw_speed
 	newobj.card_throw_range = sourceobj.card_throw_range
 	newobj.card_attack_verb = sourceobj.card_attack_verb
+	newobj.resistance_flags = sourceobj.resistance_flags
 
 
 obj/item/toy/cards/singlecard
@@ -643,13 +643,14 @@ obj/item/toy/cards/singlecard
 
 
 obj/item/toy/cards/singlecard/examine(mob/user)
-	if(..(user, 0))
+	. = ..()
+	if(get_dist(user, src) <= 0)
 		if(ishuman(user))
 			var/mob/living/carbon/human/cardUser = user
 			if(cardUser.get_item_by_slot(slot_l_hand) == src || cardUser.get_item_by_slot(slot_r_hand) == src)
 				cardUser.visible_message("<span class='notice'>[cardUser] checks [cardUser.p_their()] card.</span>", "<span class='notice'>The card reads: [src.cardname]</span>")
 			else
-				to_chat(cardUser, "<span class='notice'>You need to have the card in your hand to check it.</span>")
+				. += "<span class='notice'>You need to have the card in your hand to check it.</span>"
 
 
 obj/item/toy/cards/singlecard/verb/Flip()
@@ -754,7 +755,7 @@ obj/item/toy/cards/deck/syndicate
 	card_throw_speed = 3
 	card_throw_range = 20
 	card_attack_verb = list("attacked", "sliced", "diced", "slashed", "cut")
-	burn_state = FIRE_PROOF
+	resistance_flags = NONE
 
 /*
 || Custom card decks ||
@@ -779,7 +780,7 @@ obj/item/toy/cards/deck/syndicate/black
 		user.visible_message("<span class='warning'>[user] presses a button on [src]</span>", "<span class='notice'>You activate [src], it plays a loud noise!</span>", "<span class='notice'>You hear the click of a button.</span>")
 		spawn(5) //gia said so
 			icon_state = "nuketoy"
-			playsound(src, 'sound/machines/Alarm.ogg', 100, 0, 0)
+			playsound(src, 'sound/machines/alarm.ogg', 100, 0, 0)
 			sleep(135)
 			icon_state = "nuketoycool"
 			sleep(cooldown - world.time)
@@ -796,9 +797,10 @@ obj/item/toy/cards/deck/syndicate/black
 	item_state = "egg4"
 	w_class = WEIGHT_CLASS_TINY
 	var/cooldown = 0
-	burn_state = FLAMMABLE
+	resistance_flags = FLAMMABLE
 
 /obj/item/toy/therapy/New()
+	..()
 	if(item_color)
 		name = "[item_color] therapy doll"
 		desc += " This one is [item_color]."
@@ -892,7 +894,7 @@ obj/item/toy/cards/deck/syndicate/black
 	icon_state = "carpplushie"
 	attack_verb = list("bitten", "eaten", "fin slapped")
 	var/bitesound = 'sound/weapons/bite.ogg'
-	burn_state = FLAMMABLE
+	resistance_flags = FLAMMABLE
 
 // Attack mob
 /obj/item/toy/carpplushie/attack(mob/M as mob, mob/user as mob)
@@ -955,7 +957,7 @@ obj/item/toy/cards/deck/syndicate/black
 	icon = 'icons/obj/toy.dmi'
 	var/poof_sound = 'sound/weapons/thudswoosh.ogg'
 	attack_verb = list("poofed", "bopped", "whapped","cuddled","fluffed")
-	burn_state = FLAMMABLE
+	resistance_flags = FLAMMABLE
 
 /obj/item/toy/plushie/attack(mob/M as mob, mob/user as mob)
 	playsound(loc, poof_sound, 20, 1)	// Play the whoosh sound in local area
@@ -1069,6 +1071,48 @@ obj/item/toy/cards/deck/syndicate/black
 	name = "tuxedo cat plushie"
 	icon_state = "tuxedocat"
 
+/obj/item/toy/plushie/voxplushie
+	name = "vox plushie"
+	desc = "A stitched-together vox, fresh from the skipjack. Press its belly to hear it skree!"
+	icon_state = "plushie_vox"
+	item_state = "plushie_vox"
+	var/cooldown = 0
+
+/obj/item/toy/plushie/voxplushie/attack_self(mob/user)
+	if(!cooldown)
+		playsound(user, 'sound/voice/shriek1.ogg', 10, 0)
+		visible_message("<span class='danger'>Skreee!</span>")
+		cooldown = 1
+		spawn(30) cooldown = 0
+		return
+	..()
+
+//New generation TG plushies
+
+/obj/item/toy/plushie/lizardplushie
+	name = "lizard plushie"
+	desc = "An adorable stuffed toy that resembles a lizardperson."
+	icon_state = "plushie_lizard"
+	item_state = "plushie_lizard"
+
+/obj/item/toy/plushie/snakeplushie
+	name = "snake plushie"
+	desc = "An adorable stuffed toy that resembles a snake. Not to be mistaken for the real thing."
+	icon_state = "plushie_snake"
+	item_state = "plushie_snake"
+
+/obj/item/toy/plushie/nukeplushie
+	name = "operative plushie"
+	desc = "An stuffed toy that resembles a syndicate nuclear operative. The tag claims operatives to be purely fictitious."
+	icon_state = "plushie_nuke"
+	item_state = "plushie_nuke"
+
+/obj/item/toy/plushie/slimeplushie
+	name = "slime plushie"
+	desc = "An adorable stuffed toy that resembles a slime. It is practically just a hacky sack."
+	icon_state = "plushie_slime"
+	item_state = "plushie_slime"
+
 /*
  * Foam Armblade
  */
@@ -1081,7 +1125,7 @@ obj/item/toy/cards/deck/syndicate/black
  	item_state = "arm_blade"
  	attack_verb = list("pricked", "absorbed", "gored")
  	w_class = WEIGHT_CLASS_SMALL
- 	burn_state = FLAMMABLE
+ 	resistance_flags = FLAMMABLE
 
 /*
  * Toy/fake flash
@@ -1147,6 +1191,37 @@ obj/item/toy/cards/deck/syndicate/black
 		return
 	..()
 
+/obj/item/toy/codex_gigas
+	name = "Toy Codex Gigas"
+	desc = "A tool to help you write fictional devils!"
+	icon = 'icons/obj/library.dmi'
+	icon_state = "demonomicon"
+	w_class = WEIGHT_CLASS_SMALL
+	var/cooldown = FALSE
+
+/obj/item/toy/codex_gigas/attack_self(mob/user)
+	if(!cooldown)
+		user.visible_message(
+			"<span class='notice'>[user] presses the button on \the [src].</span>",
+			"<span class='notice'>You press the button on \the [src].</span>",
+			"<span class='notice'>You hear a soft click.</span>")
+		var/list/messages = list()
+		var/datum/devilinfo/devil = randomDevilInfo()
+		messages += "Some fun facts about: [devil.truename]"
+		messages += "[GLOB.lawlorify[LORE][devil.bane]]"
+		messages += "[GLOB.lawlorify[LORE][devil.obligation]]"
+		messages += "[GLOB.lawlorify[LORE][devil.ban]]"
+		messages += "[GLOB.lawlorify[LORE][devil.banish]]"
+		playsound(loc, 'sound/machines/click.ogg', 20, 1)
+		cooldown = TRUE
+		for(var/message in messages)
+			user.loc.visible_message("<span class='danger'>[bicon(src)] [message]</span>")
+			sleep(10)
+		spawn(20)
+			cooldown = FALSE
+		return
+		..()
+
 /obj/item/toy/owl
 	name = "owl action figure"
 	desc = "An action figure modeled after 'The Owl', defender of justice."
@@ -1159,7 +1234,7 @@ obj/item/toy/cards/deck/syndicate/black
 	if(!cooldown) //for the sanity of everyone
 		var/message = pick("You won't get away this time, Griffin!", "Stop right there, criminal!", "Hoot! Hoot!", "I am the night!")
 		to_chat(user, "<span class='notice'>You pull the string on the [src].</span>")
-		playsound(user, 'sound/misc/hoot.ogg', 25, 1)
+		playsound(user, 'sound/creatures/hoot.ogg', 25, 1)
 		visible_message("<span class='danger'>[bicon(src)] [message]</span>")
 		cooldown = 1
 		spawn(30) cooldown = 0
@@ -1178,7 +1253,7 @@ obj/item/toy/cards/deck/syndicate/black
 	if(!cooldown) //for the sanity of everyone
 		var/message = pick("You can't stop me, Owl!", "My plan is flawless! The vault is mine!", "Caaaawwww!", "You will never catch me!")
 		to_chat(user, "<span class='notice'>You pull the string on the [src].</span>")
-		playsound(user, 'sound/misc/caw.ogg', 25, 1)
+		playsound(user, 'sound/creatures/caw.ogg', 25, 1)
 		visible_message("<span class='danger'>[bicon(src)] [message]</span>")
 		cooldown = 1
 		spawn(30) cooldown = 0
@@ -1344,54 +1419,84 @@ obj/item/toy/cards/deck/syndicate/black
 	force = 5
 	origin_tech = "combat=1"
 	attack_verb = list("struck", "hit", "bashed")
-	var/bullet_position = 1
+	var/bullets_left = 0
+	var/max_shots = 6
 
 /obj/item/toy/russian_revolver/suicide_act(mob/user)
 	user.visible_message("<span class='suicide'>[user] quickly loads six bullets into [src]'s cylinder and points it at [user.p_their()] head before pulling the trigger! It looks like [user.p_theyre()] trying to commit suicide.</span>")
-	playsound(loc, 'sound/weapons/Gunshot.ogg', 50, 1)
-	return (BRUTELOSS)
+	playsound(loc, 'sound/weapons/gunshots/gunshot_strong.ogg', 50, 1)
+	return BRUTELOSS
 
 /obj/item/toy/russian_revolver/New()
-	spin_cylinder()
 	..()
-
+	spin_cylinder()
 
 /obj/item/toy/russian_revolver/attack_self(mob/user)
-	if(!bullet_position)
-		user.visible_message("<span class='warning'>[user] loads a bullet into [src]'s cylinder.</span>")
-		bullet_position = 1
-	else
+	if(!bullets_left)
+		user.visible_message("<span class='warning'>[user] loads a bullet into [src]'s cylinder before spinning it.</span>")
 		spin_cylinder()
-		user.visible_message("<span class='warning'>[user] spins the cylinder on [src]!</span>")
-
-/obj/item/toy/russian_revolver/attack(mob/living/carbon/human/M, mob/living/carbon/human/user)
-	if(M != user) //can't use this on other people
-		return ..()
-	if(!bullet_position)
-		to_chat(user, "<span class='notice'>[src] is empty.</span>")
-		return
-	if(!(user.has_organ("head"))) //For sanity
-		to_chat(user, "<span class='notice'>Playing this game without a head would be classed as cheating.</span>")
-		return
-	user.visible_message("<span class='danger'>[user] points [src] at [user.p_their()] head, ready to pull the trigger!</span>")
-	if(do_after(user, 30, target = user))
-		if(bullet_position > 1)
-			user.visible_message("<span class='danger'>*click*</span>")
-			playsound(src, 'sound/weapons/empty.ogg', 100, 1)
-			bullet_position--
-			return
-		else
-			bullet_position = null
-			playsound(src, 'sound/weapons/Gunshot.ogg', 50, 1)
-			user.visible_message("<span class='danger'>[src] goes off!</span>")
-			user.apply_damage(200, BRUTE, "head", sharp = 1, used_weapon = "Self-inflicted gunshot wound to the head.")
-			user.death()
 	else
-		user.visible_message("<span class='danger'>[user] lowers [src] from [user.p_their()] head.</span>")
+		user.visible_message("<span class='warning'>[user] spins the cylinder on [src]!</span>")
+		spin_cylinder()
+
+/obj/item/toy/russian_revolver/attack(mob/M, mob/living/user)
+	return
+
+/obj/item/toy/russian_revolver/afterattack(atom/target, mob/user, flag, params)
+	if(flag)
+		if(target in user.contents)
+			return
+		if(!ismob(target))
+			return
+	shoot_gun(user)
 
 /obj/item/toy/russian_revolver/proc/spin_cylinder()
-	bullet_position = rand(1,6)
+	bullets_left = rand(1, max_shots)
 
+/obj/item/toy/russian_revolver/proc/post_shot(mob/user)
+	return
+
+/obj/item/toy/russian_revolver/proc/shoot_gun(mob/living/carbon/human/user)
+	if(bullets_left > 1)
+		bullets_left--
+		user.visible_message("<span class='danger'>*click*</span>")
+		playsound(src, 'sound/weapons/empty.ogg', 100, 1)
+		return FALSE
+	if(bullets_left == 1)
+		bullets_left = 0
+		var/zone = "head"
+		if(!(user.has_organ(zone))) // If they somehow don't have a head.
+			zone = "chest"
+		playsound(src, 'sound/weapons/gunshots/gunshot_strong.ogg', 50, 1)
+		user.visible_message("<span class='danger'>[src] goes off!</span>")
+		post_shot(user)
+		user.apply_damage(300, BRUTE, zone, sharp = TRUE, used_weapon = "Self-inflicted gunshot wound to the [zone].")
+		user.bleed(BLOOD_VOLUME_NORMAL)
+		user.death() // Just in case
+		return TRUE
+	else
+		to_chat(user, "<span class='warning'>[src] needs to be reloaded.</span>")
+		return FALSE
+
+/obj/item/toy/russian_revolver/trick_revolver
+	name = "\improper .357 revolver"
+	desc = "A suspicious revolver. Uses .357 ammo."
+	icon_state = "revolver"
+	max_shots = 1
+	var/fake_bullets = 0
+
+/obj/item/toy/russian_revolver/trick_revolver/New()
+	..()
+	fake_bullets = rand(2, 7)
+
+/obj/item/toy/russian_revolver/trick_revolver/examine(mob/user) //Sneaky sneaky
+	. = ..()
+	. += "Has [fake_bullets] round\s remaining."
+	. += "[fake_bullets] of those are live rounds."
+
+/obj/item/toy/russian_revolver/trick_revolver/post_shot(user)
+	to_chat(user, "<span class='danger'>[src] did look pretty dodgey!</span>")
+	SEND_SOUND(user, 'sound/misc/sadtrombone.ogg') //HONK
 /*
  * Rubber Chainsaw
  */
@@ -1411,6 +1516,18 @@ obj/item/toy/cards/deck/syndicate/black
 		icon_state = "chainsaw[wielded]"
 	else
 		icon_state = "chainsaw0"
+
+/*
+ * Cat Toy
+  */
+/obj/item/toy/cattoy
+	name = "toy mouse"
+	desc = "A colorful toy mouse!"
+	icon = 'icons/obj/toy.dmi'
+	icon_state = "toy_mouse"
+	w_class = WEIGHT_CLASS_SMALL
+	resistance_flags = FLAMMABLE
+	var/cooldown = 0
 
 /*
  * Action Figures
@@ -1654,3 +1771,13 @@ obj/item/toy/cards/deck/syndicate/black
 	icon_state = "conch"
 	use_action = "pulls the string"
 	possible_answers = list("Yes.", "No.", "Try asking again.", "Nothing.", "I don't think so.", "Neither.", "Maybe someday.")
+
+/*
+ *Fake cuffs (honk honk)
+ */
+
+/obj/item/restraints/handcuffs/toy
+	desc = "Toy handcuffs. Plastic and extremely cheaply made."
+	throwforce = 0
+	breakouttime = 0
+	ignoresClumsy = TRUE

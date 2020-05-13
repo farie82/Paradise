@@ -19,9 +19,16 @@
 	var/obj/item/radio/radio = null // For use with the radio MMI upgrade
 	var/datum/action/generic/configure_mmi_radio/radio_action = null
 
+	// Used for cases when mmi or one of it's children commits suicide.
+	// Needed to fix a rather insane bug when a posibrain/robotic brain commits suicide
+	var/dead_icon = "mmi_dead"
+
 /obj/item/mmi/attackby(var/obj/item/O as obj, var/mob/user as mob, params)
-	if(istype(O, /obj/item/organ/internal/brain/crystal ))
+	if(istype(O, /obj/item/organ/internal/brain/crystal))
 		to_chat(user, "<span class='warning'> This brain is too malformed to be able to use with the [src].</span>")
+		return
+	if(istype(O, /obj/item/organ/internal/brain/golem))
+		to_chat(user, "<span class='warning'>You can't find a way to plug [O] into [src].</span>")
 		return
 	if(istype(O,/obj/item/organ/internal/brain) && !brainmob) //Time to stick a brain in it --NEO
 		var/obj/item/organ/internal/brain/B = O
@@ -37,12 +44,12 @@
 			visible_message("<span class='notice'>[user] sticks \a [O] into \the [src].</span>")
 			brainmob = B.brainmob
 			B.brainmob = null
-			brainmob.loc = src
+			brainmob.forceMove(src)
 			brainmob.container = src
 			brainmob.stat = CONSCIOUS
-			respawnable_list -= brainmob
-			dead_mob_list -= brainmob//Update dem lists
-			living_mob_list += brainmob
+			GLOB.respawnable_list -= brainmob
+			GLOB.dead_mob_list -= brainmob//Update dem lists
+			GLOB.living_mob_list += brainmob
 
 			held_brain = B
 			if(istype(O,/obj/item/organ/internal/brain/xeno)) // kept the type check, as it still does other weird stuff
@@ -83,25 +90,28 @@
 		return
 
 	// Maybe later add encryption key support, but that's a pain in the neck atm
-	if(isscrewdriver(O))
-		if(radio)
-			user.visible_message("<span class='warning'>[user] begins to uninstall the radio from [src]...</span>", \
-								 "<span class='notice'>You start to uninstall the radio from [src]...</span>")
-			if(do_after(user, 40 * O.toolspeed, target = src))
-				uninstall_radio()
-				new /obj/item/mmi_radio_upgrade(get_turf(src))
-				user.visible_message("<span class='warning'>[user] uninstalls the radio from [src].</span>", \
-									 "<span class='notice'>You uninstall the radio from [src].</span>")
-		else
-			to_chat(user, "<span class='warning'>There is no radio in [src]!</span>")
-		return
 
 	if(brainmob)
 		O.attack(brainmob, user)//Oh noooeeeee
 		// Brainmobs can take damage, but they can't actually die. Maybe should fix.
 		return
-	..()
+	return ..()
 
+/obj/item/mmi/screwdriver_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.tool_use_check(user, 0))
+		return
+	if(!radio)
+		to_chat(user, "<span class='warning'>There is no radio in [src]!</span>")
+		return
+	user.visible_message("<span class='warning'>[user] begins to uninstall the radio from [src]...</span>", \
+							 "<span class='notice'>You start to uninstall the radio from [src]...</span>")
+	if(!I.use_tool(src, user, 40, volume = I.tool_volume) || !radio)
+		return
+	uninstall_radio()
+	new /obj/item/mmi_radio_upgrade(get_turf(src))
+	user.visible_message("<span class='warning'>[user] uninstalls the radio from [src].</span>", \
+						 "<span class='notice'>You uninstall the radio from [src].</span>")
 
 
 /obj/item/mmi/attack_self(mob/user as mob)
@@ -145,9 +155,9 @@
 		held_brain.name = "\the [brainmob.name]'s [initial(held_brain.name)]"
 
 	brainmob.container = null//Reset brainmob mmi var.
-	brainmob.loc = held_brain//Throw mob into brain.
-	respawnable_list += brainmob
-	living_mob_list -= brainmob//Get outta here
+	brainmob.forceMove(held_brain) //Throw mob into brain.
+	GLOB.respawnable_list += brainmob
+	GLOB.living_mob_list -= brainmob//Get outta here
 	held_brain.brainmob = brainmob//Set the brain to use the brainmob
 	held_brain.brainmob.cancel_camera()
 	brainmob = null//Set mmi brainmob var to null
@@ -162,7 +172,7 @@
 /obj/item/mmi/examine(mob/user)
 	. = ..()
 	if(radio)
-		to_chat(user, "<span class='notice'>A radio is installed on [src].</span>")
+		. += "<span class='notice'>A radio is installed on [src].</span>"
 
 /obj/item/mmi/proc/install_radio()
 	radio = new(src)

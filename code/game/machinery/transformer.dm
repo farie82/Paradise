@@ -59,10 +59,9 @@
 		playsound(src.loc, 'sound/machines/buzz-sigh.ogg', 50, 0)
 		return
 
-	playsound(src.loc, 'sound/items/Welder.ogg', 50, 1)
+	playsound(src.loc, 'sound/items/welder.ogg', 50, 1)
 	H.emote("scream") // It is painful
 	H.adjustBruteLoss(max(0, 80 - H.getBruteLoss())) // Hurt the human, don't try to kill them though.
-	H.handle_regular_hud_updates() // Make sure they see the pain.
 
 	// Sleep for a couple of ticks to allow the human to see the pain
 	sleep(5)
@@ -134,7 +133,7 @@
 		return
 
 	// Crossed didn't like people lying down.
-	if(isobject(AM))
+	if(isatom(AM))
 		AM.loc = src.loc
 		do_transform_mime(AM)
 	else
@@ -147,7 +146,7 @@
 	if(cooldown == 1)
 		return
 
-	playsound(src.loc, 'sound/items/Welder.ogg', 50, 1)
+	playsound(src.loc, 'sound/items/welder.ogg', 50, 1)
 	// Sleep for a couple of ticks to allow the human to see the pain
 	sleep(5)
 	use_power(5000) // Use a lot of power.
@@ -167,10 +166,10 @@
 	name = "Automatic X-Ray 5000"
 	desc = "A large metalic machine with an entrance and an exit. A sign on the side reads, 'backpack go in, backpack come out', 'human go in, irradiated human come out'."
 
-/obj/machinery/transformer/xray/New()
+/obj/machinery/transformer/xray/Initialize(mapload)
+	. = ..()
 	// On us
 	new /obj/machinery/conveyor/auto(loc, EAST)
-	addAtProcessing()
 
 /obj/machinery/transformer/xray/conveyor/New()
 	..()
@@ -222,7 +221,7 @@
 			AM.loc = src.loc
 			irradiate(AM)
 
-	else if(isobject(AM))
+	else if(isatom(AM))
 		AM.loc = src.loc
 		scan(AM)
 

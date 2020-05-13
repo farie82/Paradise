@@ -3,7 +3,7 @@
 	desc = "Its patented design allows it to be folded larger or smaller to accommodate standard paper, photo, and poster, and canvas sizes."
 	icon = 'icons/obj/bureaucracy.dmi'
 
-	usesound = 'sound/items/Deconstruct.ogg'
+	usesound = 'sound/items/deconstruct.ogg'
 
 	var/icon_base
 	var/obj/displayed
@@ -137,10 +137,10 @@
 
 	playsound(PF.loc, usesound, 100, 1)
 
-/obj/item/picture_frame/examine(mob/user, var/distance = -1, var/infix = "", var/suffix = "")
-	..()
+/obj/item/picture_frame/examine(mob/user, var/infix = "", var/suffix = "")
+	. = ..()
 	if(displayed)
-		displayed.examine(user, distance, infix, suffix)
+		. += displayed.examine(user, infix, suffix)
 
 /obj/item/picture_frame/attack_self(mob/user)
 	if(displayed)
@@ -245,11 +245,11 @@
 	else
 		return ..()
 
-/obj/structure/sign/picture_frame/examine(mob/user, var/distance = -1, var/infix = "", var/suffix = "")
+/obj/structure/sign/picture_frame/examine(mob/user, var/infix = "", var/suffix = "")
 	if(frame)
-		frame.examine(user, distance, infix, suffix)
+		. += frame.examine(user, infix, suffix)
 	else
-		..()
+		. = ..()
 
 /obj/structure/sign/picture_frame/attack_hand(mob/user)
 	if(frame)
@@ -297,10 +297,10 @@
 
 	toggle_tilt(usr)
 
-/obj/structure/sign/picture_frame/hear_talk(mob/living/M as mob, msg)
+/obj/structure/sign/picture_frame/hear_talk(mob/living/M as mob, list/message_pieces)
 	..()
 	for(var/obj/O in contents)
-		O.hear_talk(M, msg)
+		O.hear_talk(M, message_pieces)
 
 /obj/structure/sign/picture_frame/hear_message(mob/living/M as mob, msg)
 	..()

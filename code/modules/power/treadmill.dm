@@ -7,7 +7,6 @@
 	name = "treadmill"
 	desc = "A power-generating treadmill."
 	layer = 2.2
-	anchored = 1
 	use_power = NO_POWER_USE
 
 	var/speed = 0
@@ -18,15 +17,15 @@
 	var/list/mobs_running[0]
 	var/id = null			// for linking to monitor
 
-/obj/machinery/power/treadmill/Initialize()
-	..()
+/obj/machinery/power/treadmill/Initialize(mapload)
+	. = ..()
 	if(anchored)
 		connect_to_network()
 
 /obj/machinery/power/treadmill/update_icon()
 	icon_state = speed ? "conveyor-1" : "conveyor0"
 
-/obj/machinery/power/treadmill/Crossed(mob/living/M)
+/obj/machinery/power/treadmill/Crossed(mob/living/M, oldloc)
 	if(anchored && !M.anchored)
 		if(!istype(M) || M.dir != dir)
 			throw_off(M)
@@ -107,7 +106,7 @@
 		speed = 0
 		update_icon()
 		return
-	..()
+	return ..()
 
 #undef BASE_MOVE_DELAY
 #undef MAX_SPEED
@@ -115,7 +114,7 @@
 #define CHARS_PER_LINE 5
 #define FONT_SIZE "5pt"
 #define FONT_COLOR "#09f"
-#define FONT_STYLE "Arial Black"
+#define FONT_STYLE "Small Fonts"
 
 /obj/machinery/treadmill_monitor
 	name = "Treadmill Monitor"
@@ -126,6 +125,7 @@
 	density = 0
 	maptext_height = 26
 	maptext_width = 32
+	maptext_y = -1
 
 	var/on = 0					// if we should be metering or not
 	var/id = null				// id of treadmill
@@ -137,10 +137,10 @@
 	var/frame = 0				// on 0, show labels, on 1 show numbers
 	var/redeem_immediately = 0	// redeem immediately for holding cell
 
-/obj/machinery/treadmill_monitor/Initialize()
-	..()
+/obj/machinery/treadmill_monitor/Initialize(mapload)
+	. = ..()
 	if(id)
-		for(var/obj/machinery/power/treadmill/T in machines)
+		for(var/obj/machinery/power/treadmill/T in GLOB.machines)
 			if(T.id == id)
 				treadmill = T
 				break
@@ -168,8 +168,8 @@
 	update_icon()
 
 /obj/machinery/treadmill_monitor/examine(mob/user)
-	..()
-	to_chat(user, "The display reads:<div style='text-align: center'>[line1]<br>[line2]</div>")
+	. = ..()
+	. += "The display reads:<div style='text-align: center'>[line1]<br>[line2]</div>"
 
 /obj/machinery/treadmill_monitor/update_icon()
 	overlays.Cut()
@@ -200,6 +200,8 @@
 //Checks to see if there's 1 line or 2, adds text-icons-numbers/letters over display
 // Stolen from status_display
 /obj/machinery/treadmill_monitor/proc/update_display(var/line1, var/line2)
+	line1 = uppertext(line1)
+	line2 = uppertext(line2)
 	var/new_text = {"<div style="font-size:[FONT_SIZE];color:[FONT_COLOR];font:'[FONT_STYLE]';text-align:center;" valign="top">[line1]<br>[line2]</div>"}
 	if(maptext != new_text)
 		maptext = new_text

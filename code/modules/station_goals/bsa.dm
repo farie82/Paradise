@@ -2,6 +2,7 @@
 // Cargo orders part for high price
 // Requires high amount of power
 // Requires high level stock parts
+
 /datum/station_goal/bluespace_cannon
 	name = "Bluespace Artillery"
 
@@ -15,7 +16,7 @@
 
 /datum/station_goal/bluespace_cannon/on_report()
 	//Unlock BSA parts
-	var/datum/supply_packs/misc/bsa/P = SSshuttle.supply_packs["[/datum/supply_packs/misc/bsa]"]
+	var/datum/supply_packs/misc/station_goal/bsa/P = SSshuttle.supply_packs["[/datum/supply_packs/misc/station_goal/bsa]"]
 	P.special_enabled = TRUE
 
 /datum/station_goal/bluespace_cannon/check_completion()
@@ -104,11 +105,11 @@
 	var/x_max
 	switch(cannon_dir)
 		if(EAST)
-			x_min = x - 4 //replace with defines later
-			x_max = x + 6
+			x_min = x - BSA_SIZE_BACK
+			x_max = x + BSA_SIZE_FRONT
 		if(WEST)
-			x_min = x + 4
-			x_max = x - 6
+			x_min = x + BSA_SIZE_BACK
+			x_max = x - BSA_SIZE_FRONT
 
 	for(var/turf/T in block(locate(x_min,y-1,z),locate(x_max,y+1,z)))
 		if(T.density || isspaceturf(T))
@@ -235,7 +236,7 @@
 	build_path = /obj/machinery/bsa/middle
 	origin_tech = "engineering=2;combat=2;bluespace=2"
 	req_components = list(
-							/obj/item/ore/bluespace_crystal = 20,
+							/obj/item/stack/ore/bluespace_crystal = 20,
 							/obj/item/stack/cable_coil = 2)
 
 /obj/item/circuitboard/machine/bsa/front
@@ -312,7 +313,7 @@
 		ui.open()
 		ui.set_auto_update(1)
 
-/obj/machinery/computer/bsa_control/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/computer/bsa_control/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/list/data = list()
 	data["connected"] = cannon
 	data["notice"] = notice
@@ -351,12 +352,12 @@
 
 /obj/machinery/computer/bsa_control/proc/calibrate(mob/user)
 	var/list/gps_locators = list()
-	for(var/obj/item/gps/G in GPS_list) //nulls on the list somehow
+	for(var/obj/item/gps/G in GLOB.GPS_list) //nulls on the list somehow
 		gps_locators[G.gpstag] = G
 
 	var/list/options = gps_locators
 	if(area_aim)
-		options += target_all_areas ? ghostteleportlocs : teleportlocs
+		options += target_all_areas ? GLOB.ghostteleportlocs : GLOB.teleportlocs
 	var/V = input(user,"Select target", "Select target",null) in options|null
 	target = options[V]
 

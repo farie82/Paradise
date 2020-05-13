@@ -73,7 +73,7 @@
 	bitesize = 4
 	var/top = 1	//Do we have a top?
 	var/obj/item/toptype
-	var/add_overlays = 1	//Do we stack?
+	var/snack_overlays = 1	//Do we stack?
 //	var/offsetstuff = 1 //Do we offset the overlays?
 	var/sandwich_limit = 40
 	var/fullycustom = 0
@@ -87,8 +87,9 @@
 	icon_state = "personal_pizza"
 	baseicon = "personal_pizza"
 	basename = "personal pizza"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
+	tastes = list("crust" = 1, "tomato" = 1, "cheese" = 1)
 
 /obj/item/reagent_containers/food/snacks/customizable/pasta
 	name = "spaghetti"
@@ -96,7 +97,7 @@
 	icon_state = "pasta_bot"
 	baseicon = "pasta_bot"
 	basename = "pasta"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/cook/bread
@@ -105,8 +106,9 @@
 	icon_state = "breadcustom"
 	baseicon = "breadcustom"
 	basename = "bread"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
+	tastes = list("bread" = 10)
 
 /obj/item/reagent_containers/food/snacks/customizable/cook/pie
 	name = "pie"
@@ -114,8 +116,9 @@
 	icon_state = "piecustom"
 	baseicon = "piecustom"
 	basename = "pie"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
+	tastes = list("pie" = 1)
 
 /obj/item/reagent_containers/food/snacks/customizable/cook/cake
 	name = "cake"
@@ -123,8 +126,9 @@
 	icon_state = "cakecustom"
 	baseicon = "cakecustom"
 	basename = "cake"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
+	tastes = list("cake" = 1)
 
 /obj/item/reagent_containers/food/snacks/customizable/cook/jelly
 	name = "jelly"
@@ -132,7 +136,7 @@
 	icon_state = "jellycustom"
 	baseicon = "jellycustom"
 	basename = "jelly"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/cook/donkpocket
@@ -141,7 +145,7 @@
 	icon_state = "donkcustom"
 	baseicon = "donkcustom"
 	basename = "donk pocket"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/cook/kebab
@@ -150,8 +154,9 @@
 	icon_state = "kababcustom"
 	baseicon = "kababcustom"
 	basename = "kebab"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
+	tastes = list("meat" = 3, "metal" = 1)
 
 /obj/item/reagent_containers/food/snacks/customizable/cook/salad
 	name = "salad"
@@ -159,8 +164,9 @@
 	icon_state = "saladcustom"
 	baseicon = "saladcustom"
 	basename = "salad"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
+	tastes = list("leaves" = 1)
 
 /obj/item/reagent_containers/food/snacks/customizable/cook/waffles
 	name = "waffles"
@@ -168,8 +174,9 @@
 	icon_state = "wafflecustom"
 	baseicon = "wafflecustom"
 	basename = "waffles"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
+	tastes = list("waffles" = 1)
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/cookie
 	name = "cookie"
@@ -177,8 +184,9 @@
 	icon_state = "cookiecustom"
 	baseicon = "cookiecustom"
 	basename = "cookie"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
+	tastes = list("cookie" = 1)
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/cotton
 	name = "flavored cotton candy"
@@ -186,7 +194,7 @@
 	icon_state = "cottoncandycustom"
 	baseicon = "cottoncandycustom"
 	basename = "flavored cotton candy"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/gummybear
@@ -195,7 +203,7 @@
 	icon_state = "gummybearcustom"
 	baseicon = "gummybearcustom"
 	basename = "flavored giant gummy bear"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/gummyworm
@@ -204,7 +212,7 @@
 	icon_state = "gummywormcustom"
 	baseicon = "gummywormcustom"
 	basename = "flavored giant gummy worm"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/jellybean
@@ -213,7 +221,7 @@
 	icon_state = "jellybeancustom"
 	baseicon = "jellybeancustom"
 	basename = "flavored giant jelly bean"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/jawbreaker
@@ -222,7 +230,7 @@
 	icon_state = "jawbreakercustom"
 	baseicon = "jawbreakercustom"
 	basename = "flavored jawbreaker"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/candycane
@@ -231,7 +239,7 @@
 	icon_state = "candycanecustom"
 	baseicon = "candycanecustom"
 	basename = "flavored candy cane"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/gum
@@ -240,7 +248,7 @@
 	icon_state = "gumcustom"
 	baseicon = "gumcustom"
 	basename = "flavored gum"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/donut
@@ -249,7 +257,7 @@
 	icon_state = "donutcustom"
 	baseicon = "donutcustom"
 	basename = "filled donut"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/bar
@@ -258,7 +266,7 @@
 	icon_state = "barcustom"
 	baseicon = "barcustom"
 	basename = "flavored chocolate bar"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/sucker
@@ -267,7 +275,7 @@
 	icon_state = "suckercustom"
 	baseicon = "suckercustom"
 	basename = "flavored sucker"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/cash
@@ -276,7 +284,7 @@
 	icon_state = "cashcustom"
 	baseicon = "cashcustom"
 	basename = "flavored cash"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/candy/coin
@@ -285,7 +293,7 @@
 	icon_state = "coincustom"
 	baseicon = "coincustom"
 	basename = "flavored coin"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 
 /obj/item/reagent_containers/food/snacks/customizable/fullycustom // In the event you fuckers find something I forgot to add a customizable food for.
@@ -294,7 +302,7 @@
 	icon_state = "fullycustom"
 	baseicon = "fullycustom"
 	basename = "on a plate"
-	add_overlays = 0
+	snack_overlays = 0
 	top = 0
 	sandwich_limit = 20
 	fullycustom = 1
@@ -305,9 +313,10 @@
 	icon_state = "soup"
 	baseicon = "soup"
 	basename = "soup"
-	add_overlays = 0
+	snack_overlays = 0
 	trash = /obj/item/trash/bowl
 	top = 0
+	tastes = list("soup" = 1)
 
 /obj/item/reagent_containers/food/snacks/customizable/burger
 	name = "burger bun"
@@ -316,6 +325,7 @@
 	baseicon = "burgercustom"
 	basename = "burger"
 	toptype = new /obj/item/reagent_containers/food/snacks/bun()
+	tastes = list("bun" = 4)
 
 /obj/item/reagent_containers/food/snacks/customizable/attackby(obj/item/I, mob/user, params)
 	if(contents.len > sandwich_limit)
@@ -355,7 +365,7 @@
 					I.color = pick("#FF0000","#0000FF","#008000","#FFFF00")
 			else
 				I.color = pick("#FF0000","#0000FF","#008000","#FFFF00")
-			if(add_overlays)
+			if(snack_overlays)
 				I.pixel_x = pick(list(-1,0,1))
 				I.pixel_y = (i*2)+1
 			overlays += I
@@ -377,10 +387,10 @@
 	return ..()
 
 /obj/item/reagent_containers/food/snacks/customizable/examine(mob/user)
-	..(user)
+	. = ..()
 	if(LAZYLEN(ingredients))
 		var/whatsinside = pick(ingredients)
-		to_chat(user, "<span class='notice'> You think you can see [whatsinside] in there.</span>")
+		. += "<span class='notice'> You think you can see [whatsinside] in there.</span>"
 
 
 /obj/item/reagent_containers/food/snacks/customizable/proc/newname()

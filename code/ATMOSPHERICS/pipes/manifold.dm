@@ -14,7 +14,6 @@
 	var/obj/machinery/atmospherics/node3
 
 	level = 1
-	layer = 2.4 //under wires with their 2.44
 
 /obj/machinery/atmospherics/pipe/manifold/New()
 
@@ -34,7 +33,7 @@
 
 /obj/machinery/atmospherics/pipe/manifold/atmos_init()
 	..()
-	for(var/D in cardinal)
+	for(var/D in GLOB.cardinal)
 		if(D == dir)
 			continue
 		for(var/obj/machinery/atmospherics/target in get_step(src, D))
@@ -116,6 +115,8 @@
 		node3.update_underlays()
 
 /obj/machinery/atmospherics/pipe/manifold/update_icon(var/safety = 0)
+	..()
+
 	if(!check_icon_cache())
 		return
 

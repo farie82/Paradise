@@ -54,7 +54,7 @@
 	mutation=HALLUCINATE
 
 /datum/dna/gene/disability/hallucinate/New()
-	block=HALLUCINATIONBLOCK
+	block=GLOB.hallucinationblock
 
 /datum/dna/gene/disability/epilepsy
 	name="Epilepsy"
@@ -64,7 +64,7 @@
 	disability=EPILEPSY
 
 /datum/dna/gene/disability/epilepsy/New()
-	block=EPILEPSYBLOCK
+	block=GLOB.epilepsyblock
 
 /datum/dna/gene/disability/cough
 	name="Coughing"
@@ -74,7 +74,7 @@
 	disability=COUGHING
 
 /datum/dna/gene/disability/cough/New()
-	block=COUGHBLOCK
+	block=GLOB.coughblock
 
 /datum/dna/gene/disability/clumsy
 	name="Clumsiness"
@@ -84,7 +84,7 @@
 	mutation=CLUMSY
 
 /datum/dna/gene/disability/clumsy/New()
-	block=CLUMSYBLOCK
+	block=GLOB.clumsyblock
 
 /datum/dna/gene/disability/tourettes
 	name="Tourettes"
@@ -94,7 +94,7 @@
 	disability=TOURETTES
 
 /datum/dna/gene/disability/tourettes/New()
-	block=TWITCHBLOCK
+	block=GLOB.twitchblock
 
 /datum/dna/gene/disability/nervousness
 	name="Nervousness"
@@ -103,17 +103,27 @@
 	disability=NERVOUS
 
 /datum/dna/gene/disability/nervousness/New()
-	block=NERVOUSBLOCK
+	block=GLOB.nervousblock
+
 
 /datum/dna/gene/disability/blindness
 	name="Blindness"
-	activation_message="You can't seem to see anything."
-	deactivation_message ="You can see now, in case you didn't notice..."
+	activation_message = "You can't seem to see anything."
+	deactivation_message = "You can see now, in case you didn't notice..."
 	instability = -GENE_INSTABILITY_MAJOR
-	disability=BLIND
+	disability = BLIND
 
 /datum/dna/gene/disability/blindness/New()
-	block=BLINDBLOCK
+	block = GLOB.blindblock
+
+/datum/dna/gene/disability/blindness/activate(mob/M, connected, flags)
+	..()
+	M.update_blind_effects()
+
+/datum/dna/gene/disability/blindness/deactivate(mob/M, connected, flags)
+	..()
+	M.update_blind_effects()
+
 
 /datum/dna/gene/disability/colourblindness
 	name = "Colourblindness"
@@ -123,7 +133,7 @@
 	disability = COLOURBLIND
 
 /datum/dna/gene/disability/colourblindness/New()
-	block=COLOURBLINDBLOCK
+	block=GLOB.colourblindblock
 
 /datum/dna/gene/disability/colourblindness/activate(var/mob/M, var/connected, var/flags)
 	..()
@@ -143,11 +153,11 @@
 	disability=DEAF
 
 /datum/dna/gene/disability/deaf/New()
-	block=DEAFBLOCK
+	block=GLOB.deafblock
 
 /datum/dna/gene/disability/deaf/activate(var/mob/M, var/connected, var/flags)
 	..()
-	M.EarDeaf(1)
+	M.MinimumDeafTicks(1)
 
 /datum/dna/gene/disability/nearsighted
 	name="Nearsightedness"
@@ -157,7 +167,15 @@
 	disability=NEARSIGHTED
 
 /datum/dna/gene/disability/nearsighted/New()
-	block=GLASSESBLOCK
+	block=GLOB.glassesblock
+
+/datum/dna/gene/disability/nearsighted/activate(mob/living/M, connected, flags)
+	. = ..()
+	M.update_nearsighted_effects()
+
+/datum/dna/gene/disability/nearsighted/deactivate(mob/living/M, connected, flags)
+	. = ..()
+	M.update_nearsighted_effects()
 
 /datum/dna/gene/disability/lisp
 	name = "Lisp"
@@ -168,7 +186,7 @@
 
 /datum/dna/gene/disability/lisp/New()
 	..()
-	block=LISPBLOCK
+	block=GLOB.lispblock
 
 /datum/dna/gene/disability/lisp/OnSay(var/mob/M, var/message)
 	return replacetext(message,"s","th")
@@ -181,4 +199,28 @@
 	mutation=COMIC
 
 /datum/dna/gene/disability/comic/New()
-	block = COMICBLOCK
+	block = GLOB.comicblock
+
+/datum/dna/gene/disability/wingdings
+	name = "Alien Voice"
+	desc = "Garbles the subject's voice into an incomprehensible speech."
+	activation_message = "<span class='wingdings'>Your vocal cords feel alien.</span>"
+	deactivation_message = "Your vocal cords no longer feel alien."
+	instability = -GENE_INSTABILITY_MINOR
+	mutation = WINGDINGS
+
+/datum/dna/gene/disability/wingdings/New()
+	block = GLOB.wingdingsblock
+
+/datum/dna/gene/disability/wingdings/OnSay(var/mob/M, var/message)
+	var/list/chars = string2charlist(message)
+	var/garbled_message = ""
+	for(var/C in chars)
+		if(C in GLOB.alphabet_uppercase)
+			garbled_message += pick(GLOB.alphabet_uppercase)
+		else if(C in GLOB.alphabet)
+			garbled_message += pick(GLOB.alphabet)
+		else
+			garbled_message += C
+	message = garbled_message
+	return message

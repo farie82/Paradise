@@ -38,7 +38,7 @@
 	var/list/categories = list("Tools", "Electronics", "Construction", "Communication", "Security", "Machinery", "Medical", "Miscellaneous", "Dinnerware", "Imported")
 
 /obj/machinery/autolathe/New()
-	AddComponent(/datum/component/material_container, list(MAT_METAL, MAT_GLASS), 0, FALSE, null, null, CALLBACK(src, .proc/AfterMaterialInsert))
+	AddComponent(/datum/component/material_container, list(MAT_METAL, MAT_GLASS), 0, TRUE, null, null, CALLBACK(src, .proc/AfterMaterialInsert))
 	..()
 	component_parts = list()
 	component_parts += new /obj/item/circuitboard/autolathe(null)
@@ -46,7 +46,7 @@
 	component_parts += new /obj/item/stock_parts/matter_bin(null)
 	component_parts += new /obj/item/stock_parts/matter_bin(null)
 	component_parts += new /obj/item/stock_parts/manipulator(null)
-	component_parts += new /obj/item/stock_parts/console_screen(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
 	RefreshParts()
 
 	wires = new(src)
@@ -61,7 +61,7 @@
 	component_parts += new /obj/item/stock_parts/matter_bin/super(null)
 	component_parts += new /obj/item/stock_parts/matter_bin/super(null)
 	component_parts += new /obj/item/stock_parts/manipulator/pico(null)
-	component_parts += new /obj/item/stock_parts/console_screen(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
 	RefreshParts()
 
 /obj/machinery/autolathe/Destroy()
@@ -86,7 +86,7 @@
 		ui = new(user, src, ui_key, "autolathe.tmpl", name, 800, 550)
 		ui.open()
 
-/obj/machinery/autolathe/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/autolathe/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	GET_COMPONENT(materials, /datum/component/material_container)
 	var/data[0]
 	data["screen"] = screen
@@ -174,21 +174,8 @@
 	if(busy)
 		to_chat(user, "<span class='alert'>The autolathe is busy. Please wait for completion of previous operation.</span>")
 		return 1
-
-	if(default_deconstruction_screwdriver(user, "autolathe_t", "autolathe", O))
-		SSnanoui.update_uis(src)
-		return
-
 	if(exchange_parts(user, O))
 		return
-
-	if(panel_open)
-		if(istype(O, /obj/item/crowbar))
-			default_deconstruction_crowbar(O)
-			return 1
-		else
-			attack_hand(user)
-			return 1
 	if(stat)
 		return 1
 
@@ -215,16 +202,57 @@
 
 	return ..()
 
+/obj/machinery/autolathe/crowbar_act(mob/user, obj/item/I)
+	if(!I.use_tool(src, user, 0, volume = 0))
+		return
+	. = TRUE
+	if(busy)
+		to_chat(user, "<span class='alert'>The autolathe is busy. Please wait for completion of previous operation.</span>")
+		return
+	if(panel_open)
+		default_deconstruction_crowbar(user, I)
+		I.play_tool_sound(user, I.tool_volume)
+
+/obj/machinery/autolathe/screwdriver_act(mob/user, obj/item/I)
+	if(!I.use_tool(src, user, 0, volume = 0))
+		return
+	. = TRUE
+	if(busy)
+		to_chat(user, "<span class='alert'>The autolathe is busy. Please wait for completion of previous operation.</span>")
+		return
+	if(default_deconstruction_screwdriver(user, "autolathe_t", "autolathe", I))
+		SSnanoui.update_uis(src)
+		I.play_tool_sound(user, I.tool_volume)
+
+/obj/machinery/autolathe/wirecutter_act(mob/user, obj/item/I)
+	if(!panel_open)
+		return
+	if(!I.use_tool(src, user, 0, volume = 0))
+		return
+	. = TRUE
+	if(busy)
+		to_chat(user, "<span class='alert'>The autolathe is busy. Please wait for completion of previous operation.</span>")
+		return
+	interact(user)
+
+/obj/machinery/autolathe/multitool_act(mob/user, obj/item/I)
+	if(!panel_open)
+		return
+	if(!I.use_tool(src, user, 0, volume = 0))
+		return
+	. = TRUE
+	if(busy)
+		to_chat(user, "<span class='alert'>The autolathe is busy. Please wait for completion of previous operation.</span>")
+		return
+	interact(user)
+
 /obj/machinery/autolathe/proc/AfterMaterialInsert(type_inserted, id_inserted, amount_inserted)
-	if(ispath(type_inserted, /obj/item/ore/bluespace_crystal))
-		use_power(MINERAL_MATERIAL_AMOUNT / 10)
-	else
-		switch(id_inserted)
-			if(MAT_METAL)
-				flick("autolathe_o",src)//plays metal insertion animation
-			if(MAT_GLASS)
-				flick("autolathe_r",src)//plays glass insertion animation
-		use_power(min(1000, amount_inserted / 100))
+	switch(id_inserted)
+		if(MAT_METAL)
+			flick("autolathe_o", src)//plays metal insertion animation
+		if(MAT_GLASS)
+			flick("autolathe_r", src)//plays glass insertion animation
+	use_power(min(1000, amount_inserted / 100))
 	SSnanoui.update_uis(src)
 
 /obj/machinery/autolathe/attack_ghost(mob/user)

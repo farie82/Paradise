@@ -1,5 +1,6 @@
 /atom
-	layer = 2
+	layer = TURF_LAYER
+	plane = GAME_PLANE
 	var/level = 2
 	var/flags = NONE
 	var/flags_2 = NONE
@@ -11,11 +12,13 @@
 	var/last_bumped = 0
 	var/pass_flags = 0
 	var/germ_level = GERM_LEVEL_AMBIENT // The higher the germ level, the more germ on the atom.
-	var/simulated = 1 //filter for actions - used by lighting overlays
+	var/simulated = TRUE //filter for actions - used by lighting overlays
 	var/atom_say_verb = "says"
 	var/dont_save = 0 // For atoms that are temporary by necessity - like lighting overlays
 
+
 	///Chemistry.
+	var/container_type = NONE
 	var/datum/reagents/reagents = null
 
 	//This atom's HUD (med/sec, etc) images. Associative list.
@@ -23,9 +26,6 @@
 	//HUD images that this atom can provide.
 	var/list/hud_possible
 
-
-	//var/chem_is_open_container = 0
-	// replaced by OPENCONTAINER flags and atom/proc/is_open_container()
 	///Chemistry.
 
 
@@ -44,15 +44,22 @@
 
 	var/initialized = FALSE
 
+	var/list/priority_overlays	//overlays that should remain on top and not normally removed when using cut_overlay functions, like c4.
+	var/list/remove_overlays // a very temporary list of overlays to remove
+	var/list/add_overlays // a very temporary list of overlays to add
+
+	var/list/atom_colours	 //used to store the different colors on an atom
+						//its inherent color, the colored paint applied on it, special color effect etc...
+
 /atom/New(loc, ...)
-	if(use_preloader && (src.type == _preloader.target_path))//in case the instanciated atom is creating other atoms in New()
-		_preloader.load(src)
+	if(GLOB.use_preloader && (src.type == GLOB._preloader.target_path))//in case the instanciated atom is creating other atoms in New()
+		GLOB._preloader.load(src)
 	. = ..()
-	attempt_init(...)
+	attempt_init(arglist(args))
 
 // This is distinct from /tg/ because of our space management system
 // This is overriden in /atom/movable and the parent isn't called if the SMS wants to deal with it's init
-/atom/proc/attempt_init(loc, ...)
+/atom/proc/attempt_init(...)
 	var/do_initialize = SSatoms.initialized
 	if(do_initialize != INITIALIZATION_INSSATOMS)
 		args[1] = do_initialize == INITIALIZATION_INNEW_MAPLOAD
@@ -77,12 +84,18 @@
 		stack_trace("Warning: [src]([type]) initialized multiple times!")
 	initialized = TRUE
 
+	if(color)
+		add_atom_colour(color, FIXED_COLOUR_PRIORITY)
+
 	if(light_power && light_range)
 		update_light()
 
 	if(opacity && isturf(loc))
 		var/turf/T = loc
 		T.has_opaque_atom = TRUE // No need to recalculate it in this case, it's guranteed to be on afterwards anyways.
+
+	if(loc)
+		loc.InitializedOn(src) // Used for poolcontroller / pool to improve performance greatly. However it also open up path to other usage of observer pattern on turfs.
 
 	ComponentInitialize()
 
@@ -97,6 +110,8 @@
 /atom/proc/ComponentInitialize()
 	return
 
+/atom/proc/InitializedOn(atom/A) // Proc for when something is initialized on a atom - Optional to call. Useful for observer pattern etc.
+	return
 
 /atom/proc/onCentcom()
 	var/turf/T = get_turf(src)
@@ -136,14 +151,25 @@
 		alternate_appearances = null
 
 	QDEL_NULL(reagents)
-	invisibility = 101
+	invisibility = INVISIBILITY_MAXIMUM
+	LAZYCLEARLIST(overlays)
+	LAZYCLEARLIST(priority_overlays)
+
+	QDEL_NULL(light)
+
 	return ..()
 
 //Hook for running code when a dir change occurs
 /atom/proc/setDir(newdir)
+	SEND_SIGNAL(src, COMSIG_ATOM_DIR_CHANGE, dir, newdir)
 	dir = newdir
 
+///Handle melee attack by a mech
+/atom/proc/mech_melee_attack(obj/mecha/M)
+	return
+
 /atom/proc/attack_hulk(mob/living/carbon/human/user, does_attack_animation = FALSE)
+	SEND_SIGNAL(src, COMSIG_ATOM_HULK_ATTACK, user)
 	if(does_attack_animation)
 		user.changeNext_move(CLICK_CD_MELEE)
 		add_attack_logs(user, src, "Punched with hulk powers")
@@ -187,22 +213,25 @@
 /atom/proc/Bumped(AM as mob|obj)
 	return
 
-// Convenience proc to see if a container is open for chemistry handling
-// returns true if open
-// false if closed
+/// Convenience proc to see if a container is open for chemistry handling
 /atom/proc/is_open_container()
-	return flags & OPENCONTAINER
+	return is_refillable() && is_drainable()
 
-/*//Convenience proc to see whether a container can be accessed in a certain way.
+/// Is this atom injectable into other atoms
+/atom/proc/is_injectable(mob/user, allowmobs = TRUE)
+	return reagents && (container_type & (INJECTABLE | REFILLABLE))
 
-	proc/can_subract_container()
-		return flags & EXTRACT_CONTAINER
+/// Can we draw from this atom with an injectable atom
+/atom/proc/is_drawable(mob/user, allowmobs = TRUE)
+	return reagents && (container_type & (DRAWABLE | DRAINABLE))
 
-	proc/can_add_container()
-		return flags & INSERT_CONTAINER
-*/
+/// Can this atoms reagents be refilled
+/atom/proc/is_refillable()
+	return reagents && (container_type & REFILLABLE)
 
-
+/// Is this atom drainable of reagents
+/atom/proc/is_drainable()
+	return reagents && (container_type & DRAINABLE)
 
 /atom/proc/CheckExit()
 	return 1
@@ -214,6 +243,7 @@
 	return
 
 /atom/proc/bullet_act(obj/item/projectile/P, def_zone)
+	SEND_SIGNAL(src, COMSIG_ATOM_BULLET_ACT, P, def_zone)
 	. = P.on_hit(src, 0, def_zone)
 
 /atom/proc/in_contents_of(container)//can take class or object instance as argument
@@ -251,7 +281,7 @@
 
 
 //All atoms
-/atom/proc/examine(mob/user, var/distance = -1, var/infix = "", var/suffix = "")
+/atom/proc/examine(mob/user, infix = "", suffix = "")
 	//This reformat names to get a/an properly working on item descriptions when they are bloody
 	var/f_name = "\a [src][infix]."
 	if(src.blood_DNA && !istype(src, /obj/effect/decal))
@@ -263,26 +293,30 @@
 			f_name += "<span class='danger'>blood-stained</span> [name][infix]!"
 		else
 			f_name += "oil-stained [name][infix]."
-
-	to_chat(user, "[bicon(src)] That's [f_name] [suffix]")
+	. = list("[bicon(src)] That's [f_name] [suffix]")
 	if(desc)
-		to_chat(user, desc)
+		. += desc
 
-	if(reagents && is_open_container()) //is_open_container() isn't really the right proc for this, but w/e
-		to_chat(user, "It contains:")
-		if(reagents.reagent_list.len)
-			if(user.can_see_reagents()) //Show each individual reagent
-				for(var/datum/reagent/R in reagents.reagent_list)
-					to_chat(user, "[R.volume] units of [R.name]")
-			else //Otherwise, just show the total volume
-				if(reagents && reagents.reagent_list.len)
-					to_chat(user, "[reagents.total_volume] units of various reagents.")
-		else
-			to_chat(user, "Nothing.")
+	if(reagents)
+		if(container_type & TRANSPARENT)
+			. += "<span class='notice'>It contains:</span>"
+			if(reagents.reagent_list.len)
+				if(user.can_see_reagents()) //Show each individual reagent
+					for(var/I in reagents.reagent_list)
+						var/datum/reagent/R = I
+						. += "<span class='notice'>[R.volume] units of [R.name]</span>"
+				else //Otherwise, just show the total volume
+					if(reagents && reagents.reagent_list.len)
+						. += "<span class='notice'>[reagents.total_volume] units of various reagents.</span>"
+			else
+				. += "<span class='notice'>Nothing.</span>"
+		else if(container_type & AMOUNT_VISIBLE)
+			if(reagents.total_volume)
+				. += "<span class='notice'>It has [reagents.total_volume] unit\s left.</span>"
+			else
+				. += "<span class='danger'>It's empty.</span>"
 
-	SendSignal(COMSIG_PARENT_EXAMINE, user)
-
-	return distance == -1 || (get_dist(src, user) <= distance) || isobserver(user) //observers do not have a range limit
+	SEND_SIGNAL(src, COMSIG_PARENT_EXAMINE, user, .)
 
 /atom/proc/relaymove()
 	return
@@ -290,14 +324,60 @@
 /atom/proc/ex_act()
 	return
 
-/atom/proc/blob_act()
+/atom/proc/blob_act(obj/structure/blob/B)
+	SEND_SIGNAL(src, COMSIG_ATOM_BLOB_ACT, B)
+
+/atom/proc/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume, global_overlay = TRUE)
+	SEND_SIGNAL(src, COMSIG_ATOM_FIRE_ACT, exposed_temperature, exposed_volume)
+	if(reagents)
+		reagents.temperature_reagents(exposed_temperature)
+
+/atom/proc/tool_act(mob/living/user, obj/item/I, tool_type)
+	switch(tool_type)
+		if(TOOL_CROWBAR)
+			return crowbar_act(user, I)
+		if(TOOL_MULTITOOL)
+			return multitool_act(user, I)
+		if(TOOL_SCREWDRIVER)
+			return screwdriver_act(user, I)
+		if(TOOL_WRENCH)
+			return wrench_act(user, I)
+		if(TOOL_WIRECUTTER)
+			return wirecutter_act(user, I)
+		if(TOOL_WELDER)
+			return welder_act(user, I)
+
+
+// Tool-specific behavior procs. To be overridden in subtypes.
+/atom/proc/crowbar_act(mob/living/user, obj/item/I)
 	return
 
-/atom/proc/fire_act()
+/atom/proc/multitool_act(mob/living/user, obj/item/I)
+	return
+
+//Check if the multitool has an item in its data buffer
+/atom/proc/multitool_check_buffer(user, silent = FALSE)
+	if(!silent)
+		to_chat(user, "<span class='warning'>[src] has no data buffer!</span>")
+	return FALSE
+
+/atom/proc/screwdriver_act(mob/living/user, obj/item/I)
+	return
+
+/atom/proc/wrench_act(mob/living/user, obj/item/I)
+	return
+
+/atom/proc/wirecutter_act(mob/living/user, obj/item/I)
+	return
+
+/atom/proc/welder_act(mob/living/user, obj/item/I)
 	return
 
 /atom/proc/emag_act()
 	return
+
+/atom/proc/fart_act(mob/living/M)
+	return FALSE
 
 /atom/proc/rpd_act()
 	return
@@ -306,13 +386,16 @@
 	// Atoms that return TRUE prevent RPDs placing any kind of pipes on their turf.
 	return FALSE
 
-/atom/proc/hitby(atom/movable/AM, skipcatch, hitpush, blocked)
+/atom/proc/hitby(atom/movable/AM, skipcatch, hitpush, blocked, datum/thrownthing/throwingdatum)
 	if(density && !has_gravity(AM)) //thrown stuff bounces off dense stuff in no grav, unless the thrown stuff ends up inside what it hit(embedding, bola, etc...).
 		addtimer(CALLBACK(src, .proc/hitby_react, AM), 2)
 
 /atom/proc/hitby_react(atom/movable/AM)
 	if(AM && isturf(AM.loc))
 		step(AM, turn(AM.dir, 180))
+
+/atom/proc/get_spooked()
+	return
 
 /atom/proc/add_hiddenprint(mob/living/M as mob)
 	if(isnull(M)) return
@@ -329,7 +412,7 @@
 				fingerprintshidden += text("\[[time_stamp()]\] (Wearing gloves). Real name: [], Key: []",H.real_name, H.key)
 				fingerprintslast = H.ckey
 			return 0
-		if(!( fingerprints ))
+		if(!fingerprints)
 			if(fingerprintslast != H.ckey)
 				//Add the list if it does not exist.
 				if(!fingerprintshidden)
@@ -433,7 +516,7 @@
 		A.fingerprintshidden |= fingerprintshidden.Copy()    //admin
 	A.fingerprintslast = fingerprintslast
 
-var/list/blood_splatter_icons = list()
+GLOBAL_LIST_EMPTY(blood_splatter_icons)
 
 /atom/proc/blood_splatter_index()
 	return "\ref[initial(icon)]-[initial(icon_state)]"
@@ -449,8 +532,7 @@ var/list/blood_splatter_icons = list()
 		return
 	var/list/blood_dna = list()
 	if(dna)
-		var/mob/living/carbon/human/H = src
-		blood_dna[dna.unique_enzymes] = H.b_type
+		blood_dna[dna.unique_enzymes] = dna.blood_type
 	else
 		blood_dna["UNKNOWN DNA"] = "X*"
 	return blood_dna
@@ -567,13 +649,13 @@ var/list/blood_splatter_icons = list()
 	if(initial(icon) && initial(icon_state))
 		//try to find a pre-processed blood-splatter. otherwise, make a new one
 		var/index = blood_splatter_index()
-		var/icon/blood_splatter_icon = blood_splatter_icons[index]
+		var/icon/blood_splatter_icon = GLOB.blood_splatter_icons[index]
 		if(!blood_splatter_icon)
 			blood_splatter_icon = icon(initial(icon), initial(icon_state), , 1)		//we only want to apply blood-splatters to the initial icon_state for each object
 			blood_splatter_icon.Blend("#fff", ICON_ADD) 			//fills the icon_state with white (except where it's transparent)
 			blood_splatter_icon.Blend(icon('icons/effects/blood.dmi', "itemblood"), ICON_MULTIPLY) //adds blood and the remaining white areas become transparant
 			blood_splatter_icon = fcopy_rsc(blood_splatter_icon)
-			blood_splatter_icons[index] = blood_splatter_icon
+			GLOB.blood_splatter_icons[index] = blood_splatter_icon
 
 		blood_overlay = image(blood_splatter_icon)
 		blood_overlay.color = color
@@ -623,22 +705,29 @@ var/list/blood_splatter_icons = list()
 	update_icons()	//apply the now updated overlays to the mob
 
 
-/atom/proc/add_vomit_floor(mob/living/carbon/M as mob, var/toxvomit = 0)
-	if( istype(src, /turf/simulated) )
-		var/obj/effect/decal/cleanable/vomit/this = new /obj/effect/decal/cleanable/vomit(src)
+/atom/proc/add_vomit_floor(toxvomit = 0, green = FALSE)
+	playsound(src, 'sound/effects/splat.ogg', 50, 1)
+	if(!isspaceturf(src))
+		var/type = green ? /obj/effect/decal/cleanable/vomit/green : /obj/effect/decal/cleanable/vomit
+		var/vomit_reagent = green ? "green_vomit" : "vomit"
+		for(var/obj/effect/decal/cleanable/vomit/V in get_turf(src))
+			if(V.type == type)
+				V.reagents.add_reagent(vomit_reagent, 5)
+				return
+
+		var/obj/effect/decal/cleanable/vomit/this = new type(src)
 
 		// Make toxins vomit look different
 		if(toxvomit)
 			this.icon_state = "vomittox_[pick(1,4)]"
 
-
 /atom/proc/get_global_map_pos()
-	if(!islist(global_map) || isemptylist(global_map)) return
+	if(!islist(GLOB.global_map) || isemptylist(GLOB.global_map)) return
 	var/cur_x = null
 	var/cur_y = null
 	var/list/y_arr = null
-	for(cur_x=1,cur_x<=global_map.len,cur_x++)
-		y_arr = global_map[cur_x]
+	for(cur_x=1,cur_x<=GLOB.global_map.len,cur_x++)
+		y_arr = GLOB.global_map[cur_x]
 		cur_y = y_arr.Find(src.z)
 		if(cur_y)
 			break
@@ -655,16 +744,17 @@ var/list/blood_splatter_icons = list()
 
 //the sight changes to give to the mob whose perspective is set to that atom (e.g. A mob with nightvision loses its nightvision while looking through a normal camera)
 /atom/proc/update_remote_sight(mob/living/user)
+	user.sync_lighting_plane_alpha()
 	return
 
 /atom/proc/checkpass(passflag)
 	return pass_flags&passflag
 
 /atom/proc/isinspace()
-	if(istype(get_turf(src), /turf/space))
-		return 1
+	if(isspaceturf(get_turf(src)))
+		return TRUE
 	else
-		return 0
+		return FALSE
 
 /atom/proc/handle_fall()
 	return
@@ -672,13 +762,24 @@ var/list/blood_splatter_icons = list()
 /atom/proc/singularity_act()
 	return
 
-/atom/proc/singularity_pull()
-	return
+/atom/proc/singularity_pull(obj/singularity/S, current_size)
+	SEND_SIGNAL(src, COMSIG_ATOM_SING_PULL, S, current_size)
+
+/**
+  * Respond to acid being used on our atom
+  *
+  * Default behaviour is to send COMSIG_ATOM_ACID_ACT and return
+  */
+/atom/proc/acid_act(acidpwr, acid_volume)
+	SEND_SIGNAL(src, COMSIG_ATOM_ACID_ACT, acidpwr, acid_volume)
 
 /atom/proc/narsie_act()
 	return
 
 /atom/proc/ratvar_act()
+	return
+
+/atom/proc/handle_ricochet(obj/item/projectile/P)
 	return
 
 //This proc is called on the location of an atom when the atom is Destroy()'d
@@ -694,12 +795,14 @@ var/list/blood_splatter_icons = list()
 	return
 
 /atom/vv_edit_var(var_name, var_value)
-	if(!Debug2)
+	if(!GLOB.debug2)
 		admin_spawned = TRUE
 	. = ..()
 	switch(var_name)
 		if("light_power", "light_range", "light_color")
 			update_light()
+		if("color")
+			add_atom_colour(color, ADMIN_COLOUR_PRIORITY)
 
 
 /atom/vv_get_dropdown()
@@ -719,3 +822,63 @@ var/list/blood_splatter_icons = list()
 	if(!L)
 		return null
 	return L.AllowDrop() ? L : get_turf(L)
+
+/atom/Entered(atom/movable/AM, atom/oldLoc)
+	SEND_SIGNAL(src, COMSIG_ATOM_ENTERED, AM, oldLoc)
+
+/atom/Exit(atom/movable/AM, atom/newLoc)
+	. = ..()
+	if(SEND_SIGNAL(src, COMSIG_ATOM_EXIT, AM, newLoc) & COMPONENT_ATOM_BLOCK_EXIT)
+		return FALSE
+
+/atom/Exited(atom/movable/AM, atom/newLoc)
+	SEND_SIGNAL(src, COMSIG_ATOM_EXITED, AM, newLoc)
+
+/*
+	Adds an instance of colour_type to the atom's atom_colours list
+*/
+/atom/proc/add_atom_colour(coloration, colour_priority)
+	if(!atom_colours || !atom_colours.len)
+		atom_colours = list()
+		atom_colours.len = COLOUR_PRIORITY_AMOUNT //four priority levels currently.
+	if(!coloration)
+		return
+	if(colour_priority > atom_colours.len)
+		return
+	atom_colours[colour_priority] = coloration
+	update_atom_colour()
+
+
+/*
+	Removes an instance of colour_type from the atom's atom_colours list
+*/
+/atom/proc/remove_atom_colour(colour_priority, coloration)
+	if(!atom_colours)
+		atom_colours = list()
+		atom_colours.len = COLOUR_PRIORITY_AMOUNT //four priority levels currently.
+	if(colour_priority > atom_colours.len)
+		return
+	if(coloration && atom_colours[colour_priority] != coloration)
+		return //if we don't have the expected color (for a specific priority) to remove, do nothing
+	atom_colours[colour_priority] = null
+	update_atom_colour()
+
+
+/*
+	Resets the atom's color to null, and then sets it to the highest priority
+	colour available
+*/
+/atom/proc/update_atom_colour()
+	if(!atom_colours)
+		atom_colours = list()
+		atom_colours.len = COLOUR_PRIORITY_AMOUNT //four priority levels currently.
+	color = null
+	for(var/C in atom_colours)
+		if(islist(C))
+			var/list/L = C
+			if(L.len)
+				color = L
+				return
+		else if(C)
+			color = C
+			return

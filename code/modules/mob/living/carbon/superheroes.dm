@@ -9,13 +9,15 @@
 	var/class
 	var/list/default_genes = list(REGEN, BREATHLESS, COLDRES)
 	var/list/default_spells = list()
-
+	var/activated = FALSE //for wishgranters to not give an option if someone already has it.
+	
 /datum/superheroes/proc/create(var/mob/living/carbon/human/H)
 	assign_genes(H)
 	assign_spells(H)
 	equip(H)
 	fixflags(H)
 	assign_id(H)
+	H.mind.special_role = SPECIAL_ROLE_SUPER
 
 /datum/superheroes/proc/equip(var/mob/living/carbon/human/H)
 	H.rename_character(H.real_name, name)
@@ -44,15 +46,15 @@
 /datum/superheroes/proc/assign_id(var/mob/living/carbon/human/H)
 	var/obj/item/card/id/syndicate/W = new(H)
 	W.registered_name = H.real_name
-	W.access = list(access_maint_tunnels)
+	W.access = list(ACCESS_MAINT_TUNNELS)
 	if(class == "Superhero")
 		W.assignment = "Superhero"
 		W.rank = "Superhero"
-		ticker.mode.superheroes += H.mind
+		SSticker.mode.superheroes += H.mind
 	else if(class == "Supervillain")
 		W.assignment = "Supervillain"
 		W.rank = "Supervillain"
-		ticker.mode.supervillains += H.mind
+		SSticker.mode.supervillains += H.mind
 	W.icon_state = "lifetimeid"
 	W.SetOwnerInfo(H)
 	W.UpdateName()
@@ -155,7 +157,7 @@
 /obj/effect/proc_holder/spell/targeted/recruit/cast(list/targets,mob/living/user = usr)
 	for(var/mob/living/carbon/human/target in targets)
 		var/obj/item/organ/external/head/head_organ = target.get_organ("head")
-		if(ticker.mode.greyshirts.len >= 3)
+		if(SSticker.mode.greyshirts.len >= 3)
 			to_chat(user, "<span class='warning'>You have already recruited the maximum number of henchmen.</span>")
 		if(!in_range(user, target))
 			to_chat(user, "<span class='warning'>You need to be closer to enthrall [target].</span>")
@@ -216,7 +218,7 @@
 		to_chat(target, "<span class='deadsay'><b>You have decided to enroll as a henchman for [user]. You are now part of the feared 'Greyshirts'.</b></span>")
 		to_chat(target, "<span class='deadsay'><b>You must follow the orders of [user], and help [user.p_them()] succeed in [user.p_their()] dastardly schemes.</span>")
 		to_chat(target, "<span class='deadsay'>You may not harm other Greyshirt or [user]. However, you do not need to obey other Greyshirts.</span>")
-		ticker.mode.greyshirts += target.mind
+		SSticker.mode.greyshirts += target.mind
 		target.set_species(/datum/species/human)
 		head_organ.h_style = "Bald"
 		head_organ.f_style = "Shaved"
@@ -232,7 +234,7 @@
 		target.equip_to_slot_or_del(new /obj/item/radio/headset(target), slot_l_ear)
 		var/obj/item/card/id/syndicate/W = new(target)
 		W.icon_state = "lifetimeid"
-		W.access = list(access_maint_tunnels)
+		W.access = list(ACCESS_MAINT_TUNNELS)
 		W.assignment = "Greyshirt"
 		W.rank = "Greyshirt"
 		W.flags |= NODROP

@@ -7,7 +7,9 @@
 	opened = 0
 	locked = 1
 	broken = 0
-	armor = list(melee = 30, bullet = 50, laser = 50, energy = 100, bomb = 0, bio = 0, rad = 0)
+	max_integrity = 250
+	armor = list("melee" = 30, "bullet" = 50, "laser" = 50, "energy" = 100, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 80, "acid" = 80)
+	damage_deflection = 20
 	var/large = 1
 	icon_closed = "secure"
 	var/icon_locked = "secure1"
@@ -15,7 +17,6 @@
 	var/icon_broken = "securebroken"
 	var/icon_off = "secureoff"
 	wall_mounted = 0 //never solid (You can always pass over it)
-	health = 200
 
 /obj/structure/closet/secure_closet/can_open()
 	if(!..())
@@ -60,9 +61,7 @@
 	if(allowed(user))
 		locked = !locked
 		playsound(loc, 'sound/machines/click.ogg', 15, 1, -3)
-		for(var/mob/O in viewers(user, 3))
-			if((O.client && !( O.blinded )))
-				to_chat(O, "<span class='notice'>The locker has been [locked ? null : "un"]locked by [user].</span>")
+		visible_message("<span class='notice'>The locker has been [locked ? null : "un"]locked by [user].</span>")
 		update_icon()
 	else
 		to_chat(user, "<span class='notice'>Access Denied</span>")
@@ -87,18 +86,19 @@
 	else if((istype(W, /obj/item/card/emag)||istype(W, /obj/item/melee/energy/blade)) && !broken)
 		emag_act(user)
 	else if(istype(W,/obj/item/stack/packageWrap) || istype(W,/obj/item/weldingtool))
-		return ..(W,user)
-	else
+		return ..(W, user)
+	else if(user.a_intent != INTENT_HARM)
 		togglelock(user)
+	else
+		return ..()
 
 /obj/structure/closet/secure_closet/emag_act(mob/user)
 	if(!broken)
-		broken = 1
-		locked = 0
-		desc = "It appears to be broken."
+		broken = TRUE
+		locked = FALSE
 		icon_state = icon_off
 		flick(icon_broken, src)
-		to_chat(user, "<span class='notice'>You unlock \the [src].</span>")
+		to_chat(user, "<span class='notice'>You break the lock on \the [src].</span>")
 
 /obj/structure/closet/secure_closet/attack_hand(mob/user)
 	add_fingerprint(user)

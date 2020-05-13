@@ -112,7 +112,7 @@
 	else
 		destturf = get_turf(destination)
 
-	if(!is_teleport_allowed(destturf.z))
+	if(!is_teleport_allowed(destturf.z) && !ignore_area_flag)
 		return 0
 	// Only check the destination zlevel for is_teleport_allowed. Checking origin as well breaks ERT teleporters.
 
@@ -139,7 +139,9 @@
 	if(isliving(teleatom))
 		var/mob/living/L = teleatom
 		if(L.buckled)
-			L.buckled.unbuckle_mob()
+			L.buckled.unbuckle_mob(L, force = TRUE)
+		if(L.has_buckled_mobs())
+			L.unbuckle_all_mobs(force = TRUE)
 
 	destarea.Entered(teleatom)
 
@@ -173,13 +175,63 @@
 
 /datum/teleport/instant/science/setPrecision(aprecision)
 	..()
-	if(istype(teleatom, /obj/item/storage/backpack/holding))
-		precision = rand(1,100)
+	if(!is_admin_level(destination.z))
+		if(istype(teleatom, /obj/item/storage/backpack/holding))
+			precision = rand(1, 100)
 
-	var/list/bagholding = teleatom.search_contents_for(/obj/item/storage/backpack/holding)
-	if(bagholding.len)
-		precision = max(rand(1,100)*bagholding.len,100)
-		if(istype(teleatom, /mob/living))
-			var/mob/living/MM = teleatom
-			to_chat(MM, "<span class='warning'>The bluespace interface on your bag of holding interferes with the teleport!</span>")
+		var/list/bagholding = teleatom.search_contents_for(/obj/item/storage/backpack/holding)
+		if(bagholding.len)
+			precision = max(rand(1, 100)*bagholding.len, 100)
+			if(istype(teleatom, /mob/living))
+				var/mob/living/MM = teleatom
+				to_chat(MM, "<span class='warning'>The bluespace interface on your bag of holding interferes with the teleport!</span>")
 	return 1
+
+// Safe location finder
+/proc/find_safe_turf(zlevel, list/zlevels, extended_safety_checks = FALSE)
+	if(!zlevels)
+		if(zlevel)
+			zlevels = list(zlevel)
+		else
+			zlevels = levels_by_trait(STATION_LEVEL)
+	var/cycles = 1000
+	for(var/cycle in 1 to cycles)
+		// DRUNK DIALLING WOOOOOOOOO
+		var/x = rand(1, world.maxx)
+		var/y = rand(1, world.maxy)
+		var/z = pick(zlevels)
+		var/random_location = locate(x,y,z)
+
+		if(!isfloorturf(random_location))
+			continue
+		var/turf/simulated/floor/F = random_location
+		if(!F.air)
+			continue
+
+		var/datum/gas_mixture/A = F.air
+
+		// Can most things breathe?
+		if(A.trace_gases.len)
+			continue
+		if(A.oxygen < 16)
+			continue
+		if(A.toxins)
+			continue
+		if(A.carbon_dioxide >= 10)
+			continue
+
+		// Aim for goldilocks temperatures and pressure
+		if((A.temperature <= 270) || (A.temperature >= 360))
+			continue
+		var/pressure = A.return_pressure()
+		if((pressure <= 20) || (pressure >= 550))
+			continue
+
+		if(extended_safety_checks)
+			if(islava(F)) //chasms aren't /floor, and so are pre-filtered
+				var/turf/simulated/floor/plating/lava/L = F
+				if(!L.is_safe())
+					continue
+
+		// DING! You have passed the gauntlet, and are "probably" safe.
+		return F

@@ -2,43 +2,47 @@
 	name = "ion bolt"
 	icon_state = "ion"
 	damage = 0
+	alwayslog = TRUE
 	damage_type = BURN
 	nodamage = 1
+	impact_effect_type = /obj/effect/temp_visual/impact_effect/ion
 	flag = "energy"
 
 /obj/item/projectile/ion/on_hit(var/atom/target, var/blocked = 0)
 	..()
-	empulse(target, 1, 1, 1)
+	empulse(target, 1, 1, 1, cause = "[type] fired by [key_name(firer)]")
 	return 1
 
 /obj/item/projectile/ion/weak
 
 /obj/item/projectile/ion/weak/on_hit(atom/target, blocked = 0)
 	..()
-	empulse(target, 0, 0, 1)
+	empulse(target, 0, 0, 1, cause = "[type] fired by [key_name(firer)]")
 	return 1
 
 /obj/item/projectile/bullet/gyro
 	name ="explosive bolt"
 	icon_state= "bolter"
 	damage = 50
+	alwayslog = TRUE
 	flag = "bullet"
 
 /obj/item/projectile/bullet/gyro/on_hit(var/atom/target, var/blocked = 0)
 	..()
-	explosion(target, -1, 0, 2)
+	explosion(target, -1, 0, 2, cause = "[type] fired by [key_name(firer)]")
 	return 1
 
 /obj/item/projectile/bullet/a40mm
 	name ="40mm grenade"
 	desc = "USE A WEEL GUN"
 	icon_state= "bolter"
+	alwayslog = TRUE
 	damage = 60
 	flag = "bullet"
 
 /obj/item/projectile/bullet/a40mm/on_hit(atom/target, blocked = 0)
 	..()
-	explosion(target, -1, 0, 2, 1, 0, flame_range = 3)
+	explosion(target, -1, 0, 2, 1, 0, flame_range = 3, cause = "[type] fired by [key_name(firer)]")
 	return 1
 
 /obj/item/projectile/temp
@@ -126,6 +130,7 @@
 	damage = 0
 	damage_type = TOX
 	nodamage = 1
+	impact_effect_type = /obj/effect/temp_visual/impact_effect/green_laser
 	flag = "energy"
 
 /obj/item/projectile/energy/floramut/on_hit(var/atom/target, var/blocked = 0)
@@ -138,7 +143,6 @@
 				M.apply_effect((rand(30,80)),IRRADIATE)
 				M.Weaken(5)
 				M.visible_message("<span class='warning'>[M] writhes in pain as [M.p_their()] vacuoles boil.</span>", "<span class='userdanger'>You writhe in pain as your vacuoles boil!</span>", "<span class='italics'>You hear the crunching of leaves.</span>")
-			if(prob(35))
 				if(prob(80))
 					randmutb(M)
 					domutcheck(M,null)
@@ -167,7 +171,7 @@
 	if(ishuman(target)) //These rays make plantmen fat.
 		var/mob/living/carbon/human/H = M
 		if(IS_PLANT in H.dna.species.species_traits)
-			H.nutrition = min(H.nutrition+30, NUTRITION_LEVEL_FULL)
+			H.set_nutrition(min(H.nutrition+30, NUTRITION_LEVEL_FULL))
 	else if(iscarbon(target))
 		M.show_message("<span class='notice'>The radiation beam dissipates harmlessly through your body.</span>")
 	else
@@ -190,9 +194,7 @@
 	icon_state = "snappop"
 
 /obj/item/projectile/clown/Bump(atom/A as mob|obj|turf|area)
-	var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
-	s.set_up(3, 1, src)
-	s.start()
+	do_sparks(3, 1, src)
 	new /obj/effect/decal/cleanable/ash(loc)
 	visible_message("<span class='warning'>The [name] explodes!</span>","<span class='warning'>You hear a snap!</span>")
 	playsound(src, 'sound/effects/snap.ogg', 50, 1)
@@ -229,6 +231,7 @@
 	name ="explosive slug"
 	damage = 25
 	weaken = 5
+	alwayslog = TRUE
 
 /obj/item/projectile/bullet/frag12/on_hit(atom/target, blocked = 0)
 	..()
@@ -242,40 +245,31 @@
 	damage = 5
 	range = 3
 	dismemberment = 20
-
-/obj/item/projectile/plasma/New()
-	var/turf/proj_turf = get_turf(src)
-	if(!istype(proj_turf, /turf))
-		return
-	var/datum/gas_mixture/environment = proj_turf.return_air()
-	if(environment)
-		var/pressure = environment.return_pressure()
-		if(pressure < 30)
-			name = "full strength plasma blast"
-			damage *= 3
-	..()
+	impact_effect_type = /obj/effect/temp_visual/impact_effect/purple_laser
 
 /obj/item/projectile/plasma/on_hit(atom/target)
 	. = ..()
-	if(istype(target, /turf/simulated/mineral))
+	if(ismineralturf(target))
+		forcedodge = 1
 		var/turf/simulated/mineral/M = target
 		M.gets_drilled(firer)
-		Range()
-		if(range > 0)
-			return -1
+	else
+		forcedodge = 0
 
 /obj/item/projectile/plasma/adv
+	damage = 7
 	range = 5
 
 /obj/item/projectile/plasma/adv/mech
 	damage = 10
-	range = 6
+	range = 9
 
 /obj/item/projectile/energy/teleport
 	name = "teleportation burst"
 	icon_state = "bluespace"
 	damage = 0
 	nodamage = 1
+	alwayslog = TRUE
 	var/teleport_target = null
 
 /obj/item/projectile/energy/teleport/New(loc, tele_target)
@@ -289,6 +283,7 @@
 			do_teleport(target, teleport_target, 0)//teleport what's in the tile to the beacon
 		else
 			do_teleport(target, target, 15) //Otherwise it just warps you off somewhere.
+	add_attack_logs(firer, target, "Shot with a [type] [teleport_target ? "(Destination: [teleport_target])" : ""]")
 
 /obj/item/projectile/snowball
 	name = "snowball"
@@ -307,7 +302,7 @@
 /obj/item/projectile/ornament
 	name = "ornament"
 	icon_state = "ornament-1"
-	hitsound = 'sound/effects/Glasshit.ogg'
+	hitsound = 'sound/effects/glasshit.ogg'
 	damage = 7
 	damage_type = BRUTE
 

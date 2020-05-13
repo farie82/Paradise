@@ -89,6 +89,8 @@
 	var/list/access = list()
 	var/registered_name = "Unknown" // The name registered_name on the card
 	slot_flags = SLOT_ID
+	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 100, "acid" = 100)
+	resistance_flags = FIRE_PROOF | ACID_PROOF
 	var/untrackable // Can not be tracked by AI's
 
 	var/blood_type = "\[UNSET\]"
@@ -98,6 +100,8 @@
 	//alt titles are handled a bit weirdly in order to unobtrusively integrate into existing ID system
 	var/assignment = null	//can be alt title or the actual job
 	var/rank = null			//actual job
+	var/owner_uid
+	var/owner_ckey
 	var/dorm = 0			// determines if this ID has claimed a dorm already
 
 	var/sex
@@ -116,20 +120,21 @@
 			SetOwnerInfo(H)
 
 /obj/item/card/id/examine(mob/user)
-	if(..(user, 1))
+	. = ..()
+	if(in_range(user, src))
 		show(usr)
 	else
-		to_chat(user, "<span class='warning'>It is too far away.</span>")
+		. += "<span class='warning'>It is too far away.</span>"
 	if(guest_pass)
-		to_chat(user, "<span class='notice'>There is a guest pass attached to this ID card</span>")
+		. += "<span class='notice'>There is a guest pass attached to this ID card</span>"
 		if(world.time < guest_pass.expiration_time)
-			to_chat(user, "<span class='notice'>It expires at [station_time_timestamp("hh:mm:ss", guest_pass.expiration_time)].</span>")
+			. += "<span class='notice'>It expires at [station_time_timestamp("hh:mm:ss", guest_pass.expiration_time)].</span>"
 		else
-			to_chat(user, "<span class='warning'>It expired at [station_time_timestamp("hh:mm:ss", guest_pass.expiration_time)].</span>")
-		to_chat(user, "<span class='notice'>It grants access to following areas:</span>")
+			. += "<span class='warning'>It expired at [station_time_timestamp("hh:mm:ss", guest_pass.expiration_time)].</span>"
+		. += "<span class='notice'>It grants access to following areas:</span>"
 		for(var/A in guest_pass.temp_access)
-			to_chat(user, "<span class='notice'>[get_access_desc(A)].</span>")
-		to_chat(user, "<span class='notice'>Issuing reason: [guest_pass.reason].</span>")
+			. += "<span class='notice'>[get_access_desc(A)].</span>"
+		. += "<span class='notice'>Issuing reason: [guest_pass.reason].</span>"
 
 /obj/item/card/id/proc/show(mob/user as mob)
 	var/datum/asset/assets = get_asset_datum(/datum/asset/simple/paper)
@@ -139,7 +144,6 @@
 	popup.set_content(dat)
 	popup.set_title_image(usr.browse_rsc_icon(src.icon, src.icon_state))
 	popup.open()
-	return
 
 /obj/item/card/id/attack_self(mob/user as mob)
 	user.visible_message("[user] shows you: [bicon(src)] [src.name]. The assignment on the card: [src.assignment]",\
@@ -158,7 +162,7 @@
 
 	sex = capitalize(H.gender)
 	age = H.age
-	blood_type = H.dna.b_type
+	blood_type = H.dna.blood_type
 	dna_hash = H.dna.unique_enzymes
 	fingerprint_hash = md5(H.dna.uni_identity)
 
@@ -194,6 +198,19 @@
 	if(rank != assignment)
 		jobnamedata += " (" + assignment + ")"
 	return jobnamedata
+
+/obj/item/card/id/proc/getPlayer()
+	if(owner_uid)
+		var/mob/living/carbon/human/H = locateUID(owner_uid)
+		if(istype(H) && H.ckey == owner_ckey)
+			return H
+		owner_uid = null
+	if(owner_ckey)
+		for(var/mob/M in GLOB.player_list)
+			if(M.ckey && M.ckey == owner_ckey)
+				owner_uid = M.UID()
+				return M
+		owner_ckey = null
 
 /obj/item/card/id/proc/is_untrackable()
 	return untrackable
@@ -306,10 +323,14 @@
 
 /obj/item/card/id/syndicate
 	name = "agent card"
-	var/list/initial_access = list(access_maint_tunnels, access_syndicate, access_external_airlocks)
+	var/list/initial_access = list(ACCESS_MAINT_TUNNELS, ACCESS_SYNDICATE, ACCESS_EXTERNAL_AIRLOCKS)
 	origin_tech = "syndicate=1"
 	var/registered_user = null
 	untrackable = 1
+	var/anyone = FALSE //Can anyone forge the ID or just syndicate?
+
+/obj/item/card/id/syndicate/anyone
+	anyone = TRUE
 
 /obj/item/card/id/syndicate/New()
 	access = initial_access.Copy()
@@ -317,7 +338,11 @@
 
 /obj/item/card/id/syndicate/vox
 	name = "agent card"
-	initial_access = list(access_maint_tunnels, access_vox, access_external_airlocks)
+	initial_access = list(ACCESS_MAINT_TUNNELS, ACCESS_VOX, ACCESS_EXTERNAL_AIRLOCKS)
+
+/obj/item/card/id/syndicate/command
+	initial_access = list(ACCESS_MAINT_TUNNELS, ACCESS_SYNDICATE, ACCESS_SYNDICATE_LEADER, ACCESS_SYNDICATE_COMMAND, ACCESS_EXTERNAL_AIRLOCKS)
+	icon_state = "commander"
 
 /obj/item/card/id/syndicate/afterattack(var/obj/item/O as obj, mob/user as mob, proximity)
 	if(!proximity)
@@ -325,28 +350,9 @@
 	if(istype(O, /obj/item/card/id))
 		var/obj/item/card/id/I = O
 		if(istype(user, /mob/living) && user.mind)
-			if(user.mind.special_role)
+			if(user.mind.special_role || anyone)
 				to_chat(usr, "<span class='notice'>The card's microscanners activate as you pass it over \the [I], copying its access.</span>")
 				src.access |= I.access //Don't copy access if user isn't an antag -- to prevent metagaming
-
-/obj/item/card/id/syndicate/proc/fake_id_photo(var/mob/living/carbon/human/H)//get_id_photo wouldn't work correctly
-	if(!istype(H))
-		return
-	var/storedDir = H.dir //don't want to lose track of this
-
-	var/icon/faked = new()
-	if(!H.equip_to_slot_if_possible(src, slot_l_store, 0, 1))
-		to_chat(H, "<span class='warning'>You need to empty your pockets before taking the ID picture.</span>")
-		return
-
-	H.dir = WEST //ensure the icon is actually the proper direction before copying it
-	faked.Insert(getFlatIcon(H), dir = WEST)
-	H.dir = SOUTH
-	faked.Insert(getFlatIcon(H), dir = SOUTH)
-	H.dir = storedDir
-	H.equip_to_slot_if_possible(src, slot_l_hand, 0, 1)
-
-	return faked
 
 /obj/item/card/id/syndicate/attack_self(mob/user as mob)
 	if(!src.registered_name)
@@ -373,7 +379,7 @@
 			if("Show")
 				return ..()
 			if("Edit")
-				switch(input(user,"What would you like to edit on \the [src]?") in list("Name","Photo","Appearance","Sex","Age","Occupation","Money Account","Blood Type","DNA Hash","Fingerprint Hash","Reset Card"))
+				switch(input(user,"What would you like to edit on \the [src]?") in list("Name", "Photo", "Appearance", "Sex", "Age", "Occupation", "Money Account", "Blood Type", "DNA Hash", "Fingerprint Hash", "Reset Access", "Delete Card Information"))
 					if("Name")
 						var/new_name = reject_bad_name(input(user,"What name would you like to put on this card?","Agent Card Name", ishuman(user) ? user.real_name : user.name))
 						if(!Adjacent(user))
@@ -386,11 +392,14 @@
 					if("Photo")
 						if(!Adjacent(user))
 							return
-						var/icon/newphoto = fake_id_photo(user)
+						var/job_clothes = null
+						if(assignment)
+							job_clothes = assignment
+						var/icon/newphoto = get_id_photo(user, job_clothes)
 						if(!newphoto)
 							return
 						photo = newphoto
-						to_chat(user, "<span class='notice'>Photo changed.</span>")
+						to_chat(user, "<span class='notice'>Photo changed. Select another occupation and take a new photo if you wish to appear with different clothes.</span>")
 						RebuildHTML()
 
 					if("Appearance")
@@ -428,22 +437,41 @@
 							return
 						if(!choice)
 							return
-						src.icon_state = choice
+						icon_state = choice
+						switch(choice)
+							if("silver")
+								desc = "A silver card which shows honour and dedication."
+							if("gold")
+								desc = "A golden card which shows power and might."
+							if("clown")
+								desc = "Even looking at the card strikes you with deep fear."
+							if("mime")
+								desc = "..."
+							if("prisoner")
+								desc = "You are a number, you are not a free man."
+							if("centcom")
+								desc = "An ID straight from Central Command."
+							else
+								desc = "A card used to provide ID and determine access across the station."
 						to_chat(usr, "<span class='notice'>Appearance changed to [choice].</span>")
 
 					if("Sex")
 						var/new_sex = sanitize(stripped_input(user,"What sex would you like to put on this card?","Agent Card Sex", ishuman(user) ? capitalize(user.gender) : "Male", MAX_MESSAGE_LEN))
 						if(!Adjacent(user))
 							return
-						src.sex = new_sex
+						sex = new_sex
 						to_chat(user, "<span class='notice'>Sex changed to [new_sex].</span>")
 						RebuildHTML()
 
 					if("Age")
-						var/new_age = sanitize(stripped_input(user,"What age would you like to put on this card?","Agent Card Age","21", MAX_MESSAGE_LEN))
+						var/default = "21"
+						if(ishuman(user))
+							var/mob/living/carbon/human/H = user
+							default = H.age
+						var/new_age = sanitize(input(user,"What age would you like to be written on this card?","Agent Card Age", default) as text)
 						if(!Adjacent(user))
 							return
-						src.age = new_age
+						age = new_age
 						to_chat(user, "<span class='notice'>Age changed to [new_age].</span>")
 						RebuildHTML()
 
@@ -467,21 +495,21 @@
 						else if(department != "Civilian")
 							switch(department)
 								if("Engineering")
-									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in engineering_positions
+									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in GLOB.engineering_positions
 								if("Medical")
-									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in medical_positions
+									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in GLOB.medical_positions
 								if("Science")
-									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in science_positions
+									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in GLOB.science_positions
 								if("Security")
-									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in security_positions
+									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in GLOB.security_positions
 								if("Support")
-									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in support_positions
+									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in GLOB.support_positions
 								if("Command")
-									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in command_positions
+									new_job = input(user, "What job would you like to put on this card?\nChanging occupation will not grant or remove any access levels.","Agent Card Occupation") in GLOB.command_positions
 
 						if(!Adjacent(user))
 							return
-						src.assignment = new_job
+						assignment = new_job
 						to_chat(user, "<span class='notice'>Occupation changed to [new_job].</span>")
 						UpdateName()
 						RebuildHTML()
@@ -498,12 +526,12 @@
 						if(ishuman(user))
 							var/mob/living/carbon/human/H = user
 							if(H.dna)
-								default = H.dna.b_type
+								default = H.dna.blood_type
 
 						var/new_blood_type = sanitize(input(user,"What blood type would you like to be written on this card?","Agent Card Blood Type",default) as text)
 						if(!Adjacent(user))
 							return
-						src.blood_type = new_blood_type
+						blood_type = new_blood_type
 						to_chat(user, "<span class='notice'>Blood type changed to [new_blood_type].</span>")
 						RebuildHTML()
 
@@ -517,7 +545,7 @@
 						var/new_dna_hash = sanitize(input(user,"What DNA hash would you like to be written on this card?","Agent Card DNA Hash",default) as text)
 						if(!Adjacent(user))
 							return
-						src.dna_hash = new_dna_hash
+						dna_hash = new_dna_hash
 						to_chat(user, "<span class='notice'>DNA hash changed to [new_dna_hash].</span>")
 						RebuildHTML()
 
@@ -531,26 +559,33 @@
 						var/new_fingerprint_hash = sanitize(input(user,"What fingerprint hash would you like to be written on this card?","Agent Card Fingerprint Hash",default) as text)
 						if(!Adjacent(user))
 							return
-						src.fingerprint_hash = new_fingerprint_hash
+						fingerprint_hash = new_fingerprint_hash
 						to_chat(user, "<span class='notice'>Fingerprint hash changed to [new_fingerprint_hash].</span>")
 						RebuildHTML()
 
-					if("Reset Card")
-						name = initial(name)
-						registered_name = initial(registered_name)
-						icon_state = initial(icon_state)
-						sex = initial(sex)
-						age = initial(age)
-						assignment = initial(assignment)
-						associated_account_number = initial(associated_account_number)
-						blood_type = initial(blood_type)
-						dna_hash = initial(dna_hash)
-						fingerprint_hash = initial(fingerprint_hash)
-						access = initial_access.Copy() // Initial() doesn't work on lists
-						registered_user = null
+					if("Reset Access")
+						var/response = alert(user, "Are you sure you want to reset access saved on the card?","Reset Access", "No", "Yes")
+						if(response == "Yes")
+							access = initial_access.Copy() // Initial() doesn't work on lists
+							to_chat(user, "<span class='notice'>Card access reset.</span>")
 
-						to_chat(user, "<span class='notice'>All information has been deleted from \the [src].</span>")
-						RebuildHTML()
+					if("Delete Card Information")
+						var/response = alert(user, "Are you sure you want to delete all information saved on the card?","Delete Card Information", "No", "Yes")
+						if(response == "Yes")
+							name = initial(name)
+							registered_name = initial(registered_name)
+							icon_state = initial(icon_state)
+							sex = initial(sex)
+							age = initial(age)
+							assignment = initial(assignment)
+							associated_account_number = initial(associated_account_number)
+							blood_type = initial(blood_type)
+							dna_hash = initial(dna_hash)
+							fingerprint_hash = initial(fingerprint_hash)
+							photo = null
+							registered_user = null
+							to_chat(user, "<span class='notice'>All information has been deleted from \the [src].</span>")
+							RebuildHTML()
 	else
 		..()
 
@@ -561,7 +596,7 @@
 	icon_state = "syndie"
 	assignment = "Syndicate Overlord"
 	untrackable = 1
-	access = list(access_syndicate, access_external_airlocks)
+	access = list(ACCESS_SYNDICATE, ACCESS_SYNDICATE_LEADER, ACCESS_SYNDICATE_COMMAND, ACCESS_EXTERNAL_AIRLOCKS)
 
 /obj/item/card/id/captains_spare
 	name = "captain's spare ID"
@@ -646,6 +681,7 @@
 
 /obj/item/card/id/prisoner/random
 /obj/item/card/id/prisoner/random/New()
+	..()
 	var/random_number = "#[rand(0, 99)]-[rand(0, 999)]"
 	name = "Prisoner [random_number]"
 	registered_name = name
@@ -655,86 +691,86 @@
 	registered_name = "Captain"
 	icon_state = "centcom"
 	desc = "Finders, keepers."
-	access = list(access_salvage_captain)
+	access = list(ACCESS_SALVAGE_CAPTAIN)
 
 /obj/item/card/id/medical
 	name = "Medical ID"
 	registered_name = "Medic"
 	icon_state = "medical"
-	access = list(access_medical, access_morgue, access_surgery, access_chemistry, access_virology, access_genetics, access_mineral_storeroom)
+	access = list(ACCESS_MEDICAL, ACCESS_MORGUE, ACCESS_SURGERY, ACCESS_CHEMISTRY, ACCESS_VIROLOGY, ACCESS_GENETICS, ACCESS_MINERAL_STOREROOM)
 
 /obj/item/card/id/security
 	name = "Security ID"
 	registered_name = "Officer"
 	icon_state = "security"
-	access = list(access_security, access_sec_doors, access_brig, access_court, access_maint_tunnels, access_morgue, access_weapons)
+	access = list(ACCESS_SECURITY, ACCESS_SEC_DOORS, ACCESS_BRIG, ACCESS_COURT, ACCESS_MAINT_TUNNELS, ACCESS_MORGUE, ACCESS_WEAPONS)
 
 /obj/item/card/id/research
 	name = "Research ID"
 	registered_name = "Scientist"
 	icon_state = "research"
-	access = list(access_robotics, access_tox, access_tox_storage, access_research, access_xenobiology, access_xenoarch, access_mineral_storeroom)
+	access = list(ACCESS_ROBOTICS, ACCESS_TOX, ACCESS_TOX_STORAGE, ACCESS_RESEARCH, ACCESS_XENOBIOLOGY, ACCESS_XENOARCH, ACCESS_MINERAL_STOREROOM)
 
 /obj/item/card/id/supply
 	name = "Supply ID"
 	registered_name = "Cargonian"
 	icon_state = "cargo"
-	access = list(access_maint_tunnels, access_mailsorting, access_cargo, access_cargo_bot, access_qm, access_mint, access_mining, access_mining_station, access_mineral_storeroom)
+	access = list(ACCESS_MAINT_TUNNELS, ACCESS_MAILSORTING, ACCESS_CARGO, ACCESS_CARGO_BOT, ACCESS_QM, ACCESS_MINT, ACCESS_MINING, ACCESS_MINING_STATION, ACCESS_MINERAL_STOREROOM)
 
 /obj/item/card/id/engineering
 	name = "Engineering ID"
 	registered_name = "Engineer"
 	icon_state = "engineering"
-	access = list(access_eva, access_engine, access_engine_equip, access_tech_storage, access_maint_tunnels, access_external_airlocks, access_construction, access_atmospherics)
+	access = list(ACCESS_EVA, ACCESS_ENGINE, ACCESS_ENGINE_EQUIP, ACCESS_TECH_STORAGE, ACCESS_MAINT_TUNNELS, ACCESS_EXTERNAL_AIRLOCKS, ACCESS_CONSTRUCTION, ACCESS_ATMOSPHERICS)
 
 /obj/item/card/id/hos
 	name = "Head of Security ID"
 	registered_name = "HoS"
 	icon_state = "HoS"
-	access = list(access_security, access_sec_doors, access_brig, access_armory, access_court,
-			            access_forensics_lockers, access_pilot, access_morgue, access_maint_tunnels, access_all_personal_lockers,
-			            access_research, access_engine, access_mining, access_medical, access_construction, access_mailsorting,
-			            access_heads, access_hos, access_RC_announce, access_keycard_auth, access_gateway, access_weapons)
+	access = list(ACCESS_SECURITY, ACCESS_SEC_DOORS, ACCESS_BRIG, ACCESS_ARMORY, ACCESS_COURT,
+			            ACCESS_FORENSICS_LOCKERS, ACCESS_PILOT, ACCESS_MORGUE, ACCESS_MAINT_TUNNELS, ACCESS_ALL_PERSONAL_LOCKERS,
+			            ACCESS_RESEARCH, ACCESS_ENGINE, ACCESS_MINING, ACCESS_MEDICAL, ACCESS_CONSTRUCTION, ACCESS_MAILSORTING,
+			            ACCESS_HEADS, ACCESS_HOS, ACCESS_RC_ANNOUNCE, ACCESS_KEYCARD_AUTH, ACCESS_GATEWAY, ACCESS_WEAPONS)
 
 /obj/item/card/id/cmo
 	name = "Chief Medical Officer ID"
 	registered_name = "CMO"
 	icon_state = "CMO"
-	access = list(access_medical, access_morgue, access_genetics, access_heads,
-			access_chemistry, access_virology, access_cmo, access_surgery, access_RC_announce,
-			access_keycard_auth, access_sec_doors, access_psychiatrist, access_paramedic, access_mineral_storeroom)
+	access = list(ACCESS_MEDICAL, ACCESS_MORGUE, ACCESS_GENETICS, ACCESS_HEADS,
+			ACCESS_CHEMISTRY, ACCESS_VIROLOGY, ACCESS_CMO, ACCESS_SURGERY, ACCESS_RC_ANNOUNCE,
+			ACCESS_KEYCARD_AUTH, ACCESS_SEC_DOORS, ACCESS_PSYCHIATRIST, ACCESS_PARAMEDIC, ACCESS_MINERAL_STOREROOM)
 
 /obj/item/card/id/rd
 	name = "Research Director ID"
 	registered_name = "RD"
 	icon_state = "RD"
-	access = list(access_rd, access_heads, access_tox, access_genetics, access_morgue,
-			            access_tox_storage, access_tech_storage, access_teleporter, access_sec_doors,
-			            access_research, access_robotics, access_xenobiology, access_ai_upload,
-			            access_RC_announce, access_keycard_auth, access_tcomsat, access_gateway, access_xenoarch, access_minisat, access_mineral_storeroom)
+	access = list(ACCESS_RD, ACCESS_HEADS, ACCESS_TOX, ACCESS_GENETICS, ACCESS_MORGUE,
+			            ACCESS_TOX_STORAGE, ACCESS_TECH_STORAGE, ACCESS_TELEPORTER, ACCESS_SEC_DOORS,
+			            ACCESS_RESEARCH, ACCESS_ROBOTICS, ACCESS_XENOBIOLOGY, ACCESS_AI_UPLOAD,
+			            ACCESS_RC_ANNOUNCE, ACCESS_KEYCARD_AUTH, ACCESS_TCOMSAT, ACCESS_GATEWAY, ACCESS_XENOARCH, ACCESS_MINISAT, ACCESS_MINERAL_STOREROOM)
 
 /obj/item/card/id/ce
 	name = "Chief Engineer ID"
 	registered_name = "CE"
 	icon_state = "CE"
-	access = list(access_engine, access_engine_equip, access_tech_storage, access_maint_tunnels,
-			            access_teleporter, access_external_airlocks, access_atmospherics, access_emergency_storage, access_eva,
-			            access_heads, access_construction, access_sec_doors,
-			            access_ce, access_RC_announce, access_keycard_auth, access_tcomsat, access_minisat, access_mechanic, access_mineral_storeroom)
+	access = list(ACCESS_ENGINE, ACCESS_ENGINE_EQUIP, ACCESS_TECH_STORAGE, ACCESS_MAINT_TUNNELS,
+			            ACCESS_TELEPORTER, ACCESS_EXTERNAL_AIRLOCKS, ACCESS_ATMOSPHERICS, ACCESS_EMERGENCY_STORAGE, ACCESS_EVA,
+			            ACCESS_HEADS, ACCESS_CONSTRUCTION, ACCESS_SEC_DOORS,
+			            ACCESS_CE, ACCESS_RC_ANNOUNCE, ACCESS_KEYCARD_AUTH, ACCESS_TCOMSAT, ACCESS_MINISAT, ACCESS_MECHANIC, ACCESS_MINERAL_STOREROOM)
 
 /obj/item/card/id/clown
 	name = "Pink ID"
 	registered_name = "HONK!"
 	icon_state = "clown"
 	desc = "Even looking at the card strikes you with deep fear."
-	access = list(access_clown, access_theatre, access_maint_tunnels)
+	access = list(ACCESS_CLOWN, ACCESS_THEATRE, ACCESS_MAINT_TUNNELS)
 
 /obj/item/card/id/mime
 	name = "Black and White ID"
 	registered_name = "..."
 	icon_state = "mime"
 	desc = "..."
-	access = list(access_mime, access_theatre, access_maint_tunnels)
+	access = list(ACCESS_MIME, ACCESS_THEATRE, ACCESS_MAINT_TUNNELS)
 
 /obj/item/card/id/rainbow
 	name = "Rainbow ID"
@@ -771,12 +807,33 @@
 	icon_state = "ERT_engineering"
 /obj/item/card/id/ert/medic
 	icon_state = "ERT_medical"
+
+/obj/item/card/id/golem
+	name = "Free Golem ID"
+	desc = "A card used to claim mining points and buy gear. Use it to mark it as yours."
+	icon_state = "research"
+	access = list(ACCESS_FREE_GOLEMS, ACCESS_ROBOTICS, ACCESS_CLOWN, ACCESS_MIME) //access to robots/mechs
+	var/registered = FALSE
+
+/obj/item/card/id/golem/attack_self(mob/user as mob)
+	if(!registered && ishuman(user))
+		registered_name = user.real_name
+		SetOwnerInfo(user)
+		assignment = "Free Golem"
+		RebuildHTML()
+		UpdateName()
+		desc = "A card used to claim mining points and buy gear."
+		registered = TRUE
+		to_chat(user, "<span class='notice'>The ID is now registered as yours.</span>")
+	else
+		..()
+
 // Decals
 /obj/item/id_decal
 	name = "identification card decal"
-	desc = "A modification kit to make your ID cards look snazzy.."
-	icon = 'icons/obj/device.dmi'
-	icon_state = "batterer"
+	desc = "A nano-cellophane wrap that molds to an ID card to make it look snazzy."
+	icon = 'icons/obj/toy.dmi'
+	icon_state = "id_decal"
 	var/decal_name = "identification card"
 	var/decal_desc = "A card used to provide ID and determine access across the station."
 	var/decal_icon_state = "id"
@@ -784,30 +841,40 @@
 	var/override_name = 0
 
 /obj/item/id_decal/gold
-	name = "gold ID card card decal"
+	name = "gold ID card decal"
+	icon_state = "id_decal_gold"
+	desc = "Make your ID look like the Captain's or a self-centered HOP's. Applies to any ID."
 	decal_desc = "A golden card which shows power and might."
 	decal_icon_state = "gold"
 	decal_item_state = "gold_id"
 
 /obj/item/id_decal/silver
 	name = "silver ID card decal"
+	icon_state = "id_decal_silver"
+	desc = "Make your ID look like HOP's because they wouldn't change it officially. Applies to any ID."
 	decal_desc = "A silver card which shows honour and dedication."
 	decal_icon_state = "silver"
 	decal_item_state = "silver_id"
 
 /obj/item/id_decal/prisoner
 	name = "prisoner ID card decal"
+	icon_state = "id_decal_prisoner"
+	desc = "All the cool kids have an ID that's this color. Applies to any ID."
 	decal_desc = "You are a number, you are not a free man."
 	decal_icon_state = "prisoner"
 	decal_item_state = "orange-id"
 
 /obj/item/id_decal/centcom
 	name = "centcom ID card decal"
+	icon_state = "id_decal_centcom"
+	desc = "All the prestige without the responsibility or the access. Applies to any ID."
 	decal_desc = "An ID straight from Cent. Com."
 	decal_icon_state = "centcom"
 
 /obj/item/id_decal/emag
 	name = "cryptographic sequencer ID card decal"
+	icon_state = "id_decal_emag"
+	desc = "A bundle of wires that you can tape to your ID to look very suspect. Applies to any ID."
 	decal_name = "cryptographic sequencer"
 	decal_desc = "It's a card with a magnetic strip attached to some circuitry."
 	decal_icon_state = "emag"

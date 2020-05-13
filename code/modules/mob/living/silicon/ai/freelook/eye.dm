@@ -6,7 +6,7 @@
 /mob/camera/aiEye
 	name = "Inactive AI Eye"
 
-	icon = 'icons/mob/AI.dmi' //Allows ghosts to see what the AI is looking at.
+	icon = 'icons/mob/ai.dmi' //Allows ghosts to see what the AI is looking at.
 	icon_state = "eye"
 	alpha = 127
 	invisibility = SEE_INVISIBLE_OBSERVER
@@ -14,6 +14,8 @@
 	var/list/visibleCameraChunks = list()
 	var/mob/living/silicon/ai/ai = null
 	var/relay_speech = FALSE
+	var/use_static = TRUE
+	var/static_visibility_range = 16
 
 
 // Use this when setting the aiEye's location.
@@ -25,10 +27,14 @@
 			return
 		T = get_turf(T)
 		loc = T
-		cameranet.visibility(src)
-		if(ai.client)
+		if(use_static)
+			ai.camera_visibility(src)
+		if(ai.client && !ai.multicam_on)
 			ai.client.eye = src
+		update_parallax_contents()
 		//Holopad
+		if(ai.master_multicam)
+			ai.master_multicam.refresh_view()
 		if(istype(ai.current, /obj/machinery/hologram/holopad))
 			var/obj/machinery/hologram/holopad/H = ai.current
 			H.move_hologram(ai, T)
@@ -41,18 +47,16 @@
 		return ai.client
 	return null
 
-
 /mob/camera/aiEye/proc/RemoveImages()
 	var/client/C = GetViewerClient()
-	if(C)
+	if(C && use_static)
 		for(var/V in visibleCameraChunks)
 			var/datum/camerachunk/chunk = V
 			C.images -= chunk.obscured
 
-
 /mob/camera/aiEye/Destroy()
 	if(ai)
-		//ai.all_eyes -= src
+		ai.all_eyes -= src
 		ai = null
 	for(var/V in visibleCameraChunks)
 		var/datum/camerachunk/chunk = V
@@ -62,9 +66,9 @@
 /atom/proc/move_camera_by_click()
 	if(istype(usr, /mob/living/silicon/ai))
 		var/mob/living/silicon/ai/AI = usr
-		if(AI.eyeobj && AI.client.eye == AI.eyeobj)
+		if(AI.eyeobj && (AI.multicam_on || (AI.client.eye == AI.eyeobj)) && (AI.eyeobj.z == z))
 			AI.cameraFollow = null
-			if(isturf(src.loc) || isturf(src))
+			if(isturf(loc) || isturf(src))
 				AI.eyeobj.setLoc(src)
 
 // AI MOVEMENT
@@ -124,6 +128,7 @@
 	if(eyeobj)
 		return
 	eyeobj = new /mob/camera/aiEye()
+	all_eyes += eyeobj
 	eyeobj.ai = src
 	eyeobj.setLoc(loc)
 	eyeobj.name = "[name] (AI Eye)"
@@ -137,6 +142,10 @@
 	acceleration = !acceleration
 	to_chat(usr, "Camera acceleration has been toggled [acceleration ? "on" : "off"].")
 
-/mob/camera/aiEye/hear_say(var/message, var/verb = "says", var/datum/language/language = null, var/italics = 0, var/mob/speaker = null, var/sound/speech_sound, var/sound_vol)
+/mob/camera/aiEye/hear_say(list/message_pieces, verb = "says", italics = 0, mob/speaker = null, sound/speech_sound, sound_vol, sound_frequency)
 	if(relay_speech)
-		ai.relay_speech(speaker, message, verb, language)
+		if(istype(ai))
+			ai.relay_speech(speaker, message_pieces, verb)
+		else
+			var/mob/M = ai
+			M.hear_say(message_pieces, verb, italics, speaker, speech_sound, sound_vol, sound_frequency)

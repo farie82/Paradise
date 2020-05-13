@@ -1,12 +1,14 @@
-/obj/effect/proc_holder/changeling/linglink
+/datum/action/changeling/linglink
 	name = "Hivemind Link"
-	desc = "Link your victim's mind into the hivemind for personal interrogation"
+	desc = "We link our victim's mind into the hivemind for personal interrogation."
+	helptext = "If we find a human mad enough to support our cause, this can be a helpful tool to stay in touch."
+	button_icon_state = "hivemind_link"
 	chemical_cost = 0
 	dna_cost = 0
 	req_human = 1
 	max_genetic_damage = 100
 
-/obj/effect/proc_holder/changeling/linglink/can_sting(mob/living/carbon/user)
+/datum/action/changeling/linglink/can_sting(mob/living/carbon/user)
 	if(!..())
 		return
 	var/datum/changeling/changeling = user.mind.changeling
@@ -34,7 +36,7 @@
 			return
 		return changeling.can_absorb_dna(user,target)
 
-/obj/effect/proc_holder/changeling/linglink/sting_action(mob/user)
+/datum/action/changeling/linglink/sting_action(mob/user)
 	var/datum/changeling/changeling = user.mind.changeling
 	var/obj/item/grab/G = user.get_active_hand()
 	var/mob/living/carbon/target = G.affecting
@@ -49,8 +51,8 @@
 			if(3)
 				to_chat(user, "<span class='notice'>You mold the [target]'s mind like clay, [target.p_they()] can now speak in the hivemind!</span>")
 				to_chat(target, "<span class='userdanger'>A migraine throbs behind your eyes, you hear yourself screaming - but your mouth has not opened!</span>")
-				for(var/mob/M in mob_list)
-					if(all_languages["Changeling"] in M.languages)
+				for(var/mob/M in GLOB.mob_list)
+					if(GLOB.all_languages["Changeling"] in M.languages)
 						to_chat(M, "<i><font color=#800080>We can sense a foreign presence in the hivemind...</font></i>")
 				target.mind.linglink = 1
 				target.add_language("Changeling")

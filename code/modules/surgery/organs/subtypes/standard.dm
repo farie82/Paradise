@@ -204,15 +204,15 @@
 	name = limb_name
 	..()
 
-/obj/item/organ/external/head/receive_damage(brute, burn, sharp, used_weapon = null, list/forbidden_limbs = list(), ignore_resists = FALSE)
-	..(brute, burn, sharp, used_weapon, forbidden_limbs, ignore_resists)
+/obj/item/organ/external/head/receive_damage(brute, burn, sharp, used_weapon = null, list/forbidden_limbs = list(), ignore_resists = FALSE, updating_health = TRUE)
+	..()
 	if(!disfigured)
 		if(brute_dam + burn_dam > 50)
 			disfigure()
 
 /obj/item/organ/external/head/proc/handle_alt_icon()
-	if(alt_head && alt_heads_list[alt_head])
-		var/datum/sprite_accessory/alt_heads/alternate_head = alt_heads_list[alt_head]
+	if(alt_head && GLOB.alt_heads_list[alt_head])
+		var/datum/sprite_accessory/alt_heads/alternate_head = GLOB.alt_heads_list[alt_head]
 		if(alternate_head.icon_state)
 			icon_name = alternate_head.icon_state
 		else //If alternate_head.icon_state doesn't exist, that means alternate_head is "None", so default icon_name back to "head".

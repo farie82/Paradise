@@ -253,6 +253,7 @@ obj/machinery/lapvend/attackby(obj/item/I, mob/user)
 				fabricated_laptop.forceMove(loc)
 				fabricated_laptop = null
 			else if((devtype == 2) && fabricated_tablet)
+				fabricated_tablet.update_icon()
 				fabricated_tablet.forceMove(loc)
 				fabricated_tablet = null
 			atom_say("Enjoy your new product!")
@@ -282,7 +283,7 @@ obj/machinery/lapvend/attackby(obj/item/I, mob/user)
 		atom_say("Insufficient funds in account.")
 		return 0
 	else
-		customer_account.charge(total_price, vendor_account,
+		customer_account.charge(total_price, GLOB.vendor_account,
 		"Purchase of [(devtype == 1) ? "laptop computer" : "tablet microcomputer"].",
 		name, customer_account.owner_name, "Sale of [(devtype == 1) ? "laptop computer" : "tablet microcomputer"].",
 		customer_account.owner_name)

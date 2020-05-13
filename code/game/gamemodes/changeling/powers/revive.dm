@@ -1,35 +1,33 @@
-/obj/effect/proc_holder/changeling/revive
+/datum/action/changeling/revive
 	name = "Regenerate"
 	desc = "We regenerate, healing all damage from our form."
+	button_icon_state = "revive"
 	req_stat = DEAD
 	always_keep = 1
 
 //Revive from regenerative stasis
-/obj/effect/proc_holder/changeling/revive/sting_action(var/mob/living/carbon/user)
-	user.setToxLoss(0)
-	user.setOxyLoss(0)
-	user.setCloneLoss(0)
-	user.setBrainLoss(0)
-	user.SetParalysis(0)
-	user.SetStunned(0)
-	user.SetWeakened(0)
+/datum/action/changeling/revive/sting_action(var/mob/living/carbon/user)
+	user.setToxLoss(0, FALSE)
+	user.setOxyLoss(0, FALSE)
+	user.setCloneLoss(0, FALSE)
+	user.setBrainLoss(0, FALSE)
+	user.SetParalysis(0, FALSE)
+	user.SetStunned(0, FALSE)
+	user.SetWeakened(0, FALSE)
 	user.radiation = 0
-	user.SetEyeBlind(0)
-	user.SetEyeBlurry(0)
-	user.SetEarDamage(0)
-	user.SetEarDeaf(0)
-	user.heal_overall_damage(user.getBruteLoss(), user.getFireLoss())
-	user.CureBlind()
+	user.SetEyeBlind(0, FALSE)
+	user.SetEyeBlurry(0, FALSE)
+	user.RestoreEars()
+	user.heal_overall_damage(user.getBruteLoss(), user.getFireLoss(), updating_health = FALSE)
+	user.CureBlind(FALSE)
 	user.CureDeaf()
-	user.CureNearsighted()
+	user.CureNearsighted(FALSE)
 	user.reagents.clear_reagents()
 	user.germ_level = 0
 	user.timeofdeath = 0
 	if(ishuman(user))
 		var/mob/living/carbon/human/H = user
 		H.restore_blood()
-		H.traumatic_shock = 0
-		H.shock_stage = 0
 		H.next_pain_time = 0
 		H.dna.species.create_organs(H)
 		// Now that recreating all organs is necessary, the rest of this organ stuff probably
@@ -52,15 +50,21 @@
 			IO.rejuvenate()
 			IO.trace_chemicals.Cut()
 		H.remove_all_embedded_objects()
-		H.updatehealth()
+	for(var/datum/disease/critical/C in user.viruses)
+		C.cure()
+	user.status_flags &= ~(FAKEDEATH)
+	user.updatehealth("revive sting")
+	user.update_blind_effects()
+	user.update_blurry_effects()
+	user.mind.changeling.regenerating = FALSE
+	user.UpdateAppearance() //Ensures that the user's appearance matches their DNA.
 
 	to_chat(user, "<span class='notice'>We have regenerated.</span>")
 
 	user.regenerate_icons()
 
-	user.status_flags &= ~(FAKEDEATH)
 	user.update_revive() //Handle waking up the changeling after the regenerative stasis has completed.
-	user.mind.changeling.purchasedpowers -= src
+	src.Remove(user)
 	user.med_hud_set_status()
 	user.med_hud_set_health()
 	feedback_add_details("changeling_powers","CR")

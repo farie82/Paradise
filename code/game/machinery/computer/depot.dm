@@ -12,7 +12,7 @@
 	icon_keyboard = "syndie_key"
 	icon_screen = "tcboss"
 	light_color = LIGHT_COLOR_PURE_CYAN
-	req_access = list(access_syndicate)
+	req_access = list(ACCESS_SYNDICATE)
 	var/security_lockout = FALSE
 	var/sound_yes = 'sound/machines/twobeep.ogg'
 	var/sound_no = 'sound/machines/buzz-sigh.ogg'
@@ -125,6 +125,8 @@
 
 /obj/machinery/computer/syndicate_depot/doors
 	name = "depot door control computer"
+	req_access = list()
+	var/pub_access = FALSE
 
 /obj/machinery/computer/syndicate_depot/doors/get_menu(mob/user)
 	return {"<B>Syndicate Depot Door Control Computer</B><HR>
@@ -136,8 +138,13 @@
 	if(..())
 		return
 	if(depotarea)
-		depotarea.toggle_door_locks(src)
-		to_chat(user, "<span class='notice'>Door locks toggled.</span>")
+		pub_access = !pub_access
+		if(pub_access)
+			depotarea.set_emergency_access(TRUE)
+			to_chat(user, "<span class='notice'>Emergency Access enabled.</span>")
+		else
+			depotarea.set_emergency_access(FALSE)
+			to_chat(user, "<span class='notice'>Emergency Access disabled.</span>")
 		playsound(user, sound_yes, 50, 0)
 
 /obj/machinery/computer/syndicate_depot/doors/secondary(mob/user, subcommand)
@@ -179,7 +186,7 @@
 /obj/machinery/computer/syndicate_depot/shieldcontrol
 	name = "shield control computer"
 	icon_screen = "accelerator"
-	req_access = list(access_syndicate_leader)
+	req_access = list(ACCESS_SYNDICATE_LEADER)
 	alerts_when_broken = TRUE
 	var/area/syndicate_depot/perimeter/perimeterarea
 
@@ -189,6 +196,7 @@
 	if(istype(perimeterarea) && (GAMEMODE_IS_NUCLEAR || prob(20)))
 		spawn(200)
 			perimeterarea.perimeter_shields_up()
+			depotarea.perimeter_shield_status = TRUE
 
 /obj/machinery/computer/syndicate_depot/shieldcontrol/Destroy()
 	if(istype(perimeterarea) && perimeterarea.shield_list.len)
@@ -212,8 +220,10 @@
 		return
 	if(perimeterarea.shield_list.len)
 		perimeterarea.perimeter_shields_down()
+		depotarea.perimeter_shield_status = FALSE
 	else
 		perimeterarea.perimeter_shields_up()
+		depotarea.perimeter_shield_status = TRUE
 	playsound(user, sound_yes, 50, 0)
 
 
@@ -275,17 +285,13 @@
 		to_chat(user, "<span class='warning'>[src] has already been used to transmit a message to the Syndicate.</span>")
 		return
 	message_sent = TRUE
-	if(user.mind && user.mind.special_role == SPECIAL_ROLE_TRAITOR)
-		var/input = stripped_input(user, "Please choose a message to transmit to Syndicate HQ via quantum entanglement.  Transmission does not guarantee a response. This function may only be used ONCE.", "To abort, send an empty message.", "") as text|null
-		if(!input)
-			message_sent = FALSE
-			return
-		Syndicate_announce(input, user)
-		to_chat(user, "Message transmitted.")
-		log_say("[key_name(user)] has sent a Syndicate comms message from the depot: [input]", user)
-	else
-		to_chat(user, "<span class='warning'>[src] requires authentication with syndicate codewords, which you do not know.</span>")
-		raise_alert("Detected unauthorized access by [user] to [src]!")
+	var/input = stripped_input(user, "Please choose a message to transmit to Syndicate HQ via quantum entanglement.  Transmission does not guarantee a response. This function may only be used ONCE.", "To abort, send an empty message.", "")
+	if(!input)
+		message_sent = FALSE
+		return
+	Syndicate_announce(input, user)
+	to_chat(user, "Message transmitted.")
+	log_say("[key_name(user)] has sent a Syndicate comms message from the depot: [input]", user)
 	updateUsrDialog()
 	playsound(user, sound_yes, 50, 0)
 
@@ -311,7 +317,9 @@
 					to_chat(user, "<span class='warning'>Only verified agents of the Syndicate may sign in as visitors. Everyone else will be shot on sight.</span>")
 		else if(subcommand == DEPOT_VISITOR_START)
 			if(depotarea.something_looted)
-				to_chat(user, "<span class='warning'>Visitor sign-in is not possible after supplies have been taken from the depot.</span>")
+				to_chat(user, "<span class='warning'>Visitor sign-in is not possible after supplies have been taken from a locker in the depot.</span>")
+			else if("syndicate" in user.faction)
+				to_chat(user, "<span class='warning'>You are already recognized as a member of the Syndicate, and do not need to sign in.</span>")
 			else if(user.mind && user.mind.special_role == SPECIAL_ROLE_TRAITOR)
 				grant_syndie_faction(user)
 				depotarea.peaceful_mode(TRUE, TRUE)
@@ -352,6 +360,7 @@
 	icon_keyboard = "teleport_key"
 	var/obj/machinery/bluespace_beacon/syndicate/mybeacon
 	var/obj/effect/portal/redspace/myportal
+	var/obj/effect/portal/redspace/myportal2
 	var/portal_enabled = FALSE
 	var/portaldir = WEST
 
@@ -359,7 +368,6 @@
 	. = ..()
 	spawn(10)
 		findbeacon()
-		choosetarget()
 		update_portal()
 
 /obj/machinery/computer/syndicate_depot/teleporter/Destroy()
@@ -388,16 +396,23 @@
 	return FALSE
 
 /obj/machinery/computer/syndicate_depot/teleporter/proc/choosetarget()
-	var/list/eligible_turfs = list()
-	for(var/obj/item/radio/beacon/R in beacons)
+	var/list/L = list()
+	var/list/areaindex = list()
+
+	for(var/obj/item/radio/beacon/R in GLOB.beacons)
 		var/turf/T = get_turf(R)
-		if(!is_station_level(T.z))
+		if(!T)
 			continue
-		eligible_turfs += T
-	if(eligible_turfs.len)
-		return pick(eligible_turfs)
-	else
-		return FALSE
+		if(!is_teleport_allowed(T.z))
+			continue
+		var/tmpname = T.loc.name
+		if(areaindex[tmpname])
+			tmpname = "[tmpname] ([++areaindex[tmpname]])"
+		else
+			areaindex[tmpname] = 1
+		L[tmpname] = R
+	var/desc = input("Please select a location to lock in.", "Syndicate Teleporter") in L
+	return(L[desc])
 
 /obj/machinery/computer/syndicate_depot/teleporter/proc/update_portal()
 	if(portal_enabled && !myportal)
@@ -409,9 +424,15 @@
 		myportal = P
 		var/area/A = get_area(tele_target)
 		P.name = "[A] portal"
+		var/obj/effect/portal/redspace/P2 = new(get_turf(tele_target), portal_turf, src, 0)
+		myportal2 = P2
+		P2.name = "mysterious portal"
 	else if(!portal_enabled && myportal)
 		qdel(myportal)
 		myportal = null
+		if(myportal2)
+			qdel(myportal2)
+			myportal2 = null
 
 /obj/machinery/computer/syndicate_depot/teleporter/get_menu(mob/user)
 	var/menutext = "<B>Syndicate Teleporter Control</B><HR>"

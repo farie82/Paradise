@@ -31,31 +31,9 @@
 	if(..())
 		return
 
-	R.notify_ai(2)
+	R.reset_module()
 
-	R.uneq_all()
-	R.sight_mode = null
-	R.hands.icon_state = "nomod"
-	R.icon_state = "robot"
-	R.module.remove_subsystems_and_actions(R)
-	QDEL_NULL(R.module)
-
-	R.camera.network.Remove(list("Engineering", "Medical", "Mining Outpost"))
-	R.rename_character(R.real_name, R.get_default_name("Default"))
-	R.languages = list()
-	R.speech_synthesizer_langs = list()
-
-	R.update_icons()
-	R.update_headlamp()
-
-	R.speed = 0 // Remove upgrades.
-	R.ionpulse = 0
-	R.magpulse = 0
-	R.add_language("Robot Talk", 1)
-
-	R.status_flags |= CANPUSH
-
-	return 1
+	return TRUE
 
 /obj/item/borg/upgrade/rename
 	name = "cyborg reclassification board"
@@ -90,13 +68,13 @@
 		return 0
 
 	if(!R.key)
-		for(var/mob/dead/observer/ghost in player_list)
+		for(var/mob/dead/observer/ghost in GLOB.player_list)
 			if(ghost.mind && ghost.mind.current == R)
 				R.key = ghost.key
 
 	R.stat = CONSCIOUS
-	dead_mob_list -= R //please never forget this ever kthx
-	living_mob_list += R
+	GLOB.dead_mob_list -= R //please never forget this ever kthx
+	GLOB.living_mob_list += R
 	R.notify_ai(1)
 
 	return 1
@@ -207,7 +185,7 @@
 
 /obj/item/borg/upgrade/syndicate
 	name = "illegal equipment module"
-	desc = "Unlocks the hidden, deadlier functions of a cyborg"
+	desc = "Unlocks the hidden, deadlier functions of a cyborg. Also prevents emag subversion."
 	icon_state = "cyborg_upgrade3"
 	origin_tech = "combat=4;syndicate=1"
 	require_module = 1
@@ -256,7 +234,7 @@
 
 /obj/item/borg/upgrade/selfrepair/Destroy()
 	cyborg = null
-	processing_objects -= src
+	STOP_PROCESSING(SSobj, src)
 	on = 0
 	return ..()
 
@@ -264,10 +242,10 @@
 	on = !on
 	if(on)
 		to_chat(cyborg, "<span class='notice'>You activate the self-repair module.</span>")
-		processing_objects |= src
+		START_PROCESSING(SSobj, src)
 	else
 		to_chat(cyborg, "<span class='notice'>You deactivate the self-repair module.</span>")
-		processing_objects -= src
+		STOP_PROCESSING(SSobj, src)
 	update_icon()
 
 /obj/item/borg/upgrade/selfrepair/update_icon()
@@ -280,7 +258,7 @@
 		icon_state = "cyborg_upgrade5"
 
 /obj/item/borg/upgrade/selfrepair/proc/deactivate()
-	processing_objects -= src
+	STOP_PROCESSING(SSobj, src)
 	on = 0
 	update_icon()
 
@@ -302,14 +280,12 @@
 
 		if(cyborg.health < cyborg.maxHealth)
 			if(cyborg.health < 0)
-				repair_amount = -2.5
+				repair_amount = 2.5
 				powercost = 30
 			else
-				repair_amount = -1
+				repair_amount = 1
 				powercost = 10
-			cyborg.adjustBruteLoss(repair_amount)
-			cyborg.adjustFireLoss(repair_amount)
-			cyborg.updatehealth()
+			cyborg.heal_overall_damage(repair_amount, repair_amount)
 			cyborg.cell.use(powercost)
 		else
 			cyborg.cell.use(5)

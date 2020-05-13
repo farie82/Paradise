@@ -192,9 +192,9 @@
 	emergencyShutdown()
 	..()
 
-/obj/machinery/computer/HolodeckControl/blob_act()
+/obj/machinery/computer/HolodeckControl/blob_act(obj/structure/blob/B)
 	emergencyShutdown()
-	..()
+	return ..()
 
 /obj/machinery/computer/HolodeckControl/process()
 	for(var/item in holographic_items) // do this first, to make sure people don't take items out when power is down.
@@ -217,9 +217,7 @@
 
 			for(var/turf/T in linkedholodeck)
 				if(prob(30))
-					var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
-					s.set_up(2, 1, T)
-					s.start()
+					do_sparks(2, 1, T)
 				T.ex_act(3)
 				T.hotspot_expose(1000,500,1)
 
@@ -257,9 +255,7 @@
 				if(L.name=="Atmospheric Test Start")
 					spawn(20)
 						var/turf/T = get_turf(L)
-						var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
-						s.set_up(2, 1, T)
-						s.start()
+						do_sparks(2, 1, T)
 						if(T)
 							T.temperature = 5000
 							T.hotspot_expose(50000,50000,1)*/
@@ -306,9 +302,7 @@
 /*			if(L.name=="Atmospheric Test Start")
 				spawn(20)
 					var/turf/T = get_turf(L)
-					var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
-					s.set_up(2, 1, T)
-					s.start()
+					do_sparks(2, 1, T)
 					if(T)
 						T.temperature = 5000
 						T.hotspot_expose(50000,50000,1)*/
@@ -353,7 +347,7 @@
 	// HOLOFLOOR DOES NOT GIVE A FUCK
 
 /obj/structure/table/holotable
-	can_deconstruct = FALSE
+	flags = NODECONSTRUCT
 	canSmoothWith = list(/obj/structure/table/holotable)
 
 /obj/structure/table/holotable/wood
@@ -381,7 +375,7 @@
 	flags = ON_BORDER
 
 /obj/structure/rack/holorack
-	can_deconstruct = FALSE
+	flags = NODECONSTRUCT
 
 /obj/item/holo
 	damtype = STAMINA
@@ -421,17 +415,20 @@
 	var/active = 0
 
 /obj/item/holo/esword/green/New()
+	..()
 	item_color = "green"
 
 /obj/item/holo/esword/red/New()
+	..()
 	item_color = "red"
 
-/obj/item/holo/esword/hit_reaction(mob/living/carbon/human/owner, attack_text, final_block_chance)
+/obj/item/holo/esword/hit_reaction(mob/living/carbon/human/owner, atom/movable/hitby, attack_text = "the attack", final_block_chance = 0, damage = 0, attack_type = MELEE_ATTACK)
 	if(active)
 		return ..()
 	return 0
 
 /obj/item/holo/esword/New()
+	..()
 	item_color = pick("red","blue","green","purple")
 
 /obj/item/holo/esword/attack_self(mob/living/user as mob)
@@ -465,6 +462,12 @@
 	item_state = "basketball"
 	desc = "Here's your chance, do your dance at the Space Jam."
 	w_class = WEIGHT_CLASS_BULKY //Stops people from hiding it in their bags/pockets
+
+/obj/item/beach_ball/holoball/baseball
+	icon_state = "baseball"
+	name = "baseball"
+	item_state = "baseball"
+	desc = "Take me out to the ball game."
 
 /obj/structure/holohoop
 	name = "basketball hoop"
@@ -504,6 +507,18 @@
 		return 0
 	else
 		return ..(mover, target, height)
+
+/obj/structure/holohoop/hitby(atom/movable/AM, skipcatch, hitpush, blocked, datum/thrownthing/throwingdatum)
+	if(isitem(AM) && !istype(AM,/obj/item/projectile))
+		if(prob(50))
+			AM.forceMove(get_turf(src))
+			visible_message("<span class='warning'>Swish! [AM] lands in [src].</span>")
+			return
+		else
+			visible_message("<span class='danger'>[AM] bounces off of [src]'s rim!</span>")
+			return ..()
+	else
+		return ..()
 
 /obj/machinery/readybutton
 	name = "Ready Declaration Device"

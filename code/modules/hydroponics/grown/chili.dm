@@ -25,14 +25,16 @@
 	icon_state = "chilipepper"
 	filling_color = "#FF0000"
 	bitesize_mod = 2
+	tastes = list("chili" = 1)
+	wine_power = 0.2
 
 // Ice Chili
 /obj/item/seeds/chili/ice
-	name = "pack of ice pepper seeds"
-	desc = "These seeds grow into ice pepper plants."
+	name = "pack of chilly pepper seeds"
+	desc = "These seeds grow into chilly pepper plants."
 	icon_state = "seed-icepepper"
 	species = "chiliice"
-	plantname = "Ice Pepper Plants"
+	plantname = "Chilly Pepper Plants"
 	product = /obj/item/reagent_containers/food/snacks/grown/icepepper
 	lifespan = 25
 	maturation = 4
@@ -43,12 +45,14 @@
 
 /obj/item/reagent_containers/food/snacks/grown/icepepper
 	seed = /obj/item/seeds/chili/ice
-	name = "ice pepper"
+	name = "chilly pepper"
 	desc = "It's a mutant strain of chili"
 	icon_state = "icepepper"
 	filling_color = "#0000CD"
 	bitesize_mod = 2
 	origin_tech = "biotech=4"
+	tastes = list("chilly" = 1)
+	wine_power = 0.3
 
 // Ghost Chili
 /obj/item/seeds/chili/ghost
@@ -74,3 +78,5 @@
 	filling_color = "#F8F8FF"
 	bitesize_mod = 4
 	origin_tech = "biotech=4;magnets=5"
+	tastes = list("ghost chili" = 1)
+	wine_power = 0.5

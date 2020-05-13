@@ -11,7 +11,7 @@
 /obj/effect/mine/proc/mineEffect(mob/living/victim)
 	to_chat(victim, "<span class='danger'>*click*</span>")
 
-/obj/effect/mine/Crossed(AM as mob|obj)
+/obj/effect/mine/Crossed(AM as mob|obj, oldloc)
 	if(!isliving(AM))
 		return
 	var/mob/living/M = AM
@@ -25,9 +25,7 @@
 	if(triggered)
 		return
 	visible_message("<span class='danger'>[victim] sets off [bicon(src)] [src]!</span>")
-	var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
-	s.set_up(3, 1, src)
-	s.start()
+	do_sparks(3, 1, src)
 	mineEffect(victim)
 	triggered = 1
 	qdel(src)
@@ -55,6 +53,15 @@
 	if(isliving(victim))
 		victim.Weaken(stun_time)
 
+/obj/effect/mine/depot
+	name = "sentry mine"
+
+/obj/effect/mine/depot/mineEffect(mob/living/victim)
+	var/area/syndicate_depot/core/depotarea = areaMaster
+	if(istype(depotarea))
+		if(depotarea.mine_triggered(victim))
+			explosion(loc, 1, 0, 0, 1) // devastate the tile you are on, but leave everything else untouched
+
 /obj/effect/mine/dnascramble
 	name = "Radiation Mine"
 	var/radiation_amount
@@ -71,18 +78,18 @@
 /obj/effect/mine/gas
 	name = "oxygen mine"
 	var/gas_amount = 360
-	var/gas_type = SPAWN_OXYGEN
+	var/gas_type = LINDA_SPAWN_OXYGEN
 
 /obj/effect/mine/gas/mineEffect(mob/living/victim)
 	atmos_spawn_air(gas_type, gas_amount)
 
 /obj/effect/mine/gas/plasma
 	name = "plasma mine"
-	gas_type = SPAWN_HEAT | SPAWN_TOXINS
+	gas_type = LINDA_SPAWN_HEAT | LINDA_SPAWN_TOXINS
 
 /obj/effect/mine/gas/n2o
 	name = "\improper N2O mine"
-	gas_type = SPAWN_N2O
+	gas_type = LINDA_SPAWN_N2O
 
 /obj/effect/mine/sound
 	name = "honkblaster 1000"
@@ -134,7 +141,7 @@
 		new /obj/effect/hallucination/delusion(victim.loc, victim, force_kind = "demon", duration = duration, skip_nearby = 0)
 
 	var/obj/item/twohanded/required/chainsaw/doomslayer/chainsaw = new(victim.loc)
-	chainsaw.flags |= NODROP
+	chainsaw.flags |= NODROP | DROPDEL
 	victim.drop_l_hand()
 	victim.drop_r_hand()
 	victim.put_in_hands(chainsaw)

@@ -7,7 +7,7 @@
 	set desc = "Spawns a group of players in the specified outfit."
 	if(!check_rights(R_EVENT))
 		return
-	if(!ticker)
+	if(!SSticker)
 		alert("The game hasn't started yet!")
 		return
 	if(alert("Do you want to spawn a Gimmick Team at YOUR CURRENT LOCATION?",,"Yes","No")=="No")
@@ -27,7 +27,7 @@
 		if(!themission)
 			alert("No mission specified. Aborting.")
 			return
-	var/admin_outfits = subtypesof(/datum/outfit/admin)
+	var/admin_outfits = subtypesof(/datum/outfit/admin) + list(/datum/outfit/naked)
 	var/outfit_list = list()
 	for(var/type in admin_outfits)
 		var/datum/outfit/admin/O = type
@@ -42,7 +42,7 @@
 	var/list/players_to_spawn = list()
 	if(pick_manually)
 		var/list/possible_ghosts = list()
-		for(var/mob/dead/observer/G in player_list)
+		for(var/mob/dead/observer/G in GLOB.player_list)
 			if(!G.client.is_afk())
 				if(!(G.mind && G.mind.current && G.mind.current.stat != DEAD))
 					possible_ghosts += G
@@ -72,6 +72,7 @@
 		H.mind_initialize()
 		H.mind.assigned_role = "Event Character"
 		H.mind.special_role = "Event Character"
+		H.mind.offstation_role = TRUE
 
 		H.key = thisplayer.key
 
@@ -81,7 +82,7 @@
 		H.mind.store_memory("<B>[themission]</B><BR><BR>")
 
 		if(is_syndicate)
-			ticker.mode.traitors |= H.mind //Adds them to extra antag list
+			SSticker.mode.traitors |= H.mind //Adds them to extra antag list
 
 		players_spawned++
 		if(players_spawned >= teamsize)

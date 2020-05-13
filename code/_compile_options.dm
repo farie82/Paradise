@@ -18,7 +18,7 @@
 #define MAX_PAPER_MESSAGE_LEN 3072
 #define MAX_PAPER_FIELDS 50
 #define MAX_BOOK_MESSAGE_LEN 9216
-#define MAX_NAME_LEN 26
+#define MAX_NAME_LEN 50 	//diona names can get loooooooong
 
 // Version check, terminates compilation if someone is using a version of BYOND that's too old
 #if DM_VERSION < 510
@@ -27,7 +27,5 @@ Due to BYOND features used in this codebase, you must update to version 510 or l
 This may require updating to a beta release.
 #endif
 
-var/global/list/processing_objects = list() //This has to be initialized BEFORE world
-
 // Macros that must exist before world.dm
-#define to_chat to_chat_filename=__FILE__;to_chat_line=__LINE__;to_chat_src=src;__to_chat
+// #define to_chat to_chat_filename=__FILE__;to_chat_line=__LINE__;to_chat_src=src;__to_chat

@@ -2,7 +2,7 @@
 	name="Monkey"
 
 /datum/dna/gene/monkey/New()
-	block=MONKEYBLOCK
+	block=GLOB.monkeyblock
 
 /datum/dna/gene/monkey/can_activate(var/mob/M,var/flags)
 	return ishuman(M)
@@ -37,12 +37,6 @@
 	if(!has_primitive_form) //If the pre-change mob in question has no primitive set, this is going to be messy.
 		H.gib()
 		return
-
-	QDEL_NULL(H.hud_used)
-
-	if(H.client)
-		H.hud_used = new /datum/hud/monkey(H, ui_style2icon(H.client.prefs.UI_style), H.client.prefs.UI_style_color, H.client.prefs.UI_style_alpha)
-		H.hud_used.show_hud(H.hud_used.hud_version)
 
 	to_chat(H, "<B>You are now a [H.dna.species.name].</B>")
 
@@ -82,12 +76,6 @@
 
 	H.real_name = H.dna.real_name
 	H.name = H.real_name
-
-	QDEL_NULL(H.hud_used)
-
-	if(H.client)
-		H.hud_used = new /datum/hud/human(H, ui_style2icon(H.client.prefs.UI_style), H.client.prefs.UI_style_color, H.client.prefs.UI_style_alpha)
-		H.hud_used.show_hud(H.hud_used.hud_version)
 
 	to_chat(H, "<B>You are now a [H.dna.species.name].</B>")
 

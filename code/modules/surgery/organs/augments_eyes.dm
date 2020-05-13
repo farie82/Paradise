@@ -8,13 +8,14 @@
 	w_class = WEIGHT_CLASS_TINY
 
 	var/vision_flags = 0
-	var/dark_view = 0
+	var/see_in_dark = 0
 	var/see_invisible = 0
-	var/eye_colour = "#000000"
+	var/lighting_alpha
+
+	var/eye_colour = "#000000" // Should never be null
 	var/old_eye_colour = "#000000"
 	var/flash_protect = 0
 	var/aug_message = "Your vision is augmented!"
-
 
 /obj/item/organ/internal/cyberimp/eyes/insert(var/mob/living/carbon/M, var/special = 0)
 	..()
@@ -54,7 +55,7 @@
 	implant_color = "#AEFF00"
 	origin_tech = "materials=4;engineering=4;biotech=4;magnets=4"
 	vision_flags = SEE_TURFS
-	see_invisible = SEE_INVISIBLE_MINIMUM
+	lighting_alpha = LIGHTING_PLANE_ALPHA_MOSTLY_VISIBLE
 	aug_message = "Suddenly, you realize how much of a mess the station really is..."
 
 /obj/item/organ/internal/cyberimp/eyes/xray
@@ -63,8 +64,8 @@
 	implant_color = "#000000"
 	origin_tech = "materials=4;programming=4;biotech=6;magnets=4"
 	vision_flags = SEE_MOBS | SEE_OBJS | SEE_TURFS
-	dark_view = 8
-	see_invisible = SEE_INVISIBLE_MINIMUM
+	see_in_dark = 8
+	lighting_alpha = LIGHTING_PLANE_ALPHA_MOSTLY_INVISIBLE
 
 /obj/item/organ/internal/cyberimp/eyes/thermals
 	name = "Thermals implant"
@@ -72,6 +73,7 @@
 	eye_colour = "#FFCC00"
 	implant_color = "#FFCC00"
 	vision_flags = SEE_MOBS
+	lighting_alpha = LIGHTING_PLANE_ALPHA_MOSTLY_VISIBLE
 	flash_protect = -1
 	origin_tech = "materials=5;programming=4;biotech=4;magnets=4;syndicate=1"
 	aug_message = "You see prey everywhere you look..."
@@ -86,14 +88,14 @@
 /obj/item/organ/internal/cyberimp/eyes/hud/insert(var/mob/living/carbon/M, var/special = 0)
 	..()
 	if(HUD_type)
-		var/datum/atom_hud/H = huds[HUD_type]
+		var/datum/atom_hud/H = GLOB.huds[HUD_type]
 		H.add_hud_to(M)
 		M.permanent_huds |= H
 
 /obj/item/organ/internal/cyberimp/eyes/hud/remove(var/mob/living/carbon/M, var/special = 0)
 	. = ..()
 	if(HUD_type)
-		var/datum/atom_hud/H = huds[HUD_type]
+		var/datum/atom_hud/H = GLOB.huds[HUD_type]
 		M.permanent_huds ^= H
 		H.remove_hud_from(M)
 

@@ -16,12 +16,12 @@
 	end_duration = 300
 	end_overlay = "light_ash"
 
-	area_type = /area/mine/dangerous // /area/lavaland/surface/outdoors
+	area_type = /area/lavaland/surface/outdoors
 	target_trait = ORE_LEVEL
 
 	immunity_type = "ash"
 
-//	probability = 90
+	probability = 90
 
 	barometer_predictable = TRUE
 
@@ -36,7 +36,7 @@
 	var/list/outside_areas = list()
 	var/list/eligible_areas = list()
 	for(var/z in impacted_z_levels)
-		eligible_areas += space_manager.areas_in_z["[z]"]
+		eligible_areas += GLOB.space_manager.areas_in_z["[z]"]
 	for(var/i in 1 to eligible_areas.len)
 		var/area/place = eligible_areas[i]
 		if(place.outdoors)
@@ -81,7 +81,7 @@
 		if(ishuman(L)) //Are you immune?
 			var/mob/living/carbon/human/H = L
 			var/thermal_protection = H.get_thermal_protection()
-			if(thermal_protection >= FIRE_IMMUNITY_SUIT_MAX_TEMP_PROTECT)
+			if(thermal_protection >= FIRE_IMMUNITY_MAX_TEMP_PROTECT)
 				return TRUE
 		L = L.loc //Matryoshka check
 	return FALSE //RIP you
@@ -105,4 +105,4 @@
 
 	aesthetic = TRUE
 
-//	probability = 10
+	probability = 10

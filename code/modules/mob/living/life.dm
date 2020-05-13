@@ -3,17 +3,20 @@
 	set background = BACKGROUND_ENABLED
 
 	if(notransform)
-		return
+		return FALSE
 	if(!loc)
-		return
+		return FALSE
 	var/datum/gas_mixture/environment = loc.return_air()
 
-	//Apparently, the person who wrote this code designed it so that
-	//blinded get reset each cycle and then get activated later in the
-	//code. Very ugly. I dont care. Moving this stuff here so its easy
-	//to find it.
-	blinded = null
-
+	if(client || registered_z) // This is a temporary error tracker to make sure we've caught everything
+		var/turf/T = get_turf(src)
+		if(client && registered_z != T.z)
+			message_admins("[src] [ADMIN_FLW(src, "FLW")] has somehow ended up in Z-level [T.z] despite being registered in Z-level [registered_z]. If you could ask them how that happened and notify the coders, it would be appreciated.")
+			log_game("Z-TRACKING: [src] has somehow ended up in Z-level [T.z] despite being registered in Z-level [registered_z].")
+			update_z(T.z)
+		else if (!client && registered_z)
+			log_game("Z-TRACKING: [src] of type [src.type] has a Z-registration despite not having a client.")
+			update_z(null)
 	if(stat != DEAD)
 		//Chemicals in the body
 		handle_chemicals_in_body()
@@ -30,6 +33,10 @@
 		. = 1
 
 	handle_diseases()
+
+	//Heart Attack, if applicable
+	if(stat != DEAD)
+		handle_heartattack()
 
 	//Handle temperature/pressure differences between body and environment
 	if(environment)
@@ -51,17 +58,15 @@
 		handle_disabilities() // eye, ear, brain damages
 		handle_status_effects() //all special effects, stunned, weakened, jitteryness, hallucination, sleeping, etc
 
-	update_canmove(1) // set to 1 to not update icon action buttons; rip this argument out if Life is ever refactored to be non-stupid. -Fox
-
 	if(client)
-		//regular_hud_updates() //THIS DOESN'T FUCKING UPDATE SHIT
-		handle_regular_hud_updates() //IT JUST REMOVES FUCKING HUD IMAGES
-	if(get_nations_mode())
-		process_nations()
+		handle_regular_hud_updates()
 
 	..()
 
 /mob/living/proc/handle_breathing(times_fired)
+	return
+
+/mob/living/proc/handle_heartattack()
 	return
 
 /mob/living/proc/handle_mutations_and_radiation()
@@ -90,21 +95,7 @@
 
 //This updates the health and status of the mob (conscious, unconscious, dead)
 /mob/living/proc/handle_regular_status_updates()
-
-	updatehealth()
-
-	if(stat != DEAD)
-
-		if(paralysis)
-			stat = UNCONSCIOUS
-
-		else if(status_flags & FAKEDEATH)
-			stat = UNCONSCIOUS
-
-		else
-			stat = CONSCIOUS
-
-		return 1
+	return stat != DEAD
 
 //this updates all special effects: stunned, sleeping, weakened, druggy, stuttering, etc..
 /mob/living/proc/handle_status_effects()
@@ -192,15 +183,6 @@
 	else if(eye_blurry)			//blurry eyes heal slowly
 		AdjustEyeBlurry(-1)
 
-	//Ears
-	if(disabilities & DEAF)		//disabled-deaf, doesn't get better on its own
-		EarDeaf(1)
-	else
-		// deafness heals slowly over time, unless ear_damage is over 100
-		if(ear_damage < 100)
-			AdjustEarDamage(-0.05)
-			AdjustEarDeaf(-1)
-
 //this handles hud updates. Calls update_vision() and handle_hud_icons()
 /mob/living/proc/handle_regular_hud_updates()
 	if(!client)	return 0
@@ -215,29 +197,6 @@
 
 	if(stat == DEAD)
 		return
-	if(blinded || eye_blind)
-		overlay_fullscreen("blind", /obj/screen/fullscreen/blind)
-		throw_alert("blind", /obj/screen/alert/blind)
-	else
-		clear_fullscreen("blind")
-		clear_alert("blind")
-
-		if(disabilities & NEARSIGHTED)
-			overlay_fullscreen("nearsighted", /obj/screen/fullscreen/impaired, 1)
-		else
-			clear_fullscreen("nearsighted")
-
-		if(eye_blurry)
-			overlay_fullscreen("blurry", /obj/screen/fullscreen/blurry)
-		else
-			clear_fullscreen("blurry")
-
-		if(druggy)
-			overlay_fullscreen("high", /obj/screen/fullscreen/high)
-			throw_alert("high", /obj/screen/alert/high)
-		else
-			clear_fullscreen("high")
-			clear_alert("high")
 
 	if(machine)
 		if(!machine.check_eye(src))
@@ -246,26 +205,15 @@
 		if(!remote_view && !client.adminobs)
 			reset_perspective(null)
 
-/mob/living/proc/update_sight()
-	return
-
 // Gives a mob the vision of being dead
 /mob/living/proc/grant_death_vision()
 	sight |= SEE_TURFS
 	sight |= SEE_MOBS
 	sight |= SEE_OBJS
+	lighting_alpha = LIGHTING_PLANE_ALPHA_INVISIBLE
 	see_in_dark = 8
 	see_invisible = SEE_INVISIBLE_OBSERVER
-
-// See through walls, dark, etc.
-// basically the same as death vision except you can't
-// see ghosts
-/mob/living/proc/grant_xray_vision()
-	sight |= SEE_TURFS
-	sight |= SEE_MOBS
-	sight |= SEE_OBJS
-	see_in_dark = 8
-	see_invisible = SEE_INVISIBLE_LEVEL_TWO
+	sync_lighting_plane_alpha()
 
 /mob/living/proc/handle_hud_icons()
 	handle_hud_icons_health()
@@ -273,9 +221,3 @@
 
 /mob/living/proc/handle_hud_icons_health()
 	return
-
-/mob/living/proc/process_nations()
-	if(client)
-		var/client/C = client
-		for(var/mob/living/carbon/human/H in view(src, world.view))
-			C.images += H.hud_list[NATIONS_HUD]

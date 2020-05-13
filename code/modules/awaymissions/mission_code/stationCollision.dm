@@ -19,22 +19,22 @@
  * Areas
  */
  //Gateroom gets its own APC specifically for the gate
- /area/awaymission/gateroom
+/area/awaymission/gateroom
 
  //Library, medbay, storage room
- /area/awaymission/southblock
+/area/awaymission/southblock
 
  //Arrivals, security, hydroponics, shuttles (since they dont move, they dont need specific areas)
- /area/awaymission/arrivalblock
+/area/awaymission/arrivalblock
 
  //Crew quarters, cafeteria, chapel
- /area/awaymission/midblock
+/area/awaymission/midblock
 
  //engineering, bridge (not really north but it doesnt really need its own APC)
- /area/awaymission/northblock
+/area/awaymission/northblock
 
  //That massive research room
- /area/awaymission/research
+/area/awaymission/research
 
 //Syndicate shuttle
 /area/awaymission/syndishuttle
@@ -94,23 +94,25 @@ obj/item/gun/energy/laser/retro/sc_retro
  */
 
 //These vars hold the code itself, they'll be generated at round-start
-var/sc_safecode1 = "[rand(0,9)]"
-var/sc_safecode2 = "[rand(0,9)]"
-var/sc_safecode3 = "[rand(0,9)]"
-var/sc_safecode4 = "[rand(0,9)]"
-var/sc_safecode5 = "[rand(0,9)]"
+GLOBAL_VAR_INIT(sc_safecode1, "[rand(0,9)]") // Do these even need to be strings? Probably for the best
+GLOBAL_VAR_INIT(sc_safecode2, "[rand(0,9)]")
+GLOBAL_VAR_INIT(sc_safecode3, "[rand(0,9)]")
+GLOBAL_VAR_INIT(sc_safecode4, "[rand(0,9)]")
+GLOBAL_VAR_INIT(sc_safecode5, "[rand(0,9)]")
 
 //Pieces of paper actually containing the hints
 /obj/item/paper/sc_safehint_paper_prison
 	name = "smudged paper"
 
 /obj/item/paper/sc_safehint_paper_prison/New()
-	info = "<i>The ink is smudged, you can only make out a couple numbers:</i> '[sc_safecode1]**[sc_safecode4]*'"
+	..()
+	info = "<i>The ink is smudged, you can only make out a couple numbers:</i> '[GLOB.sc_safecode1]**[GLOB.sc_safecode4]*'"
 
 /obj/item/paper/sc_safehint_paper_hydro
 	name = "shredded paper"
 /obj/item/paper/sc_safehint_paper_hydro/New()
-	info = "<i>Although the paper is shredded, you can clearly see the number:</i> '[sc_safecode2]'"
+	..()
+	info = "<i>Although the paper is shredded, you can clearly see the number:</i> '[GLOB.sc_safecode2]'"
 
 /obj/item/paper/sc_safehint_paper_caf
 	name = "blood-soaked paper"
@@ -120,8 +122,9 @@ var/sc_safecode5 = "[rand(0,9)]"
 /obj/item/paper/sc_safehint_paper_bible
 	name = "hidden paper"
 /obj/item/paper/sc_safehint_paper_bible/New()
+	..()
 	info = {"<i>It would appear that the pen hidden with the paper had leaked ink over the paper.
-			However you can make out the last three digits:</i>'[sc_safecode3][sc_safecode4][sc_safecode5]'
+			However you can make out the last three digits:</i>'[GLOB.sc_safecode3][GLOB.sc_safecode4][GLOB.sc_safecode5]'
 			"}
 
 /obj/item/paper/sc_safehint_paper_shuttle
@@ -145,14 +148,14 @@ var/sc_safecode5 = "[rand(0,9)]"
 
 /obj/item/storage/secure/safe/sc_ssafe/New()
 	..()
-	l_code = "[sc_safecode1][sc_safecode2][sc_safecode3][sc_safecode4][sc_safecode5]"
+	l_code = "[GLOB.sc_safecode1][GLOB.sc_safecode2][GLOB.sc_safecode3][GLOB.sc_safecode4][GLOB.sc_safecode5]"
 	l_set = 1
 	new /obj/item/gun/energy/mindflayer(src)
 	new /obj/item/soulstone(src)
 	new /obj/item/clothing/head/helmet/space/cult(src)
 	new /obj/item/clothing/suit/space/cult(src)
 	//new /obj/item/teleportation_scroll(src)
-	new /obj/item/ore/diamond(src)
+	new /obj/item/stack/ore/diamond(src)
 
 /*
  * Modified Nar-Sie
@@ -161,7 +164,7 @@ var/sc_safecode5 = "[rand(0,9)]"
 	desc = "Your body becomes weak and your feel your mind slipping away as you try to comprehend what you know can't be possible."
 	move_self = 0 //Contianed narsie does not move!
 	grav_pull = 0 //Contained narsie does not pull stuff in!
-	var/uneatable = list(/turf/space, /obj/effect/overlay, /atom/movable/lighting_overlay, /mob/living/simple_animal/hostile/construct)
+	var/uneatable = list(/turf/space, /obj/effect/overlay, /mob/living/simple_animal/hostile/construct)
 
 //Override this to prevent no adminlog runtimes and admin warnings about a singularity without containment
 /obj/singularity/narsie/sc_Narsie/admin_investigate_setup()
@@ -173,14 +176,16 @@ var/sc_safecode5 = "[rand(0,9)]"
 		mezzer()
 
 /obj/singularity/narsie/sc_Narsie/consume(var/atom/A)
+	if(!A.simulated)
+		return FALSE
 	if(is_type_in_list(A, uneatable))
-		return 0
+		return FALSE
 	if(istype(A,/mob/living))
 		var/mob/living/L = A
 		L.gib()
 	else if(istype(A,/obj/))
 		var/obj/O = A
-		O.ex_act(1.0)
+		O.ex_act(1)
 		if(O) qdel(O)
 	else if(isturf(A))
 		var/turf/T = A
@@ -190,7 +195,7 @@ var/sc_safecode5 = "[rand(0,9)]"
 					continue
 				if(O.invisibility == 101)
 					src.consume(O)
-		T.ChangeTurf(/turf/space)
+		T.ChangeTurf(T.baseturf)
 	return
 
 /obj/singularity/narsie/sc_Narsie/ex_act()

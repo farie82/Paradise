@@ -57,12 +57,12 @@
 		if(!B.brainmob.key)
 			var/ghost_can_reenter = 0
 			if(B.brainmob.mind)
-				for(var/mob/dead/observer/G in player_list)
+				for(var/mob/dead/observer/G in GLOB.player_list)
 					if(G.can_reenter_corpse && G.mind == B.brainmob.mind)
 						ghost_can_reenter = 1
 						break
-				for(var/mob/living/simple_animal/S in player_list)
-					if(S in respawnable_list)
+				for(var/mob/living/simple_animal/S in GLOB.player_list)
+					if(S in GLOB.respawnable_list)
 						ghost_can_reenter = 1
 						break
 			if(!ghost_can_reenter)
@@ -87,19 +87,6 @@
 		update_icon()
 		return 1
 
-	else if(iswelder(O) && user.a_intent == INTENT_HELP)
-		var/obj/item/weldingtool/WT = O
-		user.changeNext_move(CLICK_CD_MELEE)
-		if(WT.remove_fuel(0))
-			if(health < maxHealth)
-				adjustHealth(-5)
-				playsound(loc, WT.usesound, 50, 1)
-				add_fingerprint(user)
-				visible_message("<span class='warning'>[user] has spot-welded some of the damage to [src]!</span>")
-			else
-				to_chat(user, "<span class='notice'>[src] is undamaged!</span>")
-		else
-			to_chat(user, "Need more welding fuel!")
 	else if(istype(O, /obj/item/card/id) || istype(O, /obj/item/pda))
 		if(!mmi)
 			to_chat(user, "<span class='warning'>There's no reason to swipe your ID - the spiderbot has no brain to remove.</span>")
@@ -117,7 +104,7 @@
 			var/obj/item/pda/pda = O
 			id_card = pda.id
 
-		if(access_robotics in id_card.access)
+		if(ACCESS_ROBOTICS in id_card.access)
 			to_chat(user, "<span class='notice'>You swipe your access card and pop the brain out of [src].</span>")
 			eject_brain()
 			return 1
@@ -127,6 +114,23 @@
 
 	else
 		..()
+
+/mob/living/simple_animal/spiderbot/welder_act(mob/user, obj/item/I)
+	if(user.a_intent != INTENT_HELP)
+		return
+	if(user == src) //No self-repair dummy
+		return
+	if(health >= maxHealth)
+		to_chat(user, "<span class='warning'>[src] does not need repairing!</span>")
+		return
+		to_chat(user, "<span class='warning'>Unable to repair with the maintenance panel closed!</span>")
+		return
+	. = TRUE
+	if(!I.use_tool(src, user, volume = I.tool_volume))
+		return
+	adjustHealth(-5)
+	add_fingerprint(user)
+	user.visible_message("[user] repairs [src]!","<span class='notice'>You repair [src].</span>")
 
 /mob/living/simple_animal/spiderbot/emag_act(mob/living/user)
 	if(emagged)

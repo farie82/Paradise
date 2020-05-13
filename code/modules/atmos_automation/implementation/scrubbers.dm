@@ -35,7 +35,7 @@
 			return 1
 		if(href_list["set_scrubber"])
 			var/list/injector_names=list()
-			for(var/obj/machinery/atmospherics/unary/vent_scrubber/S in machines)
+			for(var/obj/machinery/atmospherics/unary/vent_scrubber/S in GLOB.machines)
 				if(!isnull(S.id_tag) && S.frequency == parent.frequency)
 					injector_names|=S.id_tag
 			scrubber = input("Select a scrubber:", "Scrubbers", scrubber) as null|anything in injector_names
@@ -77,20 +77,20 @@
 			return 1
 		if(href_list["set_scrubber"])
 			var/list/injector_names=list()
-			for(var/obj/machinery/atmospherics/unary/vent_scrubber/S in machines)
+			for(var/obj/machinery/atmospherics/unary/vent_scrubber/S in GLOB.machines)
 				if(!isnull(S.id_tag) && S.frequency == parent.frequency)
 					injector_names|=S.id_tag
 			scrubber = input("Select a scrubber:", "Scrubbers", scrubber) as null|anything in injector_names
 			parent.updateUsrDialog()
 			return 1
 
-var/global/list/gas_labels=list(
+GLOBAL_LIST_INIT(gas_labels, list(
 	"co2" = "CO<sub>2</sub>",
 	"tox" = "Plasma",
 	"n2o" = "N<sub>2</sub>O",
 	"o2"  = "O<sub>2</sub>",
 	"n2"  = "N<sub>2</sub>"
-)
+))
 /datum/automation/set_scrubber_gasses
 	name="Scrubber: Gasses"
 
@@ -131,7 +131,7 @@ var/global/list/gas_labels=list(
 	GetText()
 		var/txt = "Set Scrubber <a href=\"?src=[UID()];set_scrubber=1\">[fmtString(scrubber)]</a> to scrub "
 		for(var/gas in gasses)
-			txt += " [gas_labels[gas]] (<a href=\"?src=[UID()];tog_gas=[gas]\">[gasses[gas] ? "on" : "off"]</a>),"
+			txt += " [GLOB.gas_labels[gas]] (<a href=\"?src=[UID()];tog_gas=[gas]\">[gasses[gas] ? "on" : "off"]</a>),"
 		return txt
 
 	Topic(href,href_list)
@@ -145,7 +145,7 @@ var/global/list/gas_labels=list(
 			return 1
 		if(href_list["set_scrubber"])
 			var/list/injector_names=list()
-			for(var/obj/machinery/atmospherics/unary/vent_scrubber/S in machines)
+			for(var/obj/machinery/atmospherics/unary/vent_scrubber/S in GLOB.machines)
 				if(!isnull(S.id_tag) && S.frequency == parent.frequency)
 					injector_names|=S.id_tag
 			scrubber = input("Select a scrubber:", "Scrubbers", scrubber) as null|anything in injector_names

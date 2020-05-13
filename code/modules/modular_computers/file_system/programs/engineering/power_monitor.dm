@@ -4,7 +4,7 @@
 	program_icon_state = "power_monitor"
 	extended_desc = "This program connects to sensors around the station to provide information about electrical systems"
 	ui_header = "power_norm.gif"
-	transfer_access = access_engine
+	transfer_access = ACCESS_ENGINE
 	usage_flags = PROGRAM_CONSOLE
 	requires_ntnet = 0
 	network_destination = "power monitoring system"
@@ -39,10 +39,10 @@
 	data["powermonitor"] = attached ? TRUE : FALSE
 
 	if(attached)
-		var/datum/powernet/powernet = attached.get_powernet()
+		var/datum/powernet/powernet = attached.powernet
 		data["poweravail"] = powernet.avail
 		data["powerload"] = powernet.viewload
 		data["powerdemand"] = powernet.load
-		data["apcs"] = apc_repository.apc_data(powernet)
+		data["apcs"] = GLOB.apc_repository.apc_data(powernet)
 
 	return data

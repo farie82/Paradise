@@ -1,7 +1,17 @@
 /obj/item/clothing/under/pants
 	gender = PLURAL
 	body_parts_covered = LOWER_TORSO|LEGS
-	displays_id = 0
+	displays_id = FALSE
+
+/obj/item/clothing/under/pants/equipped(mob/user, slot)
+	if(ishuman(user) && slot == slot_w_uniform)
+		var/mob/living/carbon/human/H = user
+		if(H.undershirt != "Nude")
+			var/additional_body_parts = UPPER_TORSO|ARMS
+			body_parts_covered |= additional_body_parts
+			return ..()
+	body_parts_covered = LOWER_TORSO|LEGS
+	..()
 
 /obj/item/clothing/under/pants/classicjeans
 	name = "classic jeans"
@@ -80,10 +90,3 @@
 	desc = "A pair of woodland camouflage pants. Probably not the best choice for a space station."
 	icon_state = "camopants"
 	item_color = "camopants"
-
-/obj/item/clothing/under/pants/chaps
-	name = "black leather assless chaps"
-	desc = "For those brave enough to weather the breeze."
-	icon_state = "chaps"
-	item_color = "chaps"
-	flags_size = ONESIZEFITSALL

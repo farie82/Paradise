@@ -48,9 +48,9 @@
 /obj/item/grenade/plastic/receive_signal()
 	prime()
 
-/obj/item/grenade/plastic/Crossed(atom/movable/AM)
+/obj/item/grenade/plastic/Crossed(atom/movable/AM, oldloc)
 	if(nadeassembly)
-		nadeassembly.Crossed(AM)
+		nadeassembly.Crossed(AM, oldloc)
 
 /obj/item/grenade/plastic/on_found(mob/finder)
 	if(nadeassembly)
@@ -60,7 +60,7 @@
 	if(nadeassembly)
 		nadeassembly.attack_self(user)
 		return
-	var/newtime = input(usr, "Please set the timer.", "Timer", 10) as num
+	var/newtime = input(usr, "Please set the timer.", "Timer", det_time) as num
 	if(user.is_in_active_hand(src))
 		newtime = Clamp(newtime, 10, 60000)
 		det_time = newtime
@@ -79,7 +79,7 @@
 		src.target = AM
 		loc = null
 
-		message_admins("[key_name_admin(user)](<A HREF='?_src_=holder;adminmoreinfo=\ref[user]'>?</A>) (<A HREF='?_src_=holder;adminplayerobservefollow=\ref[user]'>FLW</A>) planted [src.name] on [target.name] at ([target.x],[target.y],[target.z] - <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[target.x];Y=[target.y];Z=[target.z]'>JMP</a>) with [det_time] second fuse",0,1)
+		message_admins("[key_name_admin(user)]([ADMIN_QUE(user,"?")]) ([ADMIN_FLW(user,"FLW")]) planted [src.name] on [target.name] at ([target.x],[target.y],[target.z] - <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[target.x];Y=[target.y];Z=[target.z]'>JMP</a>) with [det_time] second fuse",0,1)
 		log_game("[key_name(user)] planted [name] on [target.name] at ([target.x],[target.y],[target.z]) with [det_time] second fuse")
 
 		target.overlays += image_overlay
@@ -88,7 +88,7 @@
 			addtimer(CALLBACK(src, .proc/prime), det_time*10)
 
 /obj/item/grenade/plastic/suicide_act(mob/user)
-	message_admins("[key_name_admin(user)](<A HREF='?_src_=holder;adminmoreinfo=\ref[user]'>?</A>) (<A HREF='?_src_=holder;adminplayerobservefollow=\ref[user]'>FLW</A>) suicided with [src.name] at ([user.x],[user.y],[user.z] - <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[user.x];Y=[user.y];Z=[user.z]'>JMP</a>)",0,1)
+	message_admins("[key_name_admin(user)]([ADMIN_QUE(user,"?")]) ([ADMIN_FLW(user,"FLW")]) suicided with [src.name] at ([user.x],[user.y],[user.z] - <A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[user.x];Y=[user.y];Z=[user.z]'>JMP</a>)",0,1)
 	log_game("[key_name(user)] suicided with [name] at ([user.x],[user.y],[user.z])")
 	user.visible_message("<span class='suicide'>[user] activates the [name] and holds it above [user.p_their()] head! It looks like [user.p_theyre()] going out with a bang!</span>")
 	var/message_say = "FOR NO RAISIN!"
@@ -109,11 +109,14 @@
 				message_say = "FOR THE REVOLOUTION!"
 			else if(role == "death commando" || role == ROLE_ERT)
 				message_say = "FOR NANOTRASEN!"
+			else if(role == ROLE_DEVIL)
+				message_say = "FOR INFERNO!"
 	user.say(message_say)
 	target = user
 	sleep(10)
 	prime()
 	user.gib()
+	return OBLITERATION
 
 /obj/item/grenade/plastic/update_icon()
 	if(nadeassembly)
@@ -133,13 +136,16 @@
 	var/turf/location
 	if(target)
 		if(!QDELETED(target))
-			location = get_turf(target)
+			if(istype(target, /turf/))
+				location = get_turf(target)	// Set the explosion location to turf if planted directly on a wall or floor
+			else
+				location = get_atom_on_turf(target)	// Otherwise, make sure we're blowing up what's on top of the turf
 			target.overlays -= image_overlay
 	else
-		location = get_turf(src)
+		location = get_atom_on_turf(src)
 	if(location)
-		location.ex_act(2, target)
 		explosion(location,0,0,3)
+		location.ex_act(2, target)
 	if(istype(target, /mob))
 		var/mob/M = target
 		M.gib()
@@ -160,10 +166,13 @@
 	var/turf/location
 	if(target)
 		if(!QDELETED(target))
-			location = get_turf(target)
+			if(istype(target, /turf/))
+				location = get_turf(target)
+			else
+				location = get_atom_on_turf(target)
 			target.overlays -= image_overlay
 	else
-		location = get_turf(src)
+		location = get_atom_on_turf(src)
 	if(location)
 		if(target && target.density)
 			var/turf/T = get_step(location, aim_dir)
@@ -220,6 +229,7 @@
 	desc = "A C4 charge with an altered chemical composition, designed to blind and deafen the occupants of a room before breaching."
 
 /obj/item/grenade/plastic/c4_shaped/flash/prime()
+	var/turf/T
 	if(target && target.density)
 		T = get_step(get_turf(target), aim_dir)
 	else if(target)
@@ -231,3 +241,39 @@
 	CB.prime()
 
 	..()
+
+/obj/item/grenade/plastic/x4/thermite
+	name = "T4"
+	desc = "A wall breaching charge, containing fuel, metal oxide and metal powder mixed in just the right way. One hell of a combination. Effective against walls, ineffective against airlocks..."
+	det_time = 2
+	icon_state = "t4breach0"
+	item_state = "t4breach"
+
+/obj/item/grenade/plastic/x4/thermite/prime()
+	var/turf/location
+	if(target)
+		if(!QDELETED(target))
+			location = get_turf(target)
+			target.overlays -= image_overlay
+	else
+		location = get_turf(src)
+	if(location)
+		var/datum/effect_system/smoke_spread/smoke = new
+		smoke.set_up(8,0, location, aim_dir)
+		if(target && target.density)
+			var/turf/T = get_step(location, aim_dir)
+			for(var/turf/simulated/wall/W in range(1, location))
+				W.thermitemelt(speed = 30)
+			addtimer(CALLBACK(null, .proc/explosion, T, 0, 0, 2), 3)
+			addtimer(CALLBACK(smoke, /datum/effect_system/smoke_spread/.proc/start), 3)
+		else
+			var/turf/T = get_step(location, aim_dir)
+			addtimer(CALLBACK(null, .proc/explosion, T, 0, 0, 2), 3)
+			addtimer(CALLBACK(smoke, /datum/effect_system/smoke_spread/.proc/start), 3)
+
+
+	if(isliving(target))
+		var/mob/living/M = target
+		M.adjust_fire_stacks(2)
+		M.IgniteMob()
+	qdel(src)

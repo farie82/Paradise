@@ -20,7 +20,7 @@
 	opening = 1
 	playsound(src.loc, 'sound/items/bubblewrap.ogg', 30, 1, extrarange = -4, falloff = 10)
 	icon_state = "prizeconfetti"
-	src.color = pick(random_color_list)
+	src.color = pick(GLOB.random_color_list)
 	var/prize_inside = pick(possible_contents)
 	spawn(10)
 		user.unEquip(src)
@@ -42,8 +42,8 @@
 	possible_contents = list(/obj/random/carp_plushie)
 
 /obj/item/toy/prizeball/plushie
-	name = "animal plushie capsule"
-	desc = "Contains one cuddly animal plushie!"
+	name = "plushie capsule"
+	desc = "Contains one cuddly plushie!"
 	possible_contents = list(/obj/random/plushie)
 
 /obj/item/toy/prizeball/figure

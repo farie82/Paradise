@@ -27,7 +27,7 @@
 		ui.open()
 		ui.set_auto_update(1)
 
-/obj/machinery/embedded_controller/radio/airlock/advanced_airlock_controller/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/embedded_controller/radio/airlock/advanced_airlock_controller/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 
 	data = list(
@@ -76,6 +76,21 @@
 	name = "Airlock Controller"
 	tag_secure = 1
 
+/obj/machinery/embedded_controller/radio/airlock/airlock_controller/Initialize(mapload, given_id_tag, given_frequency, given_tag_exterior_door, given_tag_interior_door, given_tag_airpump, given_tag_chamber_sensor)
+	if(given_id_tag)
+		id_tag = given_id_tag
+	if(given_frequency)
+		set_frequency(given_frequency)
+	if(given_tag_exterior_door)
+		tag_exterior_door = given_tag_exterior_door
+	if(given_tag_interior_door)
+		tag_interior_door = given_tag_interior_door
+	if(given_tag_airpump)
+		tag_airpump = given_tag_airpump
+	if(given_tag_chamber_sensor)
+		tag_chamber_sensor = given_tag_chamber_sensor
+	..()
+
 /obj/machinery/embedded_controller/radio/airlock/airlock_controller/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1)
 	ui = SSnanoui.try_update_ui(user, src, ui_key, ui, force_open)
 	if(!ui)
@@ -83,7 +98,7 @@
 		ui.open()
 		ui.set_auto_update(1)
 
-/obj/machinery/embedded_controller/radio/airlock/airlock_controller/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/embedded_controller/radio/airlock/airlock_controller/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 
 	data = list(
@@ -129,7 +144,6 @@
 	name = "Access Controller"
 	tag_secure = 1
 
-
 /obj/machinery/embedded_controller/radio/airlock/access_controller/update_icon()
 	if(on && program)
 		if(program.memory["processing"])
@@ -146,7 +160,7 @@
 		ui.open()
 		ui.set_auto_update(1)
 
-/obj/machinery/embedded_controller/radio/airlock/access_controller/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/embedded_controller/radio/airlock/access_controller/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 
 	data = list(

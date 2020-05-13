@@ -56,7 +56,7 @@
 	interface_desc = "A diamond-tipped industrial drill."
 	suit_overlay_active = "mounted-drill"
 	suit_overlay_inactive = "mounted-drill"
-	device_type = /obj/item/pickaxe/diamonddrill
+	device_type = /obj/item/pickaxe/drill/diamonddrill
 
 /obj/item/rig_module/device/orescanner
 	name = "ore scanner module"
@@ -269,14 +269,13 @@
 /obj/item/rig_module/voice/New()
 	..()
 	voice_holder = new(src)
-	voice_holder.active = 0
+	voice_holder.active = FALSE
 
 /obj/item/rig_module/voice/installed()
 	..()
 	holder.speech = src
 
 /obj/item/rig_module/voice/engage()
-
 	if(!..())
 		return 0
 
@@ -287,17 +286,17 @@
 
 	switch(choice)
 		if("Enable")
-			active = 1
-			voice_holder.active = 1
+			active = TRUE
+			voice_holder.active = TRUE
 			to_chat(usr, "<font color='blue'>You enable the speech synthesiser.</font>")
 		if("Disable")
-			active = 0
-			voice_holder.active = 0
+			active = FALSE
+			voice_holder.active = FALSE
 			to_chat(usr, "<font color='blue'>You disable the speech synthesiser.</font>")
 		if("Set Name")
 			var/raw_choice = sanitize(input(usr, "Please enter a new name.")  as text|null, MAX_NAME_LEN)
 			if(!raw_choice)
-				return 0
+				return FALSE
 			voice_holder.voice = raw_choice
 			to_chat(usr, "<font color='blue'>You are now mimicking <B>[voice_holder.voice]</B>.</font>")
 	return 1
@@ -466,18 +465,12 @@
 	else
 		to_chat(holder.wearer, "<span class='notice'>You need to have a welding tool in one of your hands to dispense fuel.</span>")
 
-/obj/item/rig_module/welding_tank/proc/fill_welder(var/obj/item/weldingtool/W)
+/obj/item/rig_module/welding_tank/proc/fill_welder(obj/item/weldingtool/W)
 	if(!istype(W))
-		return 0
-
-	if(reagents)
-		if(get_fuel() >= W.max_fuel)
-			reagents.trans_to(W, W.max_fuel)
-			to_chat(holder.wearer, "<span class='notice'>Your [holder] dispenses some of the contents of the welding fuel tank into \the [W].</span>")
-		else
-			reagents.trans_to(W, W.max_fuel)
-			to_chat(holder.wearer, "<span class='notice'>You hear a faint dripping as your hardsuit welding tank completely empties.</span>")
-		W.update_icon()
+		return
+	W.refill(holder.wearer, src, W.maximum_fuel)
+	if(!reagents.get_reagent_amount("fuel"))
+		to_chat(holder.wearer, "<span class='notice'>You hear a faint dripping as your hardsuit welding tank completely empties.</span>")
 
 /obj/item/rig_module/welding_tank/proc/get_fuel()
 	return reagents.get_reagent_amount("fuel")

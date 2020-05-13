@@ -54,20 +54,22 @@
 /obj/machinery/disco/Destroy()
 	dance_over()
 	selection = null
+	STOP_PROCESSING(SSobj, src)
 	return ..()
 
-/obj/machinery/disco/attackby(obj/item/O, mob/user, params)
-	if(!active)
-		if(iswrench(O))
-			if(!anchored && !isinspace())
-				to_chat(user,"<span class='notice'>You secure [src] to the floor.</span>")
-				anchored = TRUE
-			else if(anchored)
-				to_chat(user,"<span class='notice'>You unsecure and disconnect [src].</span>")
-				anchored = FALSE
-			playsound(src, 'sound/items/deconstruct.ogg', 50, 1)
-			return
-	return ..()
+/obj/machinery/disco/wrench_act(mob/user, obj/item/I)
+	if(active)
+		return
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	if(!anchored && !isinspace())
+		anchored = TRUE
+		WRENCH_ANCHOR_MESSAGE
+	else if(anchored)
+		anchored = FALSE
+		WRENCH_UNANCHOR_MESSAGE
+	playsound(src, 'sound/items/deconstruct.ogg', 50, 1)
 
 /obj/machinery/disco/update_icon()
 	if(active)
@@ -128,7 +130,7 @@
 				active = TRUE
 				update_icon()
 				dance_setup()
-				processing_objects.Add(src)
+				START_PROCESSING(SSobj, src)
 				lights_spin()
 				updateUsrDialog()
 			else if(active)
@@ -156,13 +158,13 @@
 		if("honk")
 			deejay('sound/items/bikehorn.ogg')
 		if("pump")
-			deejay('sound/weapons/shotgunpump.ogg')
+			deejay('sound/weapons/gun_interactions/shotgunpump.ogg')
 		if("pop")
-			deejay('sound/weapons/gunshot3.ogg')
+			deejay('sound/weapons/gunshots/gunshot3.ogg')
 		if("saber")
 			deejay('sound/weapons/saberon.ogg')
 		if("harm")
-			deejay('sound/ai/harmalarm.ogg')
+			deejay('sound/AI/harmalarm.ogg')
 
 /obj/machinery/disco/proc/deejay(S)
 	if(QDELETED(src) || !active || charge < 5)
@@ -321,6 +323,9 @@
 
 /obj/machinery/disco/proc/dance(mob/living/M) //Show your moves
 	set waitfor = FALSE
+	if(M.client && !(M.client.prefs.sound & SOUND_DISCO)) //We have a client that doesn't want to dance.
+		rangers -= M //Doing that here as it'll be checked less often than in processing.
+		return
 	switch(rand(0,9))
 		if(0 to 1)
 			dance2(M)
@@ -395,7 +400,7 @@
 	while(time)
 		sleep(speed)
 		for(var/i in 1 to speed)
-			M.setDir(pick(cardinal))
+			M.setDir(pick(GLOB.cardinal))
 			M.resting = !M.resting
 			M.update_canmove()
 		 time--
@@ -459,20 +464,21 @@
 		var/sound/song_played = sound(selection.song_path)
 
 		for(var/mob/M in range(10,src))
-			if(!(M in rangers))
-				rangers[M] = TRUE
-				M.playsound_local(get_turf(M), null, 100, channel = CHANNEL_JUKEBOX, S = song_played)
-			if(prob(5+(allowed(M) * 4)) && M.canmove)
-				dance(M)
+			if(!M.client || M.client.prefs.sound & SOUND_DISCO)
+				if(!(M in rangers))
+					rangers[M] = TRUE
+					M.playsound_local(get_turf(M), null, 100, channel = CHANNEL_JUKEBOX, S = song_played)
 		for(var/mob/L in rangers)
 			if(get_dist(src, L) > 10)
 				rangers -= L
 				if(!L || !L.client)
 					continue
 				L.stop_sound_channel(CHANNEL_JUKEBOX)
+			else if(prob(9) && L.canmove && isliving(L))
+				dance(L)
 	else if(active)
 		active = FALSE
-		processing_objects.Remove(src)
+		STOP_PROCESSING(SSobj, src)
 		dance_over()
 		playsound(src,'sound/machines/terminal_off.ogg',50,1)
 		icon_state = "disco0"

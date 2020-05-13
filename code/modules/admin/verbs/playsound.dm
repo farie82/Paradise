@@ -1,4 +1,4 @@
-var/list/sounds_cache = list()
+GLOBAL_LIST_EMPTY(sounds_cache)
 
 /client/proc/stop_global_admin_sounds()
 	set category = "Event"
@@ -10,7 +10,7 @@ var/list/sounds_cache = list()
 
 	log_admin("[key_name(src)] stopped admin sounds.")
 	message_admins("[key_name_admin(src)] stopped admin sounds.", 1)
-	for(var/mob/M in player_list)
+	for(var/mob/M in GLOB.player_list)
 		M << awful_sound
 
 /client/proc/play_sound(S as sound)
@@ -21,16 +21,19 @@ var/list/sounds_cache = list()
 	var/sound/uploaded_sound = sound(S, repeat = 0, wait = 1, channel = CHANNEL_ADMIN)
 	uploaded_sound.priority = 250
 
-	sounds_cache += S
+	GLOB.sounds_cache += S
 
 	if(alert("Are you sure?\nSong: [S]\nNow you can also play this sound using \"Play Server Sound\".", "Confirmation request" ,"Play", "Cancel") == "Cancel")
 		return
 
 	log_admin("[key_name(src)] played sound [S]")
 	message_admins("[key_name_admin(src)] played sound [S]", 1)
-	for(var/mob/M in player_list)
+
+	for(var/mob/M in GLOB.player_list)
 		if(M.client.prefs.sound & SOUND_MIDI)
-			M << uploaded_sound
+			if(isnewplayer(M) && (M.client.prefs.sound & SOUND_LOBBY))
+				M.stop_sound_channel(CHANNEL_LOBBYMUSIC)
+			SEND_SOUND(M, uploaded_sound)
 
 	feedback_add_details("admin_verb","PGS") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
@@ -51,7 +54,7 @@ var/list/sounds_cache = list()
 	if(!check_rights(R_SOUNDS))	return
 
 	var/list/sounds = file2list("sound/serversound_list.txt");
-	sounds += sounds_cache
+	sounds += GLOB.sounds_cache
 
 	var/melody = input("Select a sound from the server to play", "Server sound list") as null|anything in sounds
 	if(!melody)	return
@@ -69,7 +72,7 @@ var/list/sounds_cache = list()
 	if(A != "Yep")	return
 
 	var/list/sounds = file2list("sound/serversound_list.txt");
-	sounds += sounds_cache
+	sounds += GLOB.sounds_cache
 
 	var/melody = input("Select a sound from the server to play", "Server sound list") as null|anything in sounds
 	if(!melody)	return
@@ -92,7 +95,7 @@ var/list/sounds_cache = list()
 	if(C == "Yep")
 		ignore_power = 1
 
-	for(var/O in global_intercoms)
+	for(var/O in GLOB.global_intercoms)
 		var/obj/item/radio/intercom/I = O
 		if(!is_station_level(I.z) && !ignore_z)
 			continue

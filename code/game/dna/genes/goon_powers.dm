@@ -9,7 +9,7 @@
 	mutation=SOBER
 
 /datum/dna/gene/basic/sober/New()
-	block=SOBERBLOCK
+	block=GLOB.soberblock
 
 //WAS: /datum/bioEffect/psychic_resist
 /datum/dna/gene/basic/psychic_resist
@@ -21,7 +21,7 @@
 	mutation=PSY_RESIST
 
 /datum/dna/gene/basic/psychic_resist/New()
-	block=PSYRESISTBLOCK
+	block=GLOB.psyresistblock
 
 /////////////////////////
 // Stealth Enhancers
@@ -51,7 +51,7 @@
 	mutation = CLOAK
 
 /datum/dna/gene/basic/stealth/darkcloak/New()
-	block=SHADOWBLOCK
+	block=GLOB.shadowblock
 
 /datum/dna/gene/basic/stealth/darkcloak/OnMobLife(var/mob/M)
 	var/turf/simulated/T = get_turf(M)
@@ -73,7 +73,7 @@
 	mutation = CHAMELEON
 
 /datum/dna/gene/basic/stealth/chameleon/New()
-		block=CHAMELEONBLOCK
+		block=GLOB.chameleonblock
 
 /datum/dna/gene/basic/stealth/chameleon/OnMobLife(var/mob/M)
 	if((world.time - M.last_movement) >= 30 && !M.stat && M.canmove && !M.restrained())
@@ -123,7 +123,7 @@
 
 /datum/dna/gene/basic/grant_spell/cryo/New()
 	..()
-	block = CRYOBLOCK
+	block = GLOB.cryoblock
 
 /obj/effect/proc_holder/spell/targeted/cryokinesis
 	name = "Cryokinesis"
@@ -215,7 +215,7 @@
 
 /datum/dna/gene/basic/grant_spell/mattereater/New()
 	..()
-	block = EATBLOCK
+	block = GLOB.eatblock
 
 /obj/effect/proc_holder/spell/targeted/eat
 	name = "Eat"
@@ -241,7 +241,7 @@
 		/mob/living/simple_animal/crab,
 		/mob/living/simple_animal/mouse,
 		/mob/living/carbon/human,
-		/mob/living/carbon/slime,
+		/mob/living/simple_animal/slime,
 		/mob/living/carbon/alien/larva,
 		/mob/living/simple_animal/slime,
 		/mob/living/simple_animal/chick,
@@ -265,7 +265,7 @@
 			affecting = H.bodyparts_by_name[name]
 			if(!istype(affecting, /obj/item/organ/external))
 				continue
-			affecting.heal_damage(4, 0)
+			affecting.heal_damage(4, 0, updating_health = FALSE)
 		H.UpdateDamageIcon()
 		H.updatehealth()
 
@@ -316,7 +316,7 @@
 	var/atom/movable/the_item = targets[1]
 	if(ishuman(the_item))
 		var/mob/living/carbon/human/H = the_item
-		var/obj/item/organ/external/limb = H.get_organ(user.zone_sel.selecting)
+		var/obj/item/organ/external/limb = H.get_organ(user.zone_selected)
 		if(!istype(limb))
 			to_chat(user, "<span class='warning'>You can't eat this part of them!</span>")
 			revert_cast()
@@ -368,7 +368,7 @@
 
 /datum/dna/gene/basic/grant_spell/jumpy/New()
 	..()
-	block = JUMPBLOCK
+	block = GLOB.jumpblock
 
 /obj/effect/proc_holder/spell/targeted/leap
 	name = "Jump"
@@ -463,7 +463,7 @@
 
 /datum/dna/gene/basic/grant_spell/polymorph/New()
 	..()
-	block = POLYMORPHBLOCK
+	block = GLOB.polymorphblock
 
 /obj/effect/proc_holder/spell/targeted/polymorph
 	name = "Polymorph"
@@ -512,7 +512,7 @@
 
 /datum/dna/gene/basic/grant_spell/empath/New()
 	..()
-	block = EMPATHBLOCK
+	block = GLOB.empathblock
 
 /obj/effect/proc_holder/spell/targeted/empath
 	name = "Read Mind"
@@ -615,54 +615,3 @@
 		else if(prob(5) || M.mind.assigned_role=="Chaplain")
 			to_chat(M, "<span class='warning'>You sense someone intruding upon your thoughts...</span>")
 		return
-
-////////////////////////////////////////////////////////////////////////
-
-// WAS: /datum/bioEffect/superfart
-/datum/dna/gene/basic/grant_spell/superfart
-	name = "High-Pressure Intestines"
-	desc = "Vastly increases the gas capacity of the subject's digestive tract."
-	activation_messages = list("You feel bloated and gassy.")
-	deactivation_messages = list("You no longer feel gassy. What a relief!")
-	instability = GENE_INSTABILITY_MINOR
-	mutation = SUPER_FART
-	spelltype = /obj/effect/proc_holder/spell/aoe_turf/superfart
-
-/datum/dna/gene/basic/grant_spell/superfart/New()
-	..()
-	block = SUPERFARTBLOCK
-
-/obj/effect/proc_holder/spell/aoe_turf/superfart
-	name = "Super Fart"
-	desc = "Fart with the fury of 1000 burritos."
-	panel = "Abilities"
-	charge_max = 900
-	invocation_type = "emote"
-	range = 3
-	clothes_req = 0
-	selection_type = "view"
-	action_icon_state = "superfart"
-
-/obj/effect/proc_holder/spell/aoe_turf/superfart/invocation(mob/user = usr)
-	invocation = "<span class='warning'>[user] hunches down and grits [user.p_their()] teeth!</span>"
-	invocation_emote_self = "<span class='warning'>You hunch down and grit your teeth!</span>"
-	..(user)
-
-/obj/effect/proc_holder/spell/aoe_turf/superfart/cast(list/targets, mob/user)
-	var/UT = get_turf(user)
-	if(do_after(user, 30, target = user))
-		var/fartsize = pick("tremendous","gigantic","colossal")
-		playsound(UT, 'sound/goonstation/effects/superfart.ogg', 50, 0)
-		user.visible_message("<span class='warning'><b>[user]</b> unleashes a [fartsize] fart!</span>", "<span class='warning'>You hear a [fartsize] fart.</span>")
-		for(var/T in targets)
-			for(var/mob/living/M in T)
-				shake_camera(M, 10, 5)
-				if(M == user)
-					continue
-				to_chat(M, "<span class='warning'>You are sent flying!</span>")
-				M.Weaken(5)
-				step_away(M, UT, 15)
-				step_away(M, UT, 15)
-				step_away(M, UT, 15)
-	else
-		to_chat(user, "<span class='warning'>You were interrupted and couldn't fart! Rude!</span>")

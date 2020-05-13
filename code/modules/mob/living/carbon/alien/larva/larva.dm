@@ -12,6 +12,8 @@
 	var/amount_grown = 0
 	var/max_grown = 200
 	var/time_of_birth
+	death_message = "lets out a waning high-pitched cry."
+	death_sound = null
 
 //This is fine right now, if we're adding organ specific damage this needs to be updated
 /mob/living/carbon/alien/larva/New()
@@ -31,12 +33,10 @@
 	..()
 	stat(null, "Progress: [amount_grown]/[max_grown]")
 
-
 /mob/living/carbon/alien/larva/adjustPlasma(amount)
 	if(stat != DEAD && amount > 0)
 		amount_grown = min(amount_grown + 1, max_grown)
 	..(amount)
-
 
 /mob/living/carbon/alien/larva/ex_act(severity)
 	..()
@@ -54,15 +54,13 @@
 
 			f_loss += 60
 
-			AdjustEarDamage(30)
-			AdjustEarDeaf(120)
+			AdjustEarDamage(30, 120)
 
 		if(3.0)
 			b_loss += 30
 			if(prob(50))
 				Paralyse(1)
-			AdjustEarDamage(15)
-			AdjustEarDeaf(60)
+			AdjustEarDamage(15, 60)
 
 	adjustBruteLoss(b_loss)
 	adjustFireLoss(f_loss)
@@ -71,16 +69,6 @@
 
 //can't equip anything
 /mob/living/carbon/alien/larva/attack_ui(slot_id)
-	return
-
-/mob/living/carbon/alien/larva/attack_slime(mob/living/carbon/slime/M)
-	..()
-	var/damage = rand(5, 35)
-	if(M.is_adult)
-		damage = rand(20, 40)
-	adjustBruteLoss(damage)
-	add_attack_logs(src, M, "Slime'd for [damage] damage")
-	updatehealth()
 	return
 
 /mob/living/carbon/alien/larva/restrained()
@@ -94,6 +82,9 @@
 
 /mob/living/carbon/alien/larva/show_inv(mob/user as mob)
 	return
+
+/mob/living/carbon/alien/larva/start_pulling(atom/movable/AM, state, force = move_force, supress_message = FALSE)
+	return FALSE
 
 /* Commented out because it's duplicated in life.dm
 /mob/living/carbon/alien/larva/proc/grow() // Larvae can grow into full fledged Xenos if they survive long enough -- TLE

@@ -3,7 +3,7 @@
 	icon = 'icons/mob/screen_gen.dmi'
 	icon_state = "x2"
 	anchored = 1.0
-	unacidable = 1
+	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | UNACIDABLE | ACID_PROOF
 
 /obj/effect/landmark/New()
 
@@ -13,92 +13,103 @@
 
 	switch(name)			//some of these are probably obsolete
 		if("start")
-			newplayer_start += loc
+			GLOB.newplayer_start += loc
 			qdel(src)
 
 		if("wizard")
-			wizardstart += loc
+			GLOB.wizardstart += loc
 			qdel(src)
 
-		if("avatarspawn")
-			avatarspawn += loc
-
 		if("JoinLate")
-			latejoin += loc
+			GLOB.latejoin += loc
 			qdel(src)
 
 		if("JoinLateGateway")
-			latejoin_gateway += loc
+			GLOB.latejoin_gateway += loc
 			qdel(src)
 
 		if("JoinLateCryo")
-			latejoin_cryo += loc
+			GLOB.latejoin_cryo += loc
 			qdel(src)
 
 		if("JoinLateCyborg")
-			latejoin_cyborg += loc
+			GLOB.latejoin_cyborg += loc
 			qdel(src)
 
 		if("prisonwarp")
-			prisonwarp += loc
+			GLOB.prisonwarp += loc
 			qdel(src)
 
 		if("prisonsecuritywarp")
-			prisonsecuritywarp += loc
+			GLOB.prisonsecuritywarp += loc
 			qdel(src)
 
 		if("tdome1")
-			tdome1	+= loc
+			GLOB.tdome1	+= loc
 
 		if("tdome2")
-			tdome2 += loc
+			GLOB.tdome2 += loc
 
 		if("tdomeadmin")
-			tdomeadmin	+= loc
+			GLOB.tdomeadmin	+= loc
 
 		if("tdomeobserve")
-			tdomeobserve += loc
+			GLOB.tdomeobserve += loc
 
 		if("aroomwarp")
-			aroomwarp += loc
+			GLOB.aroomwarp += loc
 
 		if("blobstart")
-			blobstart += loc
+			GLOB.blobstart += loc
 			qdel(src)
 
 		if("xeno_spawn")
-			xeno_spawn += loc
+			GLOB.xeno_spawn += loc
 			qdel(src)
 
 		if("ninjastart")
-			ninjastart += loc
+			GLOB.ninjastart += loc
 			qdel(src)
 
 		if("carpspawn")
-			carplist += loc
+			GLOB.carplist += loc
 
 		if("voxstart")
-			raider_spawn += loc
+			GLOB.raider_spawn += loc
 
 		if("ERT Director")
-			ertdirector += loc
+			GLOB.ertdirector += loc
 			qdel(src)
 
 		if("Response Team")
-			emergencyresponseteamspawn += loc
+			GLOB.emergencyresponseteamspawn += loc
 			qdel(src)
 
-	landmarks_list += src
+		if("Syndicate Officer")
+			GLOB.syndicateofficer += loc
+			qdel(src)
+
+	GLOB.landmarks_list += src
 	return 1
 
 /obj/effect/landmark/Destroy()
-	landmarks_list -= src
+	GLOB.landmarks_list -= src
 	..()
 	return QDEL_HINT_HARDDEL_NOW
 
 /obj/effect/landmark/proc/set_tag()
 	tag = text("landmark*[]", name)
 
+
+/obj/effect/landmark/singularity_act()
+	return
+
+// Please stop bombing the Observer-Start landmark.
+/obj/effect/landmark/ex_act()
+	return
+
+/obj/effect/landmark/singularity_pull()
+	return
 
 /obj/effect/landmark/start
 	name = "start"
@@ -246,8 +257,8 @@
 	qdel(src)
 
 /obj/effect/landmark/costume/sexyclown/New()
-	new /obj/item/clothing/mask/gas/sexyclown(src.loc)
-	new /obj/item/clothing/under/sexyclown(src.loc)
+	new /obj/item/clothing/mask/gas/clown_hat/sexy(loc)
+	new /obj/item/clothing/under/rank/clown/sexy(loc)
 	qdel(src)
 
 /obj/effect/landmark/costume/sexymime/New()
@@ -259,13 +270,13 @@
 	var/datum/map_template/ruin/ruin_template
 
 /obj/effect/landmark/ruin/New(loc, my_ruin_template)
-	name = "ruin_[ruin_landmarks.len + 1]"
+	name = "ruin_[GLOB.ruin_landmarks.len + 1]"
 	..(loc)
 	ruin_template = my_ruin_template
-	ruin_landmarks |= src
+	GLOB.ruin_landmarks |= src
 
 /obj/effect/landmark/ruin/Destroy()
-	ruin_landmarks -= src
+	GLOB.ruin_landmarks -= src
 	ruin_template = null
 	. = ..()
 
@@ -276,7 +287,8 @@
 /obj/effect/landmark/damageturf/New()
 	..()
 	var/turf/simulated/T = get_turf(src)
-	T.break_tile()
+	if(istype(T))
+		T.break_tile()
 
 /obj/effect/landmark/burnturf
 	icon_state = "burned"
@@ -285,3 +297,10 @@
 	..()
 	var/turf/simulated/T = get_turf(src)
 	T.burn_tile()
+
+
+/obj/effect/landmark/battle_mob_point
+	name = "Nanomob Battle Avatar Spawn Point"
+
+/obj/effect/landmark/free_golem_spawn
+	name = "Free Golem Spawn Point"

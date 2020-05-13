@@ -18,7 +18,6 @@
 		if(2)
 			if(prob(45))
 				affected_mob.adjustToxLoss(5)
-				affected_mob.updatehealth()
 			if(prob(1))
 				affected_mob.emote("sneeze")
 		if(3)
@@ -32,11 +31,10 @@
 			if(prob(10))
 				affected_mob.emote("cough")
 			affected_mob.adjustToxLoss(5)
-			affected_mob.updatehealth()
 		if(5)
 			to_chat(affected_mob, "<span class='danger'>Your body feels as if it's trying to rip itself open...</span>")
 			if(prob(50))
-				affected_mob.gib()
+				affected_mob.delayed_gib()
 		else
 			return
 

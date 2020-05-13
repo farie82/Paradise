@@ -62,34 +62,51 @@
 	return ..()
 
 /mob/living/carbon/human/proc/HasVoiceChanger()
-	if(istype(back,/obj/item/rig))
+	if(istype(back, /obj/item/rig))
 		var/obj/item/rig/rig = back
 		if(rig.speech && rig.speech.voice_holder && rig.speech.voice_holder.active && rig.speech.voice_holder.voice)
 			return rig.speech.voice_holder.voice
 
-	for(var/obj/item/gear in list(wear_mask,wear_suit,head))
+	for(var/obj/item/gear in list(wear_mask, wear_suit, head))
 		if(!gear)
 			continue
+
 		var/obj/item/voice_changer/changer = locate() in gear
-		if(changer && changer.active && changer.voice)
-			return changer.voice
-	return 0
+		if(changer && changer.active)
+			if(changer.voice)
+				return changer.voice
+			else if(wear_id)
+				var/obj/item/card/id/idcard = wear_id.GetID()
+				if(istype(idcard))
+					return idcard.registered_name
+
+	return FALSE
 
 /mob/living/carbon/human/GetVoice()
 	var/has_changer = HasVoiceChanger()
+
 	if(has_changer)
 		return has_changer
+
 	if(mind && mind.changeling && mind.changeling.mimicing)
 		return mind.changeling.mimicing
+
 	if(GetSpecialVoice())
 		return GetSpecialVoice()
+
 	return real_name
 
 /mob/living/carbon/human/IsVocal()
+	var/obj/item/organ/internal/cyberimp/brain/speech_translator/translator = locate(/obj/item/organ/internal/cyberimp/brain/speech_translator) in internal_organs
+	if(translator && translator.active)
+		return TRUE
 	// how do species that don't breathe talk? magic, that's what.
 	var/breathes = (!(NO_BREATHE in dna.species.species_traits))
 	var/obj/item/organ/internal/L = get_organ_slot("lungs")
 	if((breathes && !L) || breathes && L && (L.status & ORGAN_DEAD))
+		return FALSE
+	if(getOxyLoss() > 10 || losebreath >= 4)
+		emote("gasp")
 		return FALSE
 	if(mind)
 		return !mind.miming
@@ -107,65 +124,68 @@
 /mob/living/carbon/human/proc/GetSpecialVoice()
 	return special_voice
 
-/mob/living/carbon/human/handle_speech_problems(var/message, var/verb)
-	var/list/returns[3]
-	var/speech_problem_flag = 0
+/mob/living/carbon/human/handle_speech_problems(list/message_pieces, var/verb)
 	var/span = ""
+	var/obj/item/organ/internal/cyberimp/brain/speech_translator/translator = locate(/obj/item/organ/internal/cyberimp/brain/speech_translator) in internal_organs
+	if(translator)
+		if(translator.active)
+			span = translator.speech_span
+			for(var/datum/multilingual_say_piece/S in message_pieces)
+				S.message = "<span class='[span]'>[S.message]</span>"
+			verb = translator.speech_verb
+			return list("verb" = verb)
 	if(mind)
 		span = mind.speech_span
+	if((COMIC in mutations) \
+		|| (locate(/obj/item/organ/internal/cyberimp/brain/clown_voice) in internal_organs) \
+		|| GetComponent(/datum/component/jestosterone))
+		span = "sans"
 
-	if(silent || (disabilities & MUTE))
-		message = ""
-		speech_problem_flag = 1
+	if(WINGDINGS in mutations)
+		span = "wingdings"
 
-	if(istype(wear_mask, /obj/item/clothing/mask/horsehead))
-		var/obj/item/clothing/mask/horsehead/hoers = wear_mask
-		if(hoers.voicechange)
-			message = pick("NEEIIGGGHHHH!", "NEEEIIIIGHH!", "NEIIIGGHH!", "HAAWWWWW!", "HAAAWWW!")
-			verb = pick("whinnies","neighs", "says")
-			speech_problem_flag = 1
+	var/list/parent = ..()
+	verb = parent["verb"]
 
-	if(dna)
-		for(var/datum/dna/gene/gene in dna_genes)
-			if(!gene.block)
-				continue
-			if(gene.is_active(src))
-				message = gene.OnSay(src,message)
-				speech_problem_flag = 1
+	for(var/datum/multilingual_say_piece/S in message_pieces)
+		if(S.speaking && S.speaking.flags & NO_STUTTER)
+			continue
 
-	if(message != "")
-		var/list/parent = ..()
-		message = parent[1]
-		verb = parent[2]
-		if(parent[3])
-			speech_problem_flag = 1
+		if(silent || (disabilities & MUTE))
+			S.message = ""
+
+		if(istype(wear_mask, /obj/item/clothing/mask/horsehead))
+			var/obj/item/clothing/mask/horsehead/hoers = wear_mask
+			if(hoers.voicechange)
+				S.message = pick("NEEIIGGGHHHH!", "NEEEIIIIGHH!", "NEIIIGGHH!", "HAAWWWWW!", "HAAAWWW!")
+				verb = pick("whinnies", "neighs", "says")
+
+		if(dna)
+			for(var/datum/dna/gene/gene in GLOB.dna_genes)
+				if(!gene.block)
+					continue
+				if(gene.is_active(src))
+					S.message = gene.OnSay(src, S.message)
 
 		var/braindam = getBrainLoss()
 		if(braindam >= 60)
-			speech_problem_flag = 1
-			if(prob(braindam/4))
-				message = stutter(message)
+			if(prob(braindam / 4))
+				S.message = stutter(S.message)
 				verb = "gibbers"
 			if(prob(braindam))
-				message = uppertext(message)
+				S.message = uppertext(S.message)
 				verb = "yells loudly"
 
-	if((COMIC in mutations) || (locate(/obj/item/organ/internal/cyberimp/brain/clown_voice) in internal_organs))
-		span = "sans"
+		if(span)
+			S.message = "<span class='[span]'>[S.message]</span>"
+	return list("verb" = verb)
 
-	if(span)
-		message = "<span class='[span]'>[message]</span>"
-	returns[1] = message
-	returns[2] = verb
-	returns[3] = speech_problem_flag
-	return returns
-
-/mob/living/carbon/human/handle_message_mode(var/message_mode, var/message, var/verb, var/speaking, var/used_radios)
+/mob/living/carbon/human/handle_message_mode(var/message_mode, list/message_pieces, var/verb, var/used_radios)
 	switch(message_mode)
 		if("intercom")
 			for(var/obj/item/radio/intercom/I in view(1, src))
 				spawn(0)
-					I.talk_into(src, message, null, verb, speaking)
+					I.talk_into(src, message_pieces, null, verb)
 				used_radios += I
 
 		if("headset")
@@ -173,13 +193,13 @@
 			if(isradio(l_ear))
 				R = l_ear
 				used_radios += R
-				if(R.talk_into(src, message, null, verb, speaking))
+				if(R.talk_into(src, message_pieces, null, verb))
 					return
 
 			if(isradio(r_ear))
 				R = r_ear
 				used_radios += R
-				if(R.talk_into(src, message, null, verb, speaking))
+				if(R.talk_into(src, message_pieces, null, verb))
 					return
 
 		if("right ear")
@@ -190,7 +210,7 @@
 				R = r_hand
 			if(R)
 				used_radios += R
-				R.talk_into(src, message, null, verb, speaking)
+				R.talk_into(src, message_pieces, null, verb)
 
 		if("left ear")
 			var/obj/item/radio/R
@@ -200,28 +220,29 @@
 				R = l_hand
 			if(R)
 				used_radios += R
-				R.talk_into(src, message, null, verb, speaking)
+				R.talk_into(src, message_pieces, null, verb)
 
 		if("whisper")
-			whisper_say(message, speaking)
+			whisper_say(message_pieces)
 			return 1
 		else
 			if(message_mode)
 				if(isradio(l_ear))
 					used_radios += l_ear
-					if(l_ear.talk_into(src, message, message_mode, verb, speaking))
+					if(l_ear.talk_into(src, message_pieces, message_mode, verb))
 						return
 
 				if(isradio(r_ear))
 					used_radios += r_ear
-					if(r_ear.talk_into(src, message, message_mode, verb, speaking))
+					if(r_ear.talk_into(src, message_pieces, message_mode, verb))
 						return
 
 /mob/living/carbon/human/handle_speech_sound()
-	var/list/returns[2]
+	var/list/returns[3]
 	if(dna.species.speech_sounds && prob(dna.species.speech_chance))
 		returns[1] = sound(pick(dna.species.speech_sounds))
 		returns[2] = 50
+		returns[3] = get_age_pitch()
 	return returns
 
 /mob/living/carbon/human/binarycheck()

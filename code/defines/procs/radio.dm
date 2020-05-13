@@ -13,8 +13,8 @@
 		if(SYNDTEAM_FREQ)
 			freq_text = "#unid"
 		else
-			for(var/channel in radiochannels)
-				if(radiochannels[channel] == display_freq)
+			for(var/channel in SSradio.radiochannels)
+				if(SSradio.radiochannels[channel] == display_freq)
 					freq_text = channel
 					break
 
@@ -35,8 +35,8 @@
 	var/list/receiver_reception = new
 
 /proc/get_message_server()
-	if(message_servers)
-		for(var/obj/machinery/message_server/MS in message_servers)
+	if(GLOB.message_servers)
+		for(var/obj/machinery/message_server/MS in GLOB.message_servers)
 			if(MS.active)
 				return MS
 	return null

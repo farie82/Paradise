@@ -1,5 +1,6 @@
 /datum/game_mode
 	var/list/datum/mind/wizards = list()
+	var/list/datum/mind/apprentices = list()
 
 /datum/game_mode/wizard
 	name = "wizard"
@@ -7,15 +8,14 @@
 	required_players = 20
 	required_enemies = 1
 	recommended_enemies = 1
+	var/use_huds = 1
 
-	var/use_huds = 0
 	var/finished = 0
 	var/but_wait_theres_more = 0
 
 /datum/game_mode/wizard/announce()
 	to_chat(world, "<B>The current game mode is - Wizard!</B>")
 	to_chat(world, "<B>There is a <font color='red'>SPACE WIZARD</font> on the station. You can't let him achieve his objective!</B>")
-
 
 /datum/game_mode/wizard/can_start()//This could be better, will likely have to recode it later
 	if(!..())
@@ -30,17 +30,16 @@
 	wizard.assigned_role = SPECIAL_ROLE_WIZARD //So they aren't chosen for other jobs.
 	wizard.special_role = SPECIAL_ROLE_WIZARD
 	wizard.original = wizard.current
-	if(wizardstart.len == 0)
+	if(GLOB.wizardstart.len == 0)
 		to_chat(wizard.current, "<span class='danger'>A starting location for you could not be found, please report this bug!</span>")
 		return 0
 	return 1
 
 /datum/game_mode/wizard/pre_setup()
 	for(var/datum/mind/wiz in wizards)
-		wiz.current.loc = pick(wizardstart)
+		wiz.current.loc = pick(GLOB.wizardstart)
 	..()
 	return 1
-
 
 /datum/game_mode/wizard/post_setup()
 	for(var/datum/mind/wizard in wizards)
@@ -57,25 +56,25 @@
 
 /datum/game_mode/proc/remove_wizard(datum/mind/wizard_mind)
 	if(wizard_mind in wizards)
-		ticker.mode.wizards -= wizard_mind
+		SSticker.mode.wizards -= wizard_mind
 		wizard_mind.special_role = null
 		wizard_mind.current.create_attack_log("<span class='danger'>De-wizarded</span>")
+		wizard_mind.current.create_log(CONVERSION_LOG, "De-wizarded")
 		wizard_mind.current.spellremove(wizard_mind.current)
 		wizard_mind.current.faction = list("Station")
 		if(issilicon(wizard_mind.current))
 			to_chat(wizard_mind.current, "<span class='userdanger'>You have been turned into a robot! You can feel your magical powers fading away...</span>")
 		else
 			to_chat(wizard_mind.current, "<span class='userdanger'>You have been brainwashed! You are no longer a wizard.</span>")
-		ticker.mode.update_wiz_icons_removed(wizard_mind)
+		SSticker.mode.update_wiz_icons_removed(wizard_mind)
 
 /datum/game_mode/proc/update_wiz_icons_added(datum/mind/wiz_mind)
-	var/datum/atom_hud/antag/wizhud = huds[ANTAG_HUD_WIZ]
+	var/datum/atom_hud/antag/wizhud = GLOB.huds[ANTAG_HUD_WIZ]
 	wizhud.join_hud(wiz_mind.current)
 	set_antag_hud(wiz_mind.current, ((wiz_mind in wizards) ? "hudwizard" : "apprentice"))
 
-
 /datum/game_mode/proc/update_wiz_icons_removed(datum/mind/wiz_mind)
-	var/datum/atom_hud/antag/wizhud = huds[ANTAG_HUD_WIZ]
+	var/datum/atom_hud/antag/wizhud = GLOB.huds[ANTAG_HUD_WIZ]
 	wizhud.leave_hud(wiz_mind.current)
 	set_antag_hud(wiz_mind.current, null)
 
@@ -85,11 +84,10 @@
 	wizard.objectives += wiz_objective
 	return
 
-
 /datum/game_mode/proc/name_wizard(mob/living/carbon/human/wizard_mob)
 	//Allows the wizard to choose a custom name or go with a random one. Spawn 0 so it does not lag the round starting.
-	var/wizard_name_first = pick(wizard_first)
-	var/wizard_name_second = pick(wizard_second)
+	var/wizard_name_first = pick(GLOB.wizard_first)
+	var/wizard_name_second = pick(GLOB.wizard_second)
 	var/randomname = "[wizard_name_first] [wizard_name_second]"
 	spawn(0)
 		var/newname = sanitize(copytext(input(wizard_mob, "You are the Space Wizard. Would you like to change your name to something else?", "Name change", randomname) as null|text,1,MAX_NAME_LEN))
@@ -103,8 +101,8 @@
 			wizard_mob.mind.name = newname
 	return
 
-
 /datum/game_mode/proc/greet_wizard(var/datum/mind/wizard, var/you_are=1)
+	addtimer(CALLBACK(wizard.current, /mob/.proc/playsound_local, null, 'sound/ambience/antag/ragesmages.ogg', 100, 0), 30)
 	if(you_are)
 		to_chat(wizard.current, "<span class='danger'>You are the Space Wizard!</span>")
 	to_chat(wizard.current, "<B>The Space Wizards Federation has given you the following tasks:</B>")
@@ -114,7 +112,6 @@
 		to_chat(wizard.current, "<B>Objective #[obj_count]</B>: [objective.explanation_text]")
 		obj_count++
 	return
-
 
 /*/datum/game_mode/proc/learn_basic_spells(mob/living/carbon/human/wizard_mob)
 	if(!istype(wizard_mob))
@@ -163,40 +160,44 @@
 	wizard_mob.gene_stability += DEFAULT_GENE_STABILITY //magic
 	return 1
 
-
+// Checks if the game should end due to all wizards and apprentices being dead, or MMI'd/Borged
 /datum/game_mode/wizard/check_finished()
 	var/wizards_alive = 0
-	var/traitors_alive = 0
+	var/apprentices_alive = 0
+
+	// Wizards
 	for(var/datum/mind/wizard in wizards)
 		if(!istype(wizard.current,/mob/living/carbon))
 			continue
 		if(wizard.current.stat==DEAD)
 			continue
+		if(istype(wizard.current, /obj/item/mmi)) // wizard is in an MMI, don't count them as alive
+			continue
 		wizards_alive++
 
+	// Apprentices
 	if(!wizards_alive)
-		for(var/datum/mind/traitor in traitors)
-			if(!istype(traitor.current,/mob/living/carbon))
+		for(var/datum/mind/apprentice in apprentices)
+			if(!istype(apprentice.current,/mob/living/carbon))
 				continue
-			if(traitor.current.stat==DEAD)
+			if(apprentice.current.stat==DEAD)
 				continue
-			traitors_alive++
+			if(istype(apprentice.current, /obj/item/mmi)) // apprentice is in an MMI, don't count them as alive
+				continue
+			apprentices_alive++
 
-	if(wizards_alive || traitors_alive || but_wait_theres_more)
+	if(wizards_alive || apprentices_alive || but_wait_theres_more)
 		return ..()
 	else
 		finished = 1
 		return 1
 
-
-
 /datum/game_mode/wizard/declare_completion(var/ragin = 0)
 	if(finished && !ragin)
-		feedback_set_details("round_end_result","loss - wizard killed")
+		feedback_set_details("round_end_result","wizard loss - wizard killed")
 		to_chat(world, "<span class='warning'><FONT size = 3><B> The wizard[(wizards.len>1)?"s":""] has been killed by the crew! The Space Wizards Federation has been taught a lesson they will not soon forget!</B></FONT></span>")
 	..()
 	return 1
-
 
 /datum/game_mode/proc/auto_declare_completion_wizard()
 	if(wizards.len)
@@ -280,4 +281,4 @@ Made a proc so this is not repeated 14 (or more) times.*/
 		return 1
 
 /proc/iswizard(mob/living/M as mob)
-	return istype(M) && M.mind && ticker && ticker.mode && (M.mind in ticker.mode.wizards)
+	return istype(M) && M.mind && SSticker && SSticker.mode && ((M.mind in SSticker.mode.wizards) || (M.mind in SSticker.mode.apprentices))

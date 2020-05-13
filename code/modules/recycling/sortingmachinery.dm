@@ -10,6 +10,17 @@
 	var/giftwrapped = 0
 	var/sortTag = 0
 
+/obj/structure/bigDelivery/Destroy()
+	var/turf/T = get_turf(src)
+	for(var/atom/movable/AM in contents)
+		AM.forceMove(T)
+	return ..()
+
+/obj/structure/bigDelivery/ex_act(severity)
+	for(var/atom/movable/AM in contents)
+		AM.ex_act()
+		CHECK_TICK
+	..()
 
 /obj/structure/bigDelivery/attack_hand(mob/user as mob)
 	playsound(src.loc, 'sound/items/poster_ripped.ogg', 50, 1)
@@ -24,13 +35,12 @@
 
 	qdel(src)
 
-
 /obj/structure/bigDelivery/attackby(obj/item/W as obj, mob/user as mob, params)
 	if(istype(W, /obj/item/destTagger))
 		var/obj/item/destTagger/O = W
 
 		if(sortTag != O.currTag)
-			var/tag = uppertext(TAGGERLOCATIONS[O.currTag])
+			var/tag = uppertext(GLOB.TAGGERLOCATIONS[O.currTag])
 			to_chat(user, "<span class='notice'>*[tag]*</span>")
 			sortTag = O.currTag
 			playsound(loc, 'sound/machines/twobeep.ogg', 100, 1)
@@ -66,17 +76,24 @@
 				new /obj/item/c_tube( get_turf(user) )
 		else
 			to_chat(user, "<span class='notice'>You need more paper.</span>")
-
+	else
+		return ..()
 
 /obj/item/smallDelivery
 	name = "small parcel"
 	desc = "A small wrapped package."
 	icon = 'icons/obj/storage.dmi'
 	icon_state = "deliverycrateSmall"
+	item_state = "deliverypackage"
 	var/obj/item/wrapped = null
 	var/giftwrapped = 0
 	var/sortTag = 0
 
+/obj/item/smallDelivery/ex_act(severity)
+	for(var/atom/movable/AM in contents)
+		AM.ex_act()
+		CHECK_TICK
+	..()
 
 /obj/item/smallDelivery/attack_self(mob/user as mob)
 	if(wrapped && wrapped.loc) //sometimes items can disappear. For example, bombs. --rastaf0
@@ -88,13 +105,12 @@
 	playsound(src.loc, 'sound/items/poster_ripped.ogg', 50, 1)
 	qdel(src)
 
-
 /obj/item/smallDelivery/attackby(obj/item/W as obj, mob/user as mob, params)
 	if(istype(W, /obj/item/destTagger))
 		var/obj/item/destTagger/O = W
 
 		if(sortTag != O.currTag)
-			var/tag = uppertext(TAGGERLOCATIONS[O.currTag])
+			var/tag = uppertext(GLOB.TAGGERLOCATIONS[O.currTag])
 			to_chat(user, "<span class='notice'>*[tag]*</span>")
 			sortTag = O.currTag
 			playsound(loc, 'sound/machines/twobeep.ogg', 100, 1)
@@ -127,8 +143,8 @@
 				new /obj/item/c_tube( get_turf(user) )
 		else
 			to_chat(user, "<span class='notice'>You need more paper.</span>")
-
-
+	else
+		return ..()
 
 /obj/item/stack/packageWrap
 	name = "package wrapper"
@@ -138,8 +154,7 @@
 	flags = NOBLUDGEON
 	amount = 25
 	max_amount = 25
-	burn_state = FLAMMABLE
-
+	resistance_flags = FLAMMABLE
 
 /obj/item/stack/packageWrap/afterattack(var/obj/target as obj, mob/user as mob, proximity)
 	if(!proximity) return
@@ -152,8 +167,6 @@
 		return
 	if(target in user)
 		return
-
-
 
 	if(istype(target, /obj/item) && !(istype(target, /obj/item/storage) && !istype(target,/obj/item/storage/box) && !istype(target, /obj/item/shippingPackage)))
 		var/obj/item/O = target
@@ -177,7 +190,9 @@
 		var/obj/structure/closet/crate/O = target
 		if(O.opened)
 			return
-		if(use(3))
+		if(amount >= 3 && do_after_once(user, 15, target = target))
+			if(O.opened || !use(3))
+				return
 			var/obj/structure/bigDelivery/P = new /obj/structure/bigDelivery(get_turf(O.loc))
 			P.icon_state = "deliverycrate"
 			P.wrapped = O
@@ -189,7 +204,9 @@
 		var/obj/structure/closet/O = target
 		if(O.opened)
 			return
-		if(use(3))
+		if(amount >= 3 && do_after_once(user, 15, target = target))
+			if(O.opened || !use(3))
+				return
 			var/obj/structure/bigDelivery/P = new /obj/structure/bigDelivery(get_turf(O.loc))
 			P.wrapped = O
 			P.init_welded = O.welded
@@ -204,6 +221,7 @@
 
 	user.visible_message("<span class='notice'>[user] wraps [target].</span>")
 	user.create_attack_log("<font color='blue'>Has used [name] on [target]</font>")
+	add_attack_logs(user, target, "used [name]", ATKLOG_ALL)
 
 	if(amount <= 0 && !src.loc) //if we used our last wrapping paper, drop a cardboard tube
 		new /obj/item/c_tube( get_turf(user) )
@@ -223,39 +241,40 @@
 	flags = CONDUCT
 	slot_flags = SLOT_BELT
 
-	proc/openwindow(mob/user as mob)
-		var/dat = "<tt><center><h1><b>TagMaster 2.2</b></h1></center>"
+/obj/item/destTagger/proc/openwindow(mob/user as mob)
+	var/dat = "<tt><center><h1><b>TagMaster 2.2</b></h1></center>"
 
-		dat += "<table style='width:100%; padding:4px;'><tr>"
-		for(var/i = 1, i <= TAGGERLOCATIONS.len, i++)
-			dat += "<td><a href='?src=[UID()];nextTag=[i]'>[TAGGERLOCATIONS[i]]</a></td>"
+	dat += "<table style='width:100%; padding:4px;'><tr>"
+	for(var/i = 1, i <= GLOB.TAGGERLOCATIONS.len, i++)
+		dat += "<td><a href='?src=[UID()];nextTag=[i]'>[GLOB.TAGGERLOCATIONS[i]]</a></td>"
 
-			if(i%4==0)
-				dat += "</tr><tr>"
+		if(i%4==0)
+			dat += "</tr><tr>"
 
-		dat += "</tr></table><br>Current Selection: [currTag ? TAGGERLOCATIONS[currTag] : "None"]</tt>"
+	dat += "</tr></table><br>Current Selection: [currTag ? GLOB.TAGGERLOCATIONS[currTag] : "None"]</tt>"
 
-		user << browse(dat, "window=destTagScreen;size=450x350")
-		onclose(user, "destTagScreen")
+	user << browse(dat, "window=destTagScreen;size=450x350")
+	onclose(user, "destTagScreen")
 
-	attack_self(mob/user as mob)
-		openwindow(user)
-		return
+/obj/item/destTagger/attack_self(mob/user as mob)
+	openwindow(user)
+	return
 
-	Topic(href, href_list)
-		src.add_fingerprint(usr)
-		if(href_list["nextTag"])
-			var/n = text2num(href_list["nextTag"])
-			src.currTag = n
-		openwindow(usr)
+/obj/item/destTagger/Topic(href, href_list)
+	src.add_fingerprint(usr)
+	if(href_list["nextTag"])
+		var/n = text2num(href_list["nextTag"])
+		src.currTag = n
+	openwindow(usr)
 
 /obj/machinery/disposal/deliveryChute
 	name = "Delivery chute"
 	desc = "A chute for big and small packages alike!"
 	density = 1
 	icon_state = "intake"
-
-	var/c_mode = 0
+	required_mode_to_deconstruct = 1
+	deconstructs_to = PIPE_DISPOSALS_CHUTE
+	var/can_deconstruct = FALSE
 
 /obj/machinery/disposal/deliveryChute/New()
 	..()
@@ -326,40 +345,31 @@
 	update()
 	return
 
-/obj/machinery/disposal/deliveryChute/attackby(obj/item/I, mob/user, params)
-	if(!I || !user)
+/obj/machinery/disposal/deliveryChute/screwdriver_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
 		return
+	can_deconstruct = !can_deconstruct
+	to_chat(user, "You [can_deconstruct ? "unfasten": "fasten"] the screws around the power connection.")
 
-	if(istype(I, /obj/item/screwdriver))
-		if(c_mode==0)
-			c_mode=1
-			playsound(src.loc, I.usesound, 50, 1)
-			to_chat(user, "You remove the screws around the power connection.")
-			return
-		else if(c_mode==1)
-			c_mode=0
-			playsound(src.loc, I.usesound, 50, 1)
-			to_chat(user, "You attach the screws around the power connection.")
-			return
-	else if(istype(I,/obj/item/weldingtool) && c_mode==1)
-		var/obj/item/weldingtool/W = I
-		if(W.remove_fuel(0,user))
-			playsound(src.loc, W.usesound, 100, 1)
-			to_chat(user, "You start slicing the floorweld off the delivery chute.")
-			if(do_after(user, 20 * W.toolspeed, target = src))
-				if(!src || !W.isOn()) return
-				to_chat(user, "You sliced the floorweld off the delivery chute.")
-				var/obj/structure/disposalconstruct/C = new (src.loc)
-				C.ptype = PIPE_DISPOSALS_CHUTE
-				C.update()
-				C.anchored = 1
-				C.density = 1
-				qdel(src)
-			return
-		else
-			to_chat(user, "You need more welding fuel to complete this task.")
-			return
-
+/obj/machinery/disposal/deliveryChute/welder_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!can_deconstruct)
+		return
+	if(contents.len > 0)
+		to_chat(user, "Eject the items first!")
+		return
+	if(!I.tool_use_check(user, 0))
+		return
+	WELDER_ATTEMPT_FLOOR_SLICE_MESSAGE
+	if(I.use_tool(src, user, 20, volume = I.tool_volume))
+		WELDER_FLOOR_SLICE_SUCCESS_MESSAGE
+		var/obj/structure/disposalconstruct/C = new (loc)
+		C.ptype = deconstructs_to
+		C.update()
+		C.anchored = TRUE
+		C.density = TRUE
+		qdel(src)
 
 /obj/item/shippingPackage
 	name = "Shipping package"
@@ -426,7 +436,7 @@
 /obj/item/shippingPackage/proc/update_desc()
 	desc = "A pre-labeled package for shipping an item to coworkers."
 	if(sortTag)
-		desc += " The label says \"Deliver to [TAGGERLOCATIONS[sortTag]]\"."
+		desc += " The label says \"Deliver to [GLOB.TAGGERLOCATIONS[sortTag]]\"."
 	if(!sealed)
 		desc += " The package is not sealed."
 

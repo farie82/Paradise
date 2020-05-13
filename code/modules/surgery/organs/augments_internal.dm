@@ -39,9 +39,9 @@
 /obj/item/organ/internal/cyberimp/brain/anti_drop
 	name = "Anti-drop implant"
 	desc = "This cybernetic brain implant will allow you to force your hand muscles to contract, preventing item dropping. Twitch ear to toggle."
-	var/active = 0
-	var/l_hand_ignore = 0
-	var/r_hand_ignore = 0
+	var/active = FALSE
+	var/l_hand_ignore = FALSE
+	var/r_hand_ignore = FALSE
 	var/obj/item/l_hand_obj = null
 	var/obj/item/r_hand_obj = null
 	implant_color = "#DE7E00"
@@ -56,17 +56,17 @@
 		r_hand_obj = owner.r_hand
 		if(l_hand_obj)
 			if(owner.l_hand.flags & NODROP)
-				l_hand_ignore = 1
+				l_hand_ignore = TRUE
 			else
 				owner.l_hand.flags |= NODROP
-				l_hand_ignore = 0
+				l_hand_ignore = FALSE
 
 		if(r_hand_obj)
 			if(owner.r_hand.flags & NODROP)
-				r_hand_ignore = 1
+				r_hand_ignore = TRUE
 			else
 				owner.r_hand.flags |= NODROP
-				r_hand_ignore = 0
+				r_hand_ignore = FALSE
 
 		if(!l_hand_obj && !r_hand_obj)
 			to_chat(owner, "<span class='notice'>You are not holding any items, your hands relax...</span>")
@@ -102,15 +102,18 @@
 		A = pick(oview(range))
 		L_item.throw_at(A, range, 2)
 		to_chat(owner, "<span class='notice'>Your left arm spasms and throws the [L_item.name]!</span>")
+		l_hand_obj = null
 	if(R_item)
 		A = pick(oview(range))
 		R_item.throw_at(A, range, 2)
 		to_chat(owner, "<span class='notice'>Your right arm spasms and throws the [R_item.name]!</span>")
+		r_hand_obj = null
 
 /obj/item/organ/internal/cyberimp/brain/anti_drop/proc/release_items()
-	if(!l_hand_ignore && l_hand_obj in owner.contents)
+	active = FALSE
+	if(!l_hand_ignore && (l_hand_obj in owner.contents))
 		l_hand_obj.flags ^= NODROP
-	if(!r_hand_ignore && r_hand_obj in owner.contents)
+	if(!r_hand_ignore && (r_hand_obj in owner.contents))
 		r_hand_obj.flags ^= NODROP
 
 /obj/item/organ/internal/cyberimp/brain/anti_drop/remove(var/mob/living/carbon/M, special = 0)
@@ -142,6 +145,44 @@
 	spawn(90 / severity)
 		crit_fail = 0
 
+/obj/item/organ/internal/cyberimp/brain/clown_voice
+	name = "Comical implant"
+	desc = "<span class='sans'>Uh oh.</span>"
+	implant_color = "#DEDE00"
+	slot = "brain_clownvoice"
+	origin_tech = "materials=2;biotech=2"
+
+/obj/item/organ/internal/cyberimp/brain/speech_translator //actual translating done in human/handle_speech_problems
+	name = "Speech translator implant"
+	desc = "While known as a translator, this implant actually generates speech based on the user's thoughts when activated, completely bypassing the need to speak."
+	implant_color = "#C0C0C0"
+	slot = "brain_speechtranslator"
+	w_class = WEIGHT_CLASS_TINY
+	origin_tech = "materials=4;biotech=6"
+	actions_types = list(/datum/action/item_action/organ_action/toggle)
+	var/active = TRUE
+	var/speech_span = ""
+	var/speech_verb = "states"
+
+/obj/item/organ/internal/cyberimp/brain/speech_translator/clown
+	name = "Comical speech translator implant"
+	implant_color = "#DEDE00"
+	speech_span = "sans"
+
+/obj/item/organ/internal/cyberimp/brain/speech_translator/emp_act(severity)
+	if(emp_proof)
+		return
+	if(owner && active)
+		to_chat(owner, "<span class='notice'>Your translator's safeties trigger, it is now turned off.</span>")
+		active = FALSE
+
+/obj/item/organ/internal/cyberimp/brain/speech_translator/ui_action_click()
+	if(owner && !active)
+		to_chat(owner, "<span class='notice'>You turn on your translator implant.</span>")
+		active = TRUE
+	else if(owner && active)
+		to_chat(owner, "<span class='notice'>You turn off your translator implant.</span>")
+		active = FALSE
 
 //[[[[MOUTH]]]]
 /obj/item/organ/internal/cyberimp/mouth
@@ -161,13 +202,6 @@
 	if(prob(60/severity) && owner)
 		to_chat(owner, "<span class='warning'>Your breathing tube suddenly closes!</span>")
 		owner.AdjustLoseBreath(2)
-
-/obj/item/organ/internal/cyberimp/brain/clown_voice
-	name = "Comical implant"
-	desc = "<span class='sans'>Uh oh.</span>"
-	implant_color = "#DEDE00"
-	slot = "brain_clownvoice"
-	origin_tech = "materials=2;biotech=2"
 
 //[[[[CHEST]]]]
 /obj/item/organ/internal/cyberimp/chest
@@ -198,7 +232,7 @@
 	if(owner.nutrition <= hunger_threshold)
 		synthesizing = 1
 		to_chat(owner, "<span class='notice'>You feel less hungry...</span>")
-		owner.nutrition += 50
+		owner.adjust_nutrition(50)
 		spawn(50)
 			synthesizing = 0
 
@@ -225,37 +259,44 @@
 	origin_tech = "materials=5;programming=4;biotech=4"
 	slot = "heartdrive"
 	var/revive_cost = 0
-	var/reviving = 0
+	var/reviving = FALSE
 	var/cooldown = 0
 
+/obj/item/organ/internal/cyberimp/chest/reviver/hardened
+	name = "Hardened reviver implant"
+	emp_proof = TRUE
+
+/obj/item/organ/internal/cyberimp/chest/reviver/hardened/Initialize(mapload)
+	. = ..()
+	desc += " The implant has been hardened. It is invulnerable to EMPs."
+
 /obj/item/organ/internal/cyberimp/chest/reviver/on_life()
+	if(cooldown > world.time || owner.suiciding) // don't heal while you're in cooldown!
+		return
 	if(reviving)
-		if(owner.stat == UNCONSCIOUS)
-			spawn(30)
-				if(prob(90) && owner.getOxyLoss())
-					owner.adjustOxyLoss(-3)
-					revive_cost += 5
-				if(prob(75) && owner.getBruteLoss())
-					owner.adjustBruteLoss(-1)
-					revive_cost += 20
-				if(prob(75) && owner.getFireLoss())
-					owner.adjustFireLoss(-1)
-					revive_cost += 20
-				if(prob(40) && owner.getToxLoss())
-					owner.adjustToxLoss(-1)
-					revive_cost += 50
+		if(owner.health <= HEALTH_THRESHOLD_CRIT)
+			addtimer(CALLBACK(src, .proc/heal), 30)
 		else
-			cooldown = revive_cost + world.time
-			reviving = 0
-		return
-	if(cooldown > world.time)
-		return
-	if(owner.stat != UNCONSCIOUS)
-		return
-	if(owner.suiciding)
-		return
+			reviving = FALSE
+			return
+	cooldown = revive_cost + world.time
 	revive_cost = 0
-	reviving = 1
+	reviving = TRUE
+
+/obj/item/organ/internal/cyberimp/chest/reviver/proc/heal()
+	if(prob(90) && owner.getOxyLoss())
+		owner.adjustOxyLoss(-3)
+		revive_cost += 5
+	if(prob(75) && owner.getBruteLoss())
+		owner.adjustBruteLoss(-1)
+		revive_cost += 20
+	if(prob(75) && owner.getFireLoss())
+		owner.adjustFireLoss(-1)
+		revive_cost += 20
+	if(prob(40) && owner.getToxLoss())
+		owner.adjustToxLoss(-1)
+		revive_cost += 50
+
 
 /obj/item/organ/internal/cyberimp/chest/reviver/emp_act(severity)
 	if(!owner || emp_proof)
@@ -289,12 +330,13 @@
 /obj/item/storage/box/cyber_implants/bundle
 	name = "boxed cybernetic implants"
 	var/list/boxed = list(/obj/item/organ/internal/cyberimp/eyes/xray,/obj/item/organ/internal/cyberimp/eyes/thermals,
-						/obj/item/organ/internal/cyberimp/brain/anti_stun, /obj/item/organ/internal/cyberimp/chest/reviver)
+						/obj/item/organ/internal/cyberimp/brain/anti_stun, /obj/item/organ/internal/cyberimp/chest/reviver/hardened)
 	var/amount = 5
 
 /obj/item/storage/box/cyber_implants/bundle/New()
 	..()
 	var/implant
-	while(contents.len <= amount + 1) // +1 for the autoimplanter.
+	while(amount > 0)
 		implant = pick(boxed)
 		new implant(src)
+		amount--

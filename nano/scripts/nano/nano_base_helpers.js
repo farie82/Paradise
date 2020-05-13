@@ -4,10 +4,7 @@ NanoBaseHelpers = function ()
     var _baseHelpers = {
             // change ui styling to "syndicate mode"
             syndicateMode: function() {
-                $('body').css("background-color","#8f1414");
-                $('body').css("background-image","url('uiBackground-Syndicate.png')");
-                $('body').css("background-position","50% 0");
-                $('body').css("background-repeat","repeat-x");
+                $('.mainBG').css("background", "url('syndicate.png') no-repeat fixed center/50% 50%, linear-gradient(to bottom, #8f1414 0%, #4B0A0A 100%) no-repeat fixed center;");
 
                 $('#uiTitleFluff').css("background-image","url('uiTitleFluff-Syndicate.png')");
                 $('#uiTitleFluff').css("background-position","50% 50%");

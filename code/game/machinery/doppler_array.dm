@@ -1,4 +1,4 @@
-var/list/doppler_arrays = list()
+GLOBAL_LIST_EMPTY(doppler_arrays)
 
 /obj/machinery/doppler_array
 	name = "tachyon-doppler array"
@@ -9,6 +9,9 @@ var/list/doppler_arrays = list()
 	anchored = 1
 	atom_say_verb = "states coldly"
 	var/list/logged_explosions = list()
+	var/explosion_target
+	var/datum/tech/toxins/toxins_tech
+	var/max_toxins_tech = 7
 
 /datum/explosion_log
 	var/logged_time
@@ -25,10 +28,12 @@ var/list/doppler_arrays = list()
 
 /obj/machinery/doppler_array/New()
 	..()
-	doppler_arrays += src
+	GLOB.doppler_arrays += src
+	explosion_target = rand(8, 20)
+	toxins_tech = new /datum/tech/toxins(src)
 
 /obj/machinery/doppler_array/Destroy()
-	doppler_arrays -= src
+	GLOB.doppler_arrays -= src
 	logged_explosions.Cut()
 	return ..()
 
@@ -36,18 +41,24 @@ var/list/doppler_arrays = list()
 	return PROCESS_KILL
 
 /obj/machinery/doppler_array/attackby(obj/item/I, mob/user, params)
-	if(iswrench(I))
-		if(!anchored && !isinspace())
-			anchored = TRUE
-			power_change()
-			to_chat(user, "<span class='notice'>You fasten [src].</span>")
-		else if(anchored)
-			anchored = FALSE
-			power_change()
-			to_chat(user, "<span class='notice'>You unfasten [src].</span>")
-		playsound(loc, I.usesound, 50, 1)
-	else
-		return ..()
+	if(istype(I, /obj/item/disk/tech_disk))
+		var/obj/item/disk/tech_disk/disk = I
+		disk.load_tech(toxins_tech)
+		to_chat(user, "<span class='notice'>You swipe the disk into [src].</span>")
+		return
+	return ..()
+
+/obj/machinery/doppler_array/wrench_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	if(!anchored && !isinspace())
+		anchored = TRUE
+		WRENCH_ANCHOR_MESSAGE
+	else if(anchored)
+		anchored = FALSE
+		WRENCH_UNANCHOR_MESSAGE
+	power_change()
 
 /obj/machinery/doppler_array/attack_hand(mob/user)
 	if(..())
@@ -84,7 +95,7 @@ var/list/doppler_arrays = list()
 		to_chat(user, "<span class='notice'>[src] is already printing something, please wait.</span>")
 		return
 	atom_say("<span class='notice'>Printing explosive log. Standby...</span>")
-	addtimer(CALLBACK(src, .print), 50)
+	addtimer(CALLBACK(src, .proc/print), 50)
 
 /obj/machinery/doppler_array/proc/print()
 	visible_message("<span class='notice'>[src] prints a piece of paper!</span>")
@@ -134,7 +145,7 @@ var/list/doppler_arrays = list()
 
 	var/list/messages = list("Explosive disturbance detected.", \
 							 "Epicenter at: grid ([x0],[y0]). Temporal displacement of tachyons: [took] seconds.", \
-							 "Factual: Epicenter radius: [devastation_range]. Outer radius: [heavy_impact_range]. Shockwave radius: [light_impact_range].")
+							 "Actual: Epicenter radius: [devastation_range]. Outer radius: [heavy_impact_range]. Shockwave radius: [light_impact_range].")
 
 	// If the bomb was capped, say its theoretical size.
 	if(devastation_range < orig_dev_range || heavy_impact_range < orig_heavy_range || light_impact_range < orig_light_range)
@@ -142,6 +153,15 @@ var/list/doppler_arrays = list()
 		messages += "Theoretical: Epicenter radius: [orig_dev_range]. Outer radius: [orig_heavy_range]. Shockwave radius: [orig_light_range]."
 	logged_explosions.Insert(1, new /datum/explosion_log(station_time_timestamp(), "[x0],[y0]", "[devastation_range], [heavy_impact_range], [light_impact_range]", capped ? "[orig_dev_range], [orig_heavy_range], [orig_light_range]" : "n/a")) //Newer logs appear first
 	messages += "Event successfully logged in internal database."
+	var/miss_by = abs(explosion_target - orig_light_range)
+	var/tmp_tech = max_toxins_tech - miss_by
+	if(!miss_by)
+		messages += "Explosion size matches target."
+	else
+		messages += "Target ([explosion_target]) missed by : [miss_by]."
+	if(tmp_tech > toxins_tech.level)
+		toxins_tech.level = tmp_tech
+		messages += "Toxins technology level upgraded to [toxins_tech.level]. Swipe a technology disk to save data."
 	for(var/message in messages)
 		atom_say(message)
 
@@ -163,7 +183,7 @@ var/list/doppler_arrays = list()
 		ui.open()
 		ui.set_auto_update(1)
 
-/obj/machinery/doppler_array/ui_data(mob/user, ui_key = "main", datum/topic_state/state = default_state)
+/obj/machinery/doppler_array/ui_data(mob/user, ui_key = "main", datum/topic_state/state = GLOB.default_state)
 	var/data[0]
 	var/list/explosion_data = list()
 	for(var/D in logged_explosions)
@@ -174,6 +194,8 @@ var/list/doppler_arrays = list()
 			"actual_size_message" = E.actual_size_message,
 			"theoretical_size_message" = E.theoretical_size_message,
 			"unique_datum_id" = E.UID()))
+	data["explosion_target"] = explosion_target
+	data["toxins_tech"] = toxins_tech.level
 	data["explosion_data"] = explosion_data
 	data["printing"] = active_timers
 	return data

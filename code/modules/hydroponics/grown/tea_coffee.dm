@@ -21,12 +21,15 @@
 	name = "Tea Aspera tips"
 	desc = "These aromatic tips of the tea plant can be dried to make tea."
 	icon_state = "tea_aspera_leaves"
+	tastes = list("tea leaves" = 1)
 	filling_color = "#008000"
+	can_distill = FALSE
 
 // Tea Astra
 /obj/item/seeds/tea/astra
 	name = "pack of tea astra seeds"
 	icon_state = "seed-teaastra"
+	desc = "These seeds grow into Tea Astra, a more potent variant of tea"
 	species = "teaastra"
 	plantname = "Tea Astra Plant"
 	product = /obj/item/reagent_containers/food/snacks/grown/tea/astra
@@ -37,7 +40,9 @@
 /obj/item/reagent_containers/food/snacks/grown/tea/astra
 	seed = /obj/item/seeds/tea/astra
 	name = "Tea Astra tips"
+	desc = "Knock away your fatigue!"
 	icon_state = "tea_astra_leaves"
+	tastes = list("tea leaves" = 1, "pure energy" = 1)
 	filling_color = "#4582B4"
 
 
@@ -66,7 +71,9 @@
 	desc = "Dry them out to make coffee."
 	icon_state = "coffee_arabica"
 	filling_color = "#DC143C"
+	tastes = list("coffee beans" = 1)
 	bitesize_mod = 2
+	distill_reagent = "kahlua"
 
 // Coffee Robusta
 /obj/item/seeds/coffee/robusta
@@ -84,4 +91,5 @@
 	seed = /obj/item/seeds/coffee/robusta
 	name = "coffee robusta beans"
 	desc = "Increases robustness by 37 percent!"
+	tastes = list("coffee beans" = 1, "robustness" = 1)
 	icon_state = "coffee_robusta"

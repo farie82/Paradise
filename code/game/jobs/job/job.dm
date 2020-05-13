@@ -12,9 +12,6 @@
 	var/department_flag = 0
 	var/department_head = list()
 
-	//Players will be allowed to spawn in as jobs that are set to "Station"
-	var/list/faction = list("Station")
-
 	//How many players can be this job
 	var/total_positions = 0
 
@@ -53,9 +50,11 @@
 	var/exp_type = ""
 
 	var/disabilities_allowed = 1
+	var/transfer_allowed = TRUE // If false, ID computer will always discourage transfers to this job, even if player is eligible
 
 	var/admin_only = 0
 	var/spawn_ert = 0
+	var/syndicate_command = 0
 
 	var/outfit = null
 
@@ -117,7 +116,7 @@
 		return 0
 	if(disabilities_allowed)
 		return 0
-	var/list/prohibited_disabilities = list(DISABILITY_FLAG_DEAF, DISABILITY_FLAG_BLIND, DISABILITY_FLAG_MUTE, DISABILITY_FLAG_SCRAMBLED, DISABILITY_FLAG_EPILEPTIC, DISABILITY_FLAG_TOURETTES, DISABILITY_FLAG_NEARSIGHTED, DISABILITY_FLAG_DIZZY)
+	var/list/prohibited_disabilities = list(DISABILITY_FLAG_BLIND, DISABILITY_FLAG_DEAF, DISABILITY_FLAG_MUTE, DISABILITY_FLAG_DIZZY)
 	for(var/i = 1, i < prohibited_disabilities.len, i++)
 		var/this_disability = prohibited_disabilities[i]
 		if(C.prefs.disabilities & this_disability)
@@ -145,7 +144,7 @@
 	var/backpack = /obj/item/storage/backpack
 	var/satchel = /obj/item/storage/backpack/satchel_norm
 	var/dufflebag = /obj/item/storage/backpack/duffel
-	var/box = /obj/item/storage/box/survival
+	box = /obj/item/storage/box/survival
 
 	var/tmp/list/gear_leftovers = list()
 
@@ -167,13 +166,12 @@
 			else
 				back = backpack //Department backpack
 
-	if(box)
-		backpack_contents.Insert(1, box) // Box always takes a first slot in backpack
-		backpack_contents[box] = 1
+	if(box && H.dna.species.speciesbox)
+		box = H.dna.species.speciesbox
 
-	if(allow_loadout && H.client && (H.client.prefs.gear && H.client.prefs.gear.len))
-		for(var/gear in H.client.prefs.gear)
-			var/datum/gear/G = gear_datums[gear]
+	if(allow_loadout && H.client && (H.client.prefs.loadout_gear && H.client.prefs.loadout_gear.len))
+		for(var/gear in H.client.prefs.loadout_gear)
+			var/datum/gear/G = GLOB.gear_datums[gear]
 			if(G)
 				var/permitted = FALSE
 
@@ -210,12 +208,12 @@
 
 	if(gear_leftovers.len)
 		for(var/datum/gear/G in gear_leftovers)
-			var/atom/placed_in = H.equip_or_collect(G.spawn_item(null, H.client.prefs.gear[G.display_name]))
+			var/atom/placed_in = H.equip_or_collect(G.spawn_item(null, H.client.prefs.loadout_gear[G.display_name]))
 			if(istype(placed_in))
 				if(isturf(placed_in))
 					to_chat(H, "<span class='notice'>Placing [G.display_name] on [placed_in]!</span>")
 				else
-					to_chat(H, "<span class='noticed'>Placing [G.display_name] in [placed_in.name]")
+					to_chat(H, "<span class='notice'>Placing [G.display_name] in [placed_in.name].</span>")
 				continue
 			if(H.equip_to_appropriate_slot(G))
 				to_chat(H, "<span class='notice'>Placing [G.display_name] in your inventory!</span>")
@@ -231,9 +229,9 @@
 	return 1
 
 /datum/outfit/job/proc/imprint_idcard(mob/living/carbon/human/H)
-	var/datum/job/J = job_master.GetJobType(jobtype)
+	var/datum/job/J = SSjobs.GetJobType(jobtype)
 	if(!J)
-		J = job_master.GetJob(H.job)
+		J = SSjobs.GetJob(H.job)
 
 	var/alt_title
 	if(H.mind)
@@ -252,6 +250,8 @@
 
 		if(H.mind && H.mind.initial_account)
 			C.associated_account_number = H.mind.initial_account.account_number
+		C.owner_uid = H.UID()
+		C.owner_ckey = H.ckey
 
 /datum/outfit/job/proc/imprint_pda(mob/living/carbon/human/H)
 	var/obj/item/pda/PDA = H.wear_pda
@@ -261,3 +261,12 @@
 		PDA.ownjob = C.assignment
 		PDA.ownrank = C.rank
 		PDA.name = "PDA-[H.real_name] ([PDA.ownjob])"
+
+/datum/job/proc/would_accept_job_transfer_from_player(mob/player)
+	if(!transfer_allowed)
+		return FALSE
+	if(!guest_jobbans(title)) // actually checks if job is a whitelisted position
+		return TRUE
+	if(!istype(player))
+		return FALSE
+	return is_job_whitelisted(player, title)

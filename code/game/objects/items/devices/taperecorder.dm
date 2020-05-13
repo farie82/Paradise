@@ -15,19 +15,23 @@
 	var/obj/item/tape/mytape
 	var/open_panel = 0
 	var/canprint = 1
+	var/starts_with_tape = TRUE
 
 
 /obj/item/taperecorder/New()
-	mytape = new /obj/item/tape/random(src)
-	update_icon()
+	..()
+	if(starts_with_tape)
+		mytape = new /obj/item/tape/random(src)
+		update_icon()
 
 /obj/item/taperecorder/Destroy()
 	QDEL_NULL(mytape)
 	return ..()
 
 /obj/item/taperecorder/examine(mob/user)
-	if(..(user, 1))
-		to_chat(user, "The wire panel is [open_panel ? "opened" : "closed"].")
+	. = ..()
+	if(in_range(user, src))
+		. += "The wire panel is [open_panel ? "opened" : "closed"]."
 
 
 /obj/item/taperecorder/attackby(obj/item/I, mob/user)
@@ -47,7 +51,7 @@
 		update_icon()
 
 
-/obj/item/taperecorder/fire_act()
+/obj/item/taperecorder/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume, global_overlay = TRUE)
 	mytape.ruin() //Fires destroy the tape
 	return ..()
 
@@ -85,7 +89,8 @@
 		icon_state = "taperecorder_idle"
 
 
-/obj/item/taperecorder/hear_talk(mob/living/M as mob, msg)
+/obj/item/taperecorder/hear_talk(mob/living/M as mob, list/message_pieces)
+	var/msg = multilingual_to_message(message_pieces)
 	if(mytape && recording)
 		var/ending = copytext(msg, length(msg))
 		mytape.timestamp += mytape.used_capacity
@@ -189,13 +194,11 @@
 		if(mytape.storedinfo.len < i + 1)
 			playsleepseconds = 1
 			sleep(10)
-			T = get_turf(src)
 			atom_say("End of recording.")
 		else
 			playsleepseconds = mytape.timestamp[i + 1] - mytape.timestamp[i]
 		if(playsleepseconds > 14)
 			sleep(10)
-			T = get_turf(src)
 			atom_say("Skipping [playsleepseconds] seconds of silence.")
 			playsleepseconds = 1
 		i++
@@ -241,8 +244,8 @@
 	canprint = 1
 
 //empty tape recorders
-/obj/item/taperecorder/empty/New()
-	return
+/obj/item/taperecorder/empty
+	starts_with_tape = FALSE
 
 
 /obj/item/tape
@@ -261,7 +264,8 @@
 	var/list/timestamp = list()
 	var/ruined = 0
 
-/obj/item/tape/fire_act()
+/obj/item/tape/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume, global_overlay = TRUE)
+	..()
 	ruin()
 
 /obj/item/tape/attack_self(mob/user)
@@ -314,4 +318,5 @@
 
 //Random colour tapes
 /obj/item/tape/random/New()
+	..()
 	icon_state = "tape_[pick("white", "blue", "red", "yellow", "purple")]"

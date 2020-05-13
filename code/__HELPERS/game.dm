@@ -1,13 +1,5 @@
-/proc/dopage(src,target)
-	var/href_list
-	var/href
-	href_list = params2list("src=[src:UID()]&[target]=1")
-	href = "src=[src:UID()];[target]=1"
-	src:temphtml = null
-	src:Topic(href, href_list)
-	return null
-
 /proc/get_area(atom/A)
+	RETURN_TYPE(/area)
 	if(isarea(A))
 		return A
 	var/turf/T = get_turf(A)
@@ -18,6 +10,12 @@
 		if(A.name == N)
 			return A
 	return 0
+
+/proc/get_location_name(atom/X, format_text = FALSE)
+	var/area/A = isarea(X) ? X : get_area(X)
+	if(!A)
+		return null
+	return format_text ? format_text(A.name) : A.name
 
 /proc/get_areas_in_range(dist=0, atom/center=usr)
 	if(!dist)
@@ -74,6 +72,19 @@
 	//turfs += centerturf
 	return atoms
 
+/proc/ff_cansee(atom/A, atom/B)
+	var/AT = get_turf(A)
+	var/BT = get_turf(B)
+	if(AT == BT)
+		return 1
+	var/list/line = getline(A, B)
+	for(var/turf/T in line)
+		if(T == AT || T == BT)
+			break
+		if(T.density)
+			return FALSE
+	return TRUE
+
 /proc/get_dist_euclidian(atom/Loc1 as turf|mob|obj,atom/Loc2 as turf|mob|obj)
 	var/dx = Loc1.x - Loc2.x
 	var/dy = Loc1.y - Loc2.y
@@ -110,7 +121,7 @@
 
 
 
-//var/debug_mob = 0
+//GLOBAL_VAR_INIT(debug_mob, 0)
 
 // Will recursively loop through an atom's contents and check for mobs, then it will loop through every atom in that atom's contents.
 // It will keep doing this until it checks every content possible. This will fix any problems with mobs, that are inside objects,
@@ -118,7 +129,7 @@
 
 /proc/recursive_mob_check(var/atom/O,  var/list/L = list(), var/recursion_limit = 3, var/client_check = 1, var/sight_check = 1, var/include_radio = 1)
 
-	//debug_mob += O.contents.len
+	//GLOB.debug_mob += O.contents.len
 	if(!recursion_limit)
 		return L
 	for(var/atom/A in O.contents)
@@ -197,7 +208,7 @@
 
 
 	// Try to find all the players who can hear the message
-	for(var/A in player_list + hear_radio_list)
+	for(var/A in GLOB.player_list + GLOB.hear_radio_list)
 		var/mob/M = A
 		if(M)
 			var/turf/ear = get_turf(M)
@@ -263,12 +274,12 @@
 
 /proc/try_move_adjacent(atom/movable/AM)
 	var/turf/T = get_turf(AM)
-	for(var/direction in cardinal)
+	for(var/direction in GLOB.cardinal)
 		if(AM.Move(get_step(T, direction)))
 			break
 
 /proc/get_mob_by_key(var/key)
-	for(var/mob/M in mob_list)
+	for(var/mob/M in GLOB.mob_list)
 		if(M.ckey == lowertext(key))
 			return M
 	return null
@@ -278,7 +289,7 @@
 	var/list/candidates = list()
 	// Keep looping until we find a non-afk candidate within the time bracket (we limit the bracket to 10 minutes (6000))
 	while(!candidates.len && afk_bracket < 6000)
-		for(var/mob/dead/observer/G in player_list)
+		for(var/mob/dead/observer/G in GLOB.player_list)
 			if(G.client != null)
 				if(!(G.mind && G.mind.current && G.mind.current.stat != DEAD))
 					if(!G.client.is_afk(afk_bracket) && (be_special_type in G.client.prefs.be_special))
@@ -294,7 +305,7 @@
 	var/list/candidates = list()
 	// Keep looping until we find a non-afk candidate within the time bracket (we limit the bracket to 10 minutes (6000))
 	while(!candidates.len && afk_bracket < 6000)
-		for(var/mob/dead/observer/G in player_list)
+		for(var/mob/dead/observer/G in GLOB.player_list)
 			if(G.client != null)
 				if(!(G.mind && G.mind.current && G.mind.current.stat != DEAD))
 					if(!G.client.is_afk(afk_bracket) && (be_special_type in G.client.prefs.be_special))
@@ -315,7 +326,7 @@
 
 /proc/Show2Group4Delay(obj/O, list/group, delay=0)
 	if(!isobj(O))	return
-	if(!group)	group = clients
+	if(!group)	group = GLOB.clients
 	for(var/client/C in group)
 		C.screen += O
 	if(delay)
@@ -333,8 +344,8 @@
 /proc/get_active_player_count()
 	// Get active players who are playing in the round
 	var/active_players = 0
-	for(var/i = 1; i <= player_list.len; i++)
-		var/mob/M = player_list[i]
+	for(var/i = 1; i <= GLOB.player_list.len; i++)
+		var/mob/M = GLOB.player_list[i]
 		if(M && M.client)
 			if(istype(M, /mob/new_player)) // exclude people in the lobby
 				continue
@@ -384,7 +395,7 @@
 	return new /datum/projectile_data(src_x, src_y, time, distance, power_x, power_y, dest_x, dest_y)
 
 
-/proc/mobs_in_area(var/area/the_area, var/client_needed=0, var/moblist=mob_list)
+/proc/mobs_in_area(var/area/the_area, var/client_needed=0, var/moblist=GLOB.mob_list)
 	var/list/mobs_found[0]
 	var/area/our_area = get_area(the_area)
 	for(var/mob/M in moblist)
@@ -397,7 +408,7 @@
 
 /proc/alone_in_area(var/area/the_area, var/mob/must_be_alone, var/check_type = /mob/living/carbon)
 	var/area/our_area = get_area(the_area)
-	for(var/C in living_mob_list)
+	for(var/C in GLOB.living_mob_list)
 		if(!istype(C, check_type))
 			continue
 		if(C == must_be_alone)
@@ -416,6 +427,17 @@
 /proc/GetBluePart(const/hexa)
 	return hex2num(copytext(hexa, 6, 8))
 
+/proc/lavaland_equipment_pressure_check(turf/T)
+	. = FALSE
+	if(!istype(T))
+		return
+	var/datum/gas_mixture/environment = T.return_air()
+	if(!istype(environment))
+		return
+	var/pressure = environment.return_pressure()
+	if(pressure <= LAVALAND_EQUIPMENT_EFFECT_PRESSURE)
+		. = TRUE
+
 /proc/GetHexColors(const/hexa)
 	return list(
 		GetRedPart(hexa),
@@ -429,14 +451,14 @@
 /proc/SecondsToTicks(var/seconds)
 	return seconds * 10
 
-proc/pollCandidates(Question, be_special_type, antag_age_check = 0, poll_time = 300, ignore_respawnability = 0, min_hours = 0, flashwindow = TRUE, check_antaghud = TRUE)
+proc/pollCandidates(Question, be_special_type, antag_age_check = FALSE, poll_time = 300, ignore_respawnability = FALSE, min_hours = 0, flashwindow = TRUE, check_antaghud = TRUE)
 	var/roletext = be_special_type ? get_roletext(be_special_type) : null
 	var/list/mob/dead/observer/candidates = list()
 	var/time_passed = world.time
 	if(!Question)
 		Question = "Would you like to be a special role?"
 
-	for(var/mob/dead/observer/G in (ignore_respawnability ? player_list : respawnable_list))
+	for(var/mob/dead/observer/G in (ignore_respawnability ? GLOB.player_list : GLOB.respawnable_list))
 		if(!G.key || !G.client)
 			continue
 		if(be_special_type)
@@ -449,7 +471,7 @@ proc/pollCandidates(Question, be_special_type, antag_age_check = 0, poll_time = 
 			if(jobban_isbanned(G, roletext) || jobban_isbanned(G, "Syndicate"))
 				continue
 		if(config.use_exp_restrictions && min_hours)
-			if(G.client.get_exp_living_num() < min_hours * 60)
+			if(G.client.get_exp_type_num(EXP_TYPE_LIVING) < min_hours * 60)
 				continue
 		if(check_antaghud && cannotPossess(G))
 			continue
@@ -457,7 +479,10 @@ proc/pollCandidates(Question, be_special_type, antag_age_check = 0, poll_time = 
 			G << 'sound/misc/notice2.ogg'//Alerting them to their consideration
 			if(flashwindow)
 				window_flash(G.client)
-			switch(alert(G,Question,"Please answer in [poll_time/10] seconds!","No","Yes","Not This Round"))
+			var/ans = alert(G,Question,"Please answer in [poll_time/10] seconds!","No","Yes","Not This Round")
+			if(!G?.client)
+				return
+			switch(ans)
 				if("Yes")
 					to_chat(G, "<span class='notice'>Choice registered: Yes.</span>")
 					if((world.time-time_passed)>poll_time)//If more than 30 game seconds passed.

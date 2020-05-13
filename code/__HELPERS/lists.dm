@@ -9,6 +9,35 @@
  * Misc
  */
 
+ // binary search sorted insert
+// IN: Object to be inserted
+// LIST: List to insert object into
+// TYPECONT: The typepath of the contents of the list
+// COMPARE: The variable on the objects to compare
+#define BINARY_INSERT(IN, LIST, TYPECONT, COMPARE) \
+	var/__BIN_CTTL = length(LIST);\
+	if(!__BIN_CTTL) {\
+		LIST += IN;\
+	} else {\
+		var/__BIN_LEFT = 1;\
+		var/__BIN_RIGHT = __BIN_CTTL;\
+		var/__BIN_MID = (__BIN_LEFT + __BIN_RIGHT) >> 1;\
+		var/##TYPECONT/__BIN_ITEM;\
+		while(__BIN_LEFT < __BIN_RIGHT) {\
+			__BIN_ITEM = LIST[__BIN_MID];\
+			if(__BIN_ITEM.##COMPARE <= IN.##COMPARE) {\
+				__BIN_LEFT = __BIN_MID + 1;\
+			} else {\
+				__BIN_RIGHT = __BIN_MID;\
+			};\
+			__BIN_MID = (__BIN_LEFT + __BIN_RIGHT) >> 1;\
+		};\
+		__BIN_ITEM = LIST[__BIN_MID];\
+		__BIN_MID = __BIN_ITEM.##COMPARE > IN.##COMPARE ? __BIN_MID : __BIN_MID + 1;\
+		LIST.Insert(__BIN_MID, IN);\
+	}
+
+
 //Returns a list in plain english as a string
 /proc/english_list(var/list/input, nothing_text = "nothing", and_text = " and ", comma_text = ", ", final_comma_text = "" )
 	var/total = input.len
@@ -39,11 +68,6 @@
 		else if(index in list)
 			return list[index]
 	return
-
-/proc/islist(list/list)
-	if(istype(list))
-		return 1
-	return 0
 
 //Return either pick(list) or null if list is not of type /list or is empty
 /proc/safepick(list/list)
@@ -95,9 +119,13 @@
 			. += A
 
 //Like typesof() or subtypesof(), but returns a typecache instead of a list
-/proc/typecacheof(path, ignore_root_path)
+/proc/typecacheof(path, ignore_root_path, only_root_path = FALSE)
 	if(ispath(path))
-		var/list/types = ignore_root_path ? subtypesof(path) : typesof(path)
+		var/list/types = list()
+		if(only_root_path)
+			types = list(path)
+		else
+			types = ignore_root_path ? subtypesof(path) : typesof(path)
 		var/list/L = list()
 		for(var/T in types)
 			L[T] = TRUE
@@ -111,8 +139,11 @@
 					L[T] = TRUE
 		else
 			for(var/P in pathlist)
-				for(var/T in typesof(P))
-					L[T] = TRUE
+				if(only_root_path)
+					L[P] = TRUE
+				else
+					for(var/T in typesof(P))
+						L[T] = TRUE
 		return L
 
 //Removes any null entries from the list
@@ -181,12 +212,16 @@
 	return null
 
 //Returns the top(last) element from the list and removes it from the list (typical stack function)
-/proc/pop(list/listfrom)
-	if(listfrom.len > 0)
-		var/picked = listfrom[listfrom.len]
-		listfrom.len--
-		return picked
-	return null
+/proc/pop(list/L)
+	if(L.len)
+		. = L[L.len]
+		L.len--
+
+/proc/popleft(list/L)
+	if(L.len)
+		. = L[1]
+		L.Cut(1,2)
+
 
 /*
  * Sorting
@@ -313,12 +348,12 @@
 	var/middle = L.len / 2 + 1 // Copy is first,second-1
 	return mergeLists(sortList(L.Copy(0,middle)), sortList(L.Copy(middle))) //second parameter null = to end of list
 
-//Mergsorge: uses sortList() but uses the var's name specifically. This should probably be using mergeAtom() instead
+//Mergsorge: uses sortAssoc() but uses the var's name specifically. This should probably be using mergeAtom() instead
 /proc/sortNames(var/list/L)
 	var/list/Q = new()
 	for(var/atom/x in L)
 		Q[x.name] = x
-	return sortList(Q)
+	return sortAssoc(Q)
 
 /proc/mergeLists(var/list/L, var/list/R)
 	var/Li=1
@@ -759,3 +794,29 @@ proc/dd_sortedObjectList(list/incoming)
 			L.Swap(start++, end--)
 
 	return L
+
+/proc/counterlist_scale(list/L, scalar)
+	var/list/out = list()
+	for(var/key in L)
+		out[key] = L[key] * scalar
+	. = out
+
+/proc/counterlist_sum(list/L)
+	. = 0
+	for(var/key in L)
+		. += L[key]
+
+/proc/counterlist_normalise(list/L)
+	var/avg = counterlist_sum(L)
+	if(avg != 0)
+		. = counterlist_scale(L, 1 / avg)
+	else
+		. = L
+
+/proc/counterlist_combine(list/L1, list/L2)
+	for(var/key in L2)
+		var/other_value = L2[key]
+		if(key in L1)
+			L1[key] += other_value
+		else
+			L1[key] = other_value

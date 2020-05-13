@@ -18,7 +18,7 @@
 	..()
 	component_parts = list()
 	component_parts += new /obj/item/circuitboard/quantumpad(null)
-	component_parts += new /obj/item/ore/bluespace_crystal/artificial(null)
+	component_parts += new /obj/item/stack/ore/bluespace_crystal/artificial(null)
 	component_parts += new /obj/item/stock_parts/capacitor(null)
 	component_parts += new /obj/item/stock_parts/manipulator(null)
 	component_parts += new /obj/item/stack/cable_coil(null, 1)
@@ -42,29 +42,34 @@
 	teleport_cooldown -= (E * 100)
 
 /obj/machinery/quantumpad/attackby(obj/item/I, mob/user, params)
-	if(default_deconstruction_screwdriver(user, "pad-idle-o", "qpad-idle", I))
-		return
-
-	if(panel_open)
-		if(ismultitool(I))
-			var/obj/item/multitool/M = I
-			M.buffer = src
-			to_chat(user, "<span class='notice'>You save the data in the [I.name]'s buffer.</span>")
-			return 1
-	else if(ismultitool(I))
-		var/obj/item/multitool/M = I
-		if(istype(M.buffer, /obj/machinery/quantumpad))
-			linked_pad = M.buffer
-			to_chat(user, "<span class='notice'>You link the [src] to the one in the [I.name]'s buffer.</span>")
-			return 1
-
 	if(exchange_parts(user, I))
 		return
-
-	if(default_deconstruction_crowbar(I))
-		return
-
 	return ..()
+
+/obj/machinery/quantumpad/crowbar_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.tool_use_check(user, 0))
+		return
+	default_deconstruction_crowbar(user, I)
+
+/obj/machinery/quantumpad/multitool_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	if(!I.multitool_check_buffer(user))
+		return
+	var/obj/item/multitool/M = I
+	if(panel_open)
+		M.set_multitool_buffer(user, src)
+	else
+		linked_pad = M.buffer
+		to_chat(user, "<span class='notice'>You link the [src] to the one in the [I.name]'s buffer.</span>")
+
+/obj/machinery/quantumpad/screwdriver_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.tool_use_check(user, 0))
+		return
+	default_deconstruction_screwdriver(user, "pad-idle-o", "qpad-idle", I)
 
 /obj/machinery/quantumpad/attack_hand(mob/user)
 	if(panel_open)
@@ -94,9 +99,7 @@
 	doteleport(user)
 
 /obj/machinery/quantumpad/proc/sparks()
-	var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
-	s.set_up(5, 1, get_turf(src))
-	s.start()
+	do_sparks(5, 1, get_turf(src))
 
 /obj/machinery/quantumpad/attack_ghost(mob/dead/observer/ghost)
 	if(linked_pad)

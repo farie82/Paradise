@@ -32,7 +32,7 @@
 
 /obj/item/camera_bug/New()
 	..()
-	processing_objects += src
+	START_PROCESSING(SSobj, src)
 
 /obj/item/camera_bug/Destroy()
 	get_cameras()
@@ -73,15 +73,13 @@
 /obj/item/camera_bug/proc/get_cameras()
 	if(world.time > (last_net_update + 100))
 		bugged_cameras = list()
-		for(var/obj/machinery/camera/camera in cameranet.cameras)
+		for(var/obj/machinery/camera/camera in GLOB.cameranet.cameras)
 			if(camera.stat || !camera.can_use())
 				continue
 			if(length(list("SS13","MINE")&camera.network))
 				bugged_cameras[camera.c_tag] = camera
-	sortList(bugged_cameras)
+	sortTim(bugged_cameras, /proc/cmp_text_asc)
 	return bugged_cameras
-
-
 
 /obj/item/camera_bug/proc/menu(var/list/cameras)
 	if(!cameras || !cameras.len)

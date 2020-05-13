@@ -35,7 +35,7 @@
  * If you want to display the canonical station "time" (aka the in-character time of the station) use station_time_timestamp
  */
 /proc/classic_worldtime2text(time = world.time)
-	time = (round_start_time ? (time - round_start_time) : (time - world.time))
+	time = (SSticker.round_start_time ? (time - SSticker.round_start_time) : (time - world.time))
 	return "[round(time / 36000)+12]:[(time / 600 % 60) < 10 ? add_zero(time / 600 % 60, 1) : time / 600 % 60]"
 
 //Returns the world time in english
@@ -50,16 +50,30 @@
 	return "[date_portion]T[time_portion]"
 
 /proc/gameTimestamp(format = "hh:mm:ss", wtime=null)
-	if(!wtime)
+	if(wtime == null)
 		wtime = world.time
 	return time2text(wtime - GLOB.timezoneOffset, format)
+
+// max hh:mm:ss supported
+/proc/timeStampToNum(timestamp)
+	var/list/splits = text2numlist(timestamp, ":")
+	. = 0
+	var/split_len = length(splits)
+	for(var/i = 1 to length(splits))
+		switch(split_len - i)
+			if(2)
+				. += splits[i] HOURS
+			if(1)
+				. += splits[i] MINUTES
+			if(0)
+				. += splits[i] SECONDS
 
 /* This is used for displaying the "station time" equivelent of a world.time value
  Calling it with no args will give you the current time, but you can specify a world.time-based value as an argument
  - You can use this, for example, to do "This will expire at [station_time_at(world.time + 500)]" to display a "station time" expiration date
    which is much more useful for a player)*/
 /proc/station_time(time=world.time, display_only=FALSE)
-	return ((((time - round_start_time)) + GLOB.gametime_offset) % 864000) - (display_only ? GLOB.timezoneOffset : 0)
+	return ((((time - SSticker.round_start_time)) + GLOB.gametime_offset) % 864000) - (display_only ? GLOB.timezoneOffset : 0)
 
 /proc/station_time_timestamp(format = "hh:mm:ss", time=world.time)
 	return time2text(station_time(time, TRUE), format)
@@ -94,13 +108,17 @@ proc/isDay(var/month, var/day)
 	return round(0.1 * (TimeOfGame - wh), 0.1)
 
 /proc/numberToMonthName(number)
-	return month_names.Find(number)
+	return GLOB.month_names.Find(number)
 
 //Take a value in seconds and returns a string of minutes and seconds in the format X minute(s) and X seconds.
 /proc/seconds_to_time(var/seconds as num)
 	var/numSeconds = seconds % 60
 	var/numMinutes = (seconds - numSeconds) / 60
 	return "[numMinutes] [numMinutes > 1 ? "minutes" : "minute"] and [numSeconds] seconds."
+
+//Take a value in seconds and makes it display like a clock
+/proc/seconds_to_clock(var/seconds as num)
+	return "[add_zero(num2text((seconds / 60) % 60), 2)]:[add_zero(num2text(seconds % 60), 2)]"
 
 //Takes a value of time in deciseconds.
 //Returns a text value of that number in hours, minutes, or seconds.

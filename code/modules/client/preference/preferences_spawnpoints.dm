@@ -1,10 +1,10 @@
-var/list/spawntypes = list()
+GLOBAL_LIST_EMPTY(spawntypes)
 
 /proc/populate_spawn_points()
-	spawntypes = list()
+	// GLOB.spawntypes = list() | This is already done, is it not
 	for(var/type in subtypesof(/datum/spawnpoint))
 		var/datum/spawnpoint/S = new type()
-		spawntypes[S.display_name] = S
+		GLOB.spawntypes[S.display_name] = S
 
 /datum/spawnpoint
 	var/msg          //Message to display on the arrivals computer.
@@ -13,14 +13,14 @@ var/list/spawntypes = list()
 	var/list/restrict_job = null
 	var/list/disallow_job = null
 
-	proc/check_job_spawning(job)
-		if(restrict_job && !(job in restrict_job))
-			return 0
+/datum/spawnpoint/proc/check_job_spawning(job)
+	if(restrict_job && !(job in restrict_job))
+		return 0
 
-		if(disallow_job && (job in disallow_job))
-			return 0
+	if(disallow_job && (job in disallow_job))
+		return 0
 
-		return 1
+	return 1
 
 /datum/spawnpoint/arrivals
 	display_name = "Arrivals Shuttle"
@@ -28,7 +28,7 @@ var/list/spawntypes = list()
 
 /datum/spawnpoint/arrivals/New()
 	..()
-	turfs = latejoin
+	turfs = GLOB.latejoin
 
 /datum/spawnpoint/gateway
 	display_name = "Gateway"
@@ -36,7 +36,7 @@ var/list/spawntypes = list()
 
 /datum/spawnpoint/gateway/New()
 	..()
-	turfs = latejoin_gateway
+	turfs = GLOB.latejoin_gateway
 
 /datum/spawnpoint/cryo
 	display_name = "Cryogenic Storage"
@@ -45,7 +45,7 @@ var/list/spawntypes = list()
 
 /datum/spawnpoint/cryo/New()
 	..()
-	turfs = latejoin_cryo
+	turfs = GLOB.latejoin_cryo
 
 /datum/spawnpoint/cyborg
 	display_name = "Cyborg Storage"
@@ -54,4 +54,4 @@ var/list/spawntypes = list()
 
 /datum/spawnpoint/cyborg/New()
 	..()
-	turfs = latejoin_cyborg
+	turfs = GLOB.latejoin_cyborg

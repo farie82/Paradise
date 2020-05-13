@@ -31,9 +31,9 @@ Possible to do for anyone motivated enough:
 #define RANGE_BASED 0
 #define AREA_BASED 1
 
-var/const/HOLOPAD_MODE = RANGE_BASED
+#define HOLOPAD_MODE RANGE_BASED
 
-var/list/holopads = list()
+GLOBAL_LIST_EMPTY(holopads)
 
 /obj/machinery/hologram/holopad
 	name = "holopad"
@@ -44,7 +44,9 @@ var/list/holopads = list()
 	idle_power_usage = 5
 	active_power_usage = 100
 	layer = TURF_LAYER+0.1 //Preventing mice and drones from sneaking under them.
-	armor = list(melee = 50, bullet = 20, laser = 20, energy = 20, bomb = 0, bio = 0, rad = 0)
+	plane = FLOOR_PLANE
+	max_integrity = 300
+	armor = list(melee = 50, bullet = 20, laser = 20, energy = 20, bomb = 0, bio = 0, rad = 0, fire = 50, acid = 0)
 	var/list/masters = list()//List of living mobs that use the holopad
 	var/list/holorays = list()//Holoray-mob link.
 	var/last_request = 0 //to prevent request spam. ~Carn
@@ -55,10 +57,11 @@ var/list/holopads = list()
 	var/static/force_answer_call = FALSE	//Calls will be automatically answered after a couple rings, here for debugging
 	var/obj/effect/overlay/holoray/ray
 	var/ringing = FALSE
+	var/dialling_input = FALSE //The user is currently selecting where to send their call
 
 /obj/machinery/hologram/holopad/New()
 	..()
-	holopads += src
+	GLOB.holopads += src
 	component_parts = list()
 	component_parts += new /obj/item/circuitboard/holopad(null)
 	component_parts += new /obj/item/stock_parts/capacitor(null)
@@ -74,7 +77,7 @@ var/list/holopads = list()
 
 	for(var/I in masters)
 		clear_holo(I)
-	holopads -= src
+	GLOB.holopads -= src
 	return ..()
 
 /obj/machinery/hologram/holopad/power_change()
@@ -85,6 +88,11 @@ var/list/holopads = list()
 		if(outgoing_call)
 			outgoing_call.ConnectionFailure(src)
 
+/obj/machinery/hologram/holopad/obj_break()
+	. = ..()
+	if(outgoing_call)
+		outgoing_call.ConnectionFailure(src)
+
 /obj/machinery/hologram/holopad/RefreshParts()
 	var/holograph_range = 4
 	for(var/obj/item/stock_parts/capacitor/B in component_parts)
@@ -92,20 +100,22 @@ var/list/holopads = list()
 	holo_range = holograph_range
 
 /obj/machinery/hologram/holopad/attackby(obj/item/I, mob/user, params)
-	if(default_deconstruction_screwdriver(user, "holopad_open", "holopad0", I))
-		return
-
 	if(exchange_parts(user, I))
 		return
+	return ..()
 
-	if(default_unfasten_wrench(user, I))
-		return
+/obj/machinery/hologram/holopad/screwdriver_act(mob/user, obj/item/I)
+	. = TRUE
+	default_deconstruction_screwdriver(user, "holopad_open", "holopad0", I)
 
-	if(default_deconstruction_crowbar(I))
-		return
-	else
-		return ..()
 
+/obj/machinery/hologram/holopad/wrench_act(mob/user, obj/item/I)
+	. = TRUE
+	default_unfasten_wrench(user, I)
+
+/obj/machinery/hologram/holopad/crowbar_act(mob/user, obj/item/I)
+	. = TRUE
+	default_deconstruction_crowbar(user, I)
 
 /obj/machinery/hologram/holopad/attack_hand(mob/living/carbon/human/user)
 	if(..())
@@ -132,6 +142,8 @@ var/list/holopads = list()
 
 /obj/machinery/hologram/holopad/interact(mob/living/carbon/human/user) //Carn: hologram requests.
 	if(!istype(user))
+		return
+	if(!anchored)
 		return
 
 	var/dat
@@ -180,7 +192,7 @@ var/list/holopads = list()
 			temp = "You requested an AI's presence.<br>"
 			temp += "<a href='?src=[UID()];mainmenu=1'>Main Menu</a>"
 			var/area/area = get_area(src)
-			for(var/mob/living/silicon/ai/AI in ai_list)
+			for(var/mob/living/silicon/ai/AI in GLOB.ai_list)
 				if(!AI.client)
 					continue
 				to_chat(AI, "<span class='info'>Your presence is requested at <a href='?src=\ref[AI];jumptoholopad=[UID()]'>\the [area]</a>.</span>")
@@ -191,19 +203,22 @@ var/list/holopads = list()
 	else if(href_list["Holocall"])
 		if(outgoing_call)
 			return
-
+		if(dialling_input)
+			to_chat(usr, "<span class='notice'>Finish dialling first!</span>")
+			return
 		temp = "You must stand on the holopad to make a call!<br>"
 		temp += "<a href='?src=[UID()];mainmenu=1'>Main Menu</a>"
 		if(usr.loc == loc)
 			var/list/callnames = list()
-			for(var/I in holopads)
+			for(var/I in GLOB.holopads)
 				var/area/A = get_area(I)
 				if(A)
 					LAZYADD(callnames[A], I)
 			callnames -= get_area(src)
-
-			var/result = input(usr, "Choose an area to call", "Holocall") as null|anything in callnames
-
+			var/list/sorted_callnames = sortAtom(callnames)
+			dialling_input = TRUE
+			var/result = input(usr, "Choose an area to call", "Holocall") as null|anything in sorted_callnames
+			dialling_input = FALSE
 			if(QDELETED(usr) || !result || outgoing_call)
 				return
 
@@ -250,7 +265,7 @@ var/list/holopads = list()
 /obj/machinery/hologram/holopad/process()
 	for(var/I in masters)
 		var/mob/living/master = I
-		if((stat & NOPOWER) || !validate_user(master))
+		if((stat & NOPOWER) || !validate_user(master) || !anchored)
 			clear_holo(master)
 
 	if(outgoing_call)
@@ -282,7 +297,7 @@ var/list/holopads = list()
 /obj/machinery/hologram/holopad/proc/transfer_to_nearby_pad(turf/T, mob/holo_owner)
 	if(!isAI(holo_owner))
 		return
-	for(var/pad in holopads)
+	for(var/pad in GLOB.holopads)
 		var/obj/machinery/hologram/holopad/another = pad
 		if(another == src)
 			continue
@@ -348,7 +363,7 @@ var/list/holopads = list()
 			hologram.alpha = 100
 			hologram.Impersonation = user
 
-		hologram.mouse_opacity = 0//So you can't click on it.
+		hologram.mouse_opacity = MOUSE_OPACITY_TRANSPARENT//So you can't click on it.
 		hologram.layer = FLY_LAYER//Above all the other objects/mobs. Or the vast majority of them.
 		hologram.anchored = 1//So space wind cannot drag it.
 		hologram.name = "[user.name] (hologram)"//If someone decides to right click.
@@ -368,19 +383,19 @@ var/list/holopads = list()
 
 /*This is the proc for special two-way communication between AI and holopad/people talking near holopad.
 For the other part of the code, check silicon say.dm. Particularly robot talk.*/
-/obj/machinery/hologram/holopad/hear_talk(atom/movable/speaker, message, verb, datum/language/message_language)
+/obj/machinery/hologram/holopad/hear_talk(atom/movable/speaker, list/message_pieces, verb)
 	if(speaker && masters.len)//Master is mostly a safety in case lag hits or something. Radio_freq so AIs dont hear holopad stuff through radios.
 		for(var/mob/living/silicon/ai/master in masters)
 			if(masters[master] && speaker != master)
-				master.relay_speech(speaker, message, verb, message_language)
+				master.relay_speech(speaker, message_pieces, verb)
 
 	for(var/I in holo_calls)
 		var/datum/holocall/HC = I
 		if(HC.connected_holopad == src && speaker != HC.hologram)
-			HC.user.hear_say(message, verb, message_language, speaker = speaker)
+			HC.user.hear_say(message_pieces, verb, speaker = speaker)
 
 	if(outgoing_call && speaker == outgoing_call.user)
-		outgoing_call.hologram.atom_say(message)
+		outgoing_call.hologram.atom_say(multilingual_to_message(message_pieces))
 
 
 
@@ -398,7 +413,9 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 
 /obj/machinery/hologram/holopad/update_icon()
 	var/total_users = LAZYLEN(masters) + LAZYLEN(holo_calls)
-	if(ringing)
+	if(icon_state == "holopad_open")
+		return
+	else if(ringing)
 		icon_state = "holopad_ringing"
 	else if(total_users)
 		icon_state = "holopad1"
@@ -470,8 +487,9 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 
 /obj/effect/overlay/holo_pad_hologram/examine(mob/user)
 	if(Impersonation)
-		return Impersonation.examine(user)
-	return ..()
+		. = Impersonation.examine(user)
+	else
+		. = ..()
 
 
 /obj/effect/overlay/holoray
@@ -481,7 +499,7 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 	layer = FLY_LAYER
 	density = FALSE
 	anchored = TRUE
-	mouse_opacity = 1
+	mouse_opacity = MOUSE_OPACITY_ICON
 	pixel_x = -32
 	pixel_y = -32
 	alpha = 100

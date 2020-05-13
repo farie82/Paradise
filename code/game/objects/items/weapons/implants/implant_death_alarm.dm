@@ -3,7 +3,7 @@
 	desc = "An alarm which monitors host vital signs and transmits a radio message upon death."
 	var/mobname = "Will Robinson"
 	activated = 0
-	var/static/list/stealth_areas = typecacheof(list(/area/syndicate_station, /area/syndicate_mothership, /area/shuttle/syndicate_elite))
+	var/static/list/stealth_areas = typecacheof(list(/area/syndicate_mothership, /area/shuttle/syndicate_elite))
 
 /obj/item/implant/death_alarm/get_data()
 	var/dat = {"<b>Implant Specifications:</b><BR>
@@ -18,7 +18,7 @@
 	return dat
 
 /obj/item/implant/death_alarm/Destroy()
-	processing_objects.Remove(src)
+	STOP_PROCESSING(SSobj, src)
 	return ..()
 
 /obj/item/implant/death_alarm/process()
@@ -47,7 +47,7 @@
 				a.autosay("[mobname] has died in [t.name]!", "[mobname]'s Death Alarm")
 			qdel(src)
 		if("emp")
-			var/name = prob(50) ? t.name : pick(teleportlocs)
+			var/name = prob(50) ? t.name : pick(GLOB.teleportlocs)
 			a.autosay("[mobname] has died in [name]!", "[mobname]'s Death Alarm")
 		else
 			a.autosay("[mobname] has died-zzzzt in-in-in...", "[mobname]'s Death Alarm")
@@ -61,12 +61,12 @@
 /obj/item/implant/death_alarm/implant(mob/target)
 	if(..())
 		mobname = target.real_name
-		processing_objects.Add(src)
+		START_PROCESSING(SSobj, src)
 		return 1
 	return 0
 
 /obj/item/implant/death_alarm/removed(mob/target)
 	if(..())
-		processing_objects.Remove(src)
+		STOP_PROCESSING(SSobj, src)
 		return 1
 	return 0

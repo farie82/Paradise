@@ -10,12 +10,16 @@
 	log_adminsay(msg, src)
 
 	if(check_rights(R_ADMIN,0))
-		for(var/client/C in admins)
+		for(var/client/C in GLOB.admins)
 			if(R_ADMIN & C.holder.rights)
 				msg = "<span class='emoji_enabled'>[msg]</span>"
 				to_chat(C, "<span class='admin_channel'>ADMIN: <span class='name'>[key_name(usr, 1)]</span> ([admin_jump_link(mob)]): <span class='message'>[msg]</span></span>")
 
 	feedback_add_details("admin_verb","M") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+
+/client/proc/get_admin_say()
+	var/msg = input(src, null, "asay \"text\"") as text|null
+	cmd_admin_say(msg)
 
 /client/proc/cmd_mentor_say(msg as text)
 	set category = "Admin"
@@ -31,7 +35,7 @@
 	if(!msg)
 		return
 
-	for(var/client/C in admins)
+	for(var/client/C in GLOB.admins)
 		if(check_rights(R_ADMIN|R_MOD|R_MENTOR, 0, C.mob))
 			var/display_name = key
 			if(holder.fakekey)
@@ -55,14 +59,14 @@
 	var/enabling
 	var/msay = /client/proc/cmd_mentor_say
 
-	if(msay in admin_verbs_mentor)
+	if(msay in GLOB.admin_verbs_mentor)
 		enabling = FALSE
-		admin_verbs_mentor -= msay
+		GLOB.admin_verbs_mentor -= msay
 	else
 		enabling = TRUE
-		admin_verbs_mentor += msay
+		GLOB.admin_verbs_mentor += msay
 
-	for(var/client/C in admins)
+	for(var/client/C in GLOB.admins)
 		if(check_rights(R_ADMIN|R_MOD, 0, C.mob))
 			continue
 		if(!check_rights(R_MENTOR, 0, C.mob))

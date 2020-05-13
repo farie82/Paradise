@@ -8,8 +8,8 @@
 	throw_speed = 1
 	throwforce = 0
 	w_class = WEIGHT_CLASS_TINY
-	burn_state = FLAMMABLE
-	burntime = 5
+	resistance_flags = FLAMMABLE
+	max_integrity = 50
 	no_spin = TRUE
 
 	var/obj/item/paper/internal_paper
@@ -110,10 +110,11 @@
 		H.emote("scream")
 
 /obj/item/paper/AltClick(mob/user, obj/item/I)
-	var/mob/living/carbon/human/H = user
-	I = H.is_in_hands(/obj/item/paper)
-	if(I)
-		ProcFoldPlane(H, I)
+	if(ishuman(user))
+		var/mob/living/carbon/human/H = user
+		I = H.is_in_hands(/obj/item/paper)
+		if(I)
+			ProcFoldPlane(H, I)
 	else
 		..()
 

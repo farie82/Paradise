@@ -112,7 +112,7 @@
 /datum/recipe/grill/wingfangchu
 	reagents = list("soysauce" = 5)
 	items = list(
-		/obj/item/reagent_containers/food/snacks/xenomeat,
+		/obj/item/reagent_containers/food/snacks/monstermeat/xenomeat
 	)
 	result = /obj/item/reagent_containers/food/snacks/wingfangchu
 
@@ -226,3 +226,26 @@
 		/obj/item/reagent_containers/food/snacks/catfishmeat,
 	)
 	result = /obj/item/reagent_containers/food/snacks/sushi_Tai
+
+/datum/recipe/grill/goliath
+	items = list(/obj/item/reagent_containers/food/snacks/monstermeat/goliath)
+	result = /obj/item/reagent_containers/food/snacks/goliath_steak
+
+/datum/recipe/grill/shrimp_skewer
+	items = list(
+		/obj/item/reagent_containers/food/snacks/shrimp,
+		/obj/item/reagent_containers/food/snacks/shrimp,
+		/obj/item/reagent_containers/food/snacks/shrimp,
+		/obj/item/reagent_containers/food/snacks/shrimp,
+		/obj/item/stack/rods,
+	)
+	result = /obj/item/reagent_containers/food/snacks/shrimp_skewer
+
+/datum/recipe/grill/fish_skewer
+	reagents = list("flour" = 10)
+	items = list(
+		/obj/item/reagent_containers/food/snacks/salmonmeat,
+		/obj/item/reagent_containers/food/snacks/salmonmeat,
+		/obj/item/stack/rods,
+	)
+	result = /obj/item/reagent_containers/food/snacks/fish_skewer

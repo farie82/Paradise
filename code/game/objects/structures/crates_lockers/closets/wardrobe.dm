@@ -156,8 +156,8 @@
 
 /obj/structure/closet/wardrobe/yellow
 	name = "yellow wardrobe"
-	icon_state = "wardrobe-y"
-	icon_closed = "wardrobe-y"
+	icon_state = "yellow"
+	icon_closed = "yellow"
 
 /obj/structure/closet/wardrobe/yellow/New()
 	..()
@@ -413,6 +413,8 @@
 	new /obj/item/clothing/under/medigown(src)
 	new /obj/item/clothing/under/medigown(src)
 	new /obj/item/clothing/under/medigown(src)
+	new /obj/item/clothing/head/headmirror(src)
+	new /obj/item/clothing/head/headmirror(src)
 
 
 /obj/structure/closet/wardrobe/grey

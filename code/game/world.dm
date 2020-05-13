@@ -1,9 +1,10 @@
 #define RECOMMENDED_VERSION 510
 
-var/global/list/map_transition_config = MAP_TRANSITION_CONFIG
+GLOBAL_LIST_INIT(map_transition_config, MAP_TRANSITION_CONFIG)
 
 /world/New()
 	SetupLogs()
+	enable_debugger() // Enable the extools debugger
 	log_world("World loaded at [time_stamp()]")
 	log_world("[GLOB.vars.len - GLOB.gvars_datum_in_built_vars.len] global variables")
 
@@ -21,7 +22,7 @@ var/global/list/map_transition_config = MAP_TRANSITION_CONFIG
 
 	src.update_status()
 
-	space_manager.initialize() //Before the MC starts up
+	GLOB.space_manager.initialize() //Before the MC starts up
 
 	. = ..()
 
@@ -29,25 +30,6 @@ var/global/list/map_transition_config = MAP_TRANSITION_CONFIG
 	populate_robolimb_list()
 
 	Master.Initialize(10, FALSE)
-
-	processScheduler = new
-	master_controller = new /datum/controller/game_controller()
-	spawn(1)
-		processScheduler.deferSetupFor(/datum/controller/process/ticker)
-		processScheduler.setup()
-
-		master_controller.setup()
-
-	if(using_map && using_map.name)
-		map_name = "[using_map.name]"
-	else
-		map_name = "Unknown"
-
-
-	if(config && config.server_name)
-		name = "[config.server_name]: [station_name()]"
-	else
-		name = station_name()
 
 
 #undef RECOMMENDED_VERSION
@@ -65,8 +47,8 @@ var/global/list/map_transition_config = MAP_TRANSITION_CONFIG
 //		to_chat(world, "End of Topic() call.")
 //		..()
 
-var/world_topic_spam_protect_ip = "0.0.0.0"
-var/world_topic_spam_protect_time = world.timeofday
+GLOBAL_VAR_INIT(world_topic_spam_protect_ip, "0.0.0.0")
+GLOBAL_VAR_INIT(world_topic_spam_protect_time, world.timeofday)
 
 /world/Topic(T, addr, master, key)
 	log_misc("WORLD/TOPIC: \"[T]\", from:[addr], master:[master], key:[key]")
@@ -82,7 +64,7 @@ var/world_topic_spam_protect_time = world.timeofday
 
 	else if("players" in input)
 		var/n = 0
-		for(var/mob/M in player_list)
+		for(var/mob/M in GLOB.player_list)
 			if(M.client)
 				n++
 		return n
@@ -90,10 +72,10 @@ var/world_topic_spam_protect_time = world.timeofday
 	else if("status" in input)
 		var/list/s = list()
 		var/list/admins = list()
-		s["version"] = game_version
-		s["mode"] = master_mode
-		s["respawn"] = config ? abandon_allowed : 0
-		s["enter"] = enter_allowed
+		s["version"] = GLOB.game_version
+		s["mode"] = GLOB.master_mode
+		s["respawn"] = config ? GLOB.abandon_allowed : 0
+		s["enter"] = GLOB.enter_allowed
 		s["vote"] = config.allow_vote_mode
 		s["ai"] = config.allow_ai
 		s["host"] = host ? host : null
@@ -107,7 +89,7 @@ var/world_topic_spam_protect_time = world.timeofday
 		var/player_count = 0
 		var/admin_count = 0
 
-		for(var/client/C in clients)
+		for(var/client/C in GLOB.clients)
 			if(C.holder)
 				if(C.holder.fakekey)
 					continue	//so stealthmins aren't revealed by the hub
@@ -117,14 +99,13 @@ var/world_topic_spam_protect_time = world.timeofday
 			player_count++
 		s["players"] = player_count
 		s["admins"] = admin_count
-		s["map_name"] = map_name ? map_name : "Unknown"
+		s["map_name"] = GLOB.map_name ? GLOB.map_name : "Unknown"
 
 		if(key_valid)
-			if(ticker && ticker.mode)
-				s["real_mode"] = ticker.mode.name
-
-			s["security_level"] = get_security_level()
-			s["ticker_state"] = ticker.current_state
+			if(SSticker && SSticker.mode)
+				s["real_mode"] = SSticker.mode.name
+				s["security_level"] = get_security_level()
+				s["ticker_state"] = SSticker.current_state
 
 			if(SSshuttle && SSshuttle.emergency)
 				// Shuttle status, see /__DEFINES/stat.dm
@@ -142,18 +123,18 @@ var/world_topic_spam_protect_time = world.timeofday
 	else if("manifest" in input)
 		var/list/positions = list()
 		var/list/set_names = list(
-			"heads" = command_positions,
-			"sec" = security_positions,
-			"eng" = engineering_positions,
-			"med" = medical_positions,
-			"sci" = science_positions,
-			"car" = supply_positions,
-			"srv" = service_positions,
-			"civ" = civilian_positions,
-			"bot" = nonhuman_positions
+			"heads" = GLOB.command_positions,
+			"sec" = GLOB.security_positions,
+			"eng" = GLOB.engineering_positions,
+			"med" = GLOB.medical_positions,
+			"sci" = GLOB.science_positions,
+			"car" = GLOB.supply_positions,
+			"srv" = GLOB.service_positions,
+			"civ" = GLOB.civilian_positions,
+			"bot" = GLOB.nonhuman_positions
 		)
 
-		for(var/datum/data/record/t in data_core.general)
+		for(var/datum/data/record/t in GLOB.data_core.general)
 			var/name = t.fields["name"]
 			var/rank = t.fields["rank"]
 			var/real_rank = t.fields["real_rank"]
@@ -186,7 +167,7 @@ var/world_topic_spam_protect_time = world.timeofday
 
 		var/client/C
 
-		for(var/client/K in clients)
+		for(var/client/K in GLOB.clients)
 			if(K.ckey == input["adminmsg"])
 				C = K
 				break
@@ -202,7 +183,7 @@ var/world_topic_spam_protect_time = world.timeofday
 		C << 'sound/effects/adminhelp.ogg'
 		to_chat(C, message)
 
-		for(var/client/A in admins)
+		for(var/client/A in GLOB.admins)
 			if(A != C)
 				to_chat(A, amessage)
 
@@ -225,7 +206,7 @@ var/world_topic_spam_protect_time = world.timeofday
 			if(input["key"] != config.comms_password)
 				return "Bad Key"
 			else
-				for(var/client/C in clients)
+				for(var/client/C in GLOB.clients)
 					to_chat(C, "<span class='announce'>PR: [input["announce"]]</span>")
 
 	else if("kick" in input)
@@ -238,7 +219,7 @@ var/world_topic_spam_protect_time = world.timeofday
 
 		var/client/C
 
-		for(var/client/K in clients)
+		for(var/client/K in GLOB.clients)
 			if(K.ckey == input["kick"])
 				C = K
 				break
@@ -270,13 +251,13 @@ var/world_topic_spam_protect_time = world.timeofday
 			return "Set listed status to invisible."
 
 /proc/keySpamProtect(var/addr)
-	if(world_topic_spam_protect_ip == addr && abs(world_topic_spam_protect_time - world.time) < 50)
+	if(GLOB.world_topic_spam_protect_ip == addr && abs(GLOB.world_topic_spam_protect_time - world.time) < 50)
 		spawn(50)
-			world_topic_spam_protect_time = world.time
+			GLOB.world_topic_spam_protect_time = world.time
 			return "Bad Key (Throttled)"
 
-	world_topic_spam_protect_time = world.time
-	world_topic_spam_protect_ip = addr
+	GLOB.world_topic_spam_protect_time = world.time
+	GLOB.world_topic_spam_protect_ip = addr
 	return "Bad Key"
 
 /world/Reboot(var/reason, var/feedback_c, var/feedback_r, var/time)
@@ -289,8 +270,8 @@ var/world_topic_spam_protect_time = world.timeofday
 		shutdown_logging() // Past this point, no logging procs can be used, at risk of data loss.
 		if(config && config.shutdown_on_reboot)
 			sleep(0)
-			if(shutdown_shell_command)
-				shell(shutdown_shell_command)
+			if(GLOB.shutdown_shell_command)
+				shell(GLOB.shutdown_shell_command)
 			del(world)
 			return
 		else
@@ -300,39 +281,40 @@ var/world_topic_spam_protect_time = world.timeofday
 	if(!isnull(time))
 		delay = max(0,time)
 	else
-		delay = ticker.restart_timeout
-	if(ticker.delay_end)
+		delay = SSticker.restart_timeout
+	if(SSticker.delay_end)
 		to_chat(world, "<span class='boldannounce'>An admin has delayed the round end.</span>")
 		return
 	to_chat(world, "<span class='boldannounce'>Rebooting world in [delay/10] [delay > 10 ? "seconds" : "second"]. [reason]</span>")
 
-	var/round_end_sound = pick(round_end_sounds)
-	var/sound_length = round_end_sounds[round_end_sound]
+	var/round_end_sound = pick(GLOB.round_end_sounds)
+	var/sound_length = GLOB.round_end_sounds[round_end_sound]
 	if(delay > sound_length) // If there's time, play the round-end sound before rebooting
 		spawn(delay - sound_length)
-			if(!ticker.delay_end)
+			if(!SSticker.delay_end)
 				world << round_end_sound
 	sleep(delay)
-	if(blackbox)
-		blackbox.save_all_data_to_sql()
-	if(ticker.delay_end)
+	if(GLOB.blackbox)
+		GLOB.blackbox.save_all_data_to_sql()
+	if(SSticker.delay_end)
 		to_chat(world, "<span class='boldannounce'>Reboot was cancelled by an admin.</span>")
 		return
 	feedback_set_details("[feedback_c]","[feedback_r]")
 	log_game("<span class='boldannounce'>Rebooting world. [reason]</span>")
 	//kick_clients_in_lobby("<span class='boldannounce'>The round came to an end with you in the lobby.</span>", 1)
 
-	processScheduler.stop()
+	Master.Shutdown()	//run SS shutdowns
+	GLOB.dbcon.Disconnect() // DCs cleanly from the database
 	shutdown_logging() // Past this point, no logging procs can be used, at risk of data loss.
 
-	for(var/client/C in clients)
+	for(var/client/C in GLOB.clients)
 		if(config.server)       //if you set a server location in config.txt, it sends you there instead of trying to reconnect to the same world address. -- NeoFite
 			C << link("byond://[config.server]")
 
 	if(config && config.shutdown_on_reboot)
 		sleep(0)
-		if(shutdown_shell_command)
-			shell(shutdown_shell_command)
+		if(GLOB.shutdown_shell_command)
+			shell(GLOB.shutdown_shell_command)
 		del(world)
 		return
 	else
@@ -347,8 +329,8 @@ var/world_topic_spam_protect_time = world.timeofday
 	var/list/Lines = file2list("data/mode.txt")
 	if(Lines.len)
 		if(Lines[1])
-			master_mode = Lines[1]
-			log_game("Saved mode is '[master_mode]'")
+			GLOB.master_mode = Lines[1]
+			log_game("Saved mode is '[GLOB.master_mode]'")
 
 /world/proc/save_mode(var/the_mode)
 	var/F = file("data/mode.txt")
@@ -360,7 +342,7 @@ var/world_topic_spam_protect_time = world.timeofday
 	return 1
 
 /world/proc/load_motd()
-	join_motd = file2text("config/motd.txt")
+	GLOB.join_motd = file2text("config/motd.txt")
 	GLOB.join_tos = file2text("config/tos.txt")
 
 /proc/load_configuration()
@@ -372,70 +354,54 @@ var/world_topic_spam_protect_time = world.timeofday
 	// apply some settings from config..
 
 /world/proc/update_status()
+	status = get_status_text()
+
+/proc/get_world_status_text()
+	return world.get_status_text()
+
+/world/proc/get_status_text()
 	var/s = ""
 
 	if(config && config.server_name)
 		s += "<b>[config.server_name]</b> &#8212; "
+	s += "<b>[station_name()]</b> "
+	if(config && config.githuburl)
+		s+= "([GLOB.game_version])"
 
-	s += "<b>[station_name()]</b>";
-	s += " ("
-	s += "<a href=\"http://nanotrasen.se\">" //Change this to wherever you want the hub to link to.
-	s += "[game_version]"
-	s += "</a>"
-	s += ")"
-	s += "<br>The Perfect Mix of RP & Action<br>"
+	if(config && config.server_tag_line)
+		s += "<br>[config.server_tag_line]"
 
+	if(SSticker && ROUND_TIME > 0)
+		s += "<br>[round(ROUND_TIME / 36000)]:[add_zero(num2text(ROUND_TIME / 600 % 60), 2)], " + capitalize(get_security_level())
+	else
+		s += "<br><b>STARTING</b>"
 
-
-
+	s += "<br>"
 	var/list/features = list()
 
-	if(ticker)
-		if(master_mode)
-			features += master_mode
-	else
-		features += "<b>STARTING</b>"
-
-	if(!enter_allowed)
+	if(!GLOB.enter_allowed)
 		features += "closed"
 
-	features += abandon_allowed ? "respawn" : "no respawn"
+	if(config && config.server_extra_features)
+		features += config.server_extra_features
 
 	if(config && config.allow_vote_mode)
 		features += "vote"
 
-	if(config && config.allow_ai)
-		features += "AI allowed"
+	if(config && config.wikiurl)
+		features += "<a href=\"[config.wikiurl]\">Wiki</a>"
 
-	var/n = 0
-	for(var/mob/M in player_list)
-		if(M.client)
-			n++
-
-	if(n > 1)
-		features += "~[n] players"
-	else if(n > 0)
-		features += "~[n] player"
-
-	/*
-	is there a reason for this? the byond site shows 'hosted by X' when there is a proper host already.
-	if(host)
-		features += "hosted by <b>[host]</b>"
-	*/
-
-//	if(!host && config && config.hostedby)
-//		features += "hosted by <b>[config.hostedby]</b>"
+	if(GLOB.abandon_allowed)
+		features += "respawn"
 
 	if(features)
-		s += ": [jointext(features, ", ")]"
+		s += "[jointext(features, ", ")]"
 
-	/* does this help? I do not know */
-	if(src.status != s)
-		src.status = s
+	return s
 
 #define FAILED_DB_CONNECTION_CUTOFF 5
-var/failed_db_connections = 0
-var/failed_old_db_connections = 0
+GLOBAL_VAR_INIT(failed_db_connections, 0)
+GLOBAL_VAR_INIT(failed_old_db_connections, 0)
 
 /world/proc/SetupLogs()
 	GLOB.log_directory = "data/logs/[time2text(world.realtime, "YYYY/MM-Month/DD-Day")]"
@@ -443,10 +409,18 @@ var/failed_old_db_connections = 0
 	GLOB.world_href_log = "[GLOB.log_directory]/hrefs.log"
 	GLOB.world_runtime_log = "[GLOB.log_directory]/runtime.log"
 	GLOB.world_qdel_log = "[GLOB.log_directory]/qdel.log"
+	GLOB.world_asset_log = "[GLOB.log_directory]/asset.log"
 	start_log(GLOB.world_game_log)
 	start_log(GLOB.world_href_log)
 	start_log(GLOB.world_runtime_log)
 	start_log(GLOB.world_qdel_log)
+
+	// This log follows a special format and this path should NOT be used for anything else
+	GLOB.runtime_summary_log = "data/logs/runtime_summary.log"
+	if(fexists(GLOB.runtime_summary_log))
+		fdel(GLOB.runtime_summary_log)
+	start_log(GLOB.runtime_summary_log)
+	// And back to sanity
 
 	if(fexists(GLOB.config_error_log))
 		fcopy(GLOB.config_error_log, "[GLOB.log_directory]/config_error.log")
@@ -462,11 +436,11 @@ var/failed_old_db_connections = 0
 
 /proc/setup_database_connection()
 
-	if(failed_db_connections > FAILED_DB_CONNECTION_CUTOFF)	//If it failed to establish a connection more than 5 times in a row, don't bother attempting to conenct anymore.
+	if(GLOB.failed_db_connections > FAILED_DB_CONNECTION_CUTOFF)	//If it failed to establish a connection more than 5 times in a row, don't bother attempting to conenct anymore.
 		return 0
 
-	if(!dbcon)
-		dbcon = new()
+	if(!GLOB.dbcon)
+		GLOB.dbcon = new()
 
 	var/user = sqlfdbklogin
 	var/pass = sqlfdbkpass
@@ -474,24 +448,31 @@ var/failed_old_db_connections = 0
 	var/address = sqladdress
 	var/port = sqlport
 
-	dbcon.Connect("dbi:mysql:[db]:[address]:[port]","[user]","[pass]")
-	. = dbcon.IsConnected()
+	GLOB.dbcon.Connect("dbi:mysql:[db]:[address]:[port]","[user]","[pass]")
+	. = GLOB.dbcon.IsConnected()
 	if( . )
-		failed_db_connections = 0	//If this connection succeeded, reset the failed connections counter.
+		GLOB.failed_db_connections = 0	//If this connection succeeded, reset the failed connections counter.
 	else
-		failed_db_connections++		//If it failed, increase the failed connections counter.
-		log_world(dbcon.ErrorMsg())
+		GLOB.failed_db_connections++		//If it failed, increase the failed connections counter.
+		log_world(GLOB.dbcon.ErrorMsg())
 
 	return .
 
 //This proc ensures that the connection to the feedback database (global variable dbcon) is established
 proc/establish_db_connection()
-	if(failed_db_connections > FAILED_DB_CONNECTION_CUTOFF)
+	if(GLOB.failed_db_connections > FAILED_DB_CONNECTION_CUTOFF)
 		return 0
 
-	if(!dbcon || !dbcon.IsConnected())
+	if(!GLOB.dbcon || !GLOB.dbcon.IsConnected())
 		return setup_database_connection()
 	else
 		return 1
 
 #undef FAILED_DB_CONNECTION_CUTOFF
+
+// Proc to enable the extools debugger, which allows breakpoints, live var checking, and many other useful tools
+// The DLL is injected into the env by visual studio code. If not running VSCode, the proc will not call the initialization
+/world/proc/enable_debugger()
+    var/dll = world.GetConfig("env", "EXTOOLS_DLL")
+    if (dll)
+        call(dll, "debug_initialize")()

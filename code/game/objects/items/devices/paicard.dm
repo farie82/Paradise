@@ -12,6 +12,7 @@
 	var/looking_for_personality = 0
 	var/mob/living/silicon/pai/pai
 	var/list/faction = list("neutral") // The factions the pAI will inherit from the card
+	resistance_flags = FIRE_PROOF | ACID_PROOF | INDESTRUCTIBLE
 
 /obj/item/paicard/syndicate
 	name = "syndicate personal AI device"
@@ -263,7 +264,7 @@
 			return
 		last_request = world.time / 10
 		looking_for_personality = 1
-		paiController.findPAI(src, usr)
+		GLOB.paiController.findPAI(src, usr)
 	if(href_list["wipe"])
 		var/confirm = input("Are you CERTAIN you wish to delete the current personality? This action cannot be undone.", "Personality Wipe") in list("Yes", "No")
 		if(confirm == "Yes")
@@ -334,8 +335,6 @@
 		M.emp_act(severity)
 	..()
 
-/obj/item/paicard/ex_act(severity)
-	if(pai)
-		pai.ex_act(severity)
-	else
-		qdel(src)
+/obj/item/paicard/extinguish_light()
+	pai.extinguish_light()
+	set_light(0)

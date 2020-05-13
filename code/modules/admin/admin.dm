@@ -1,18 +1,18 @@
-var/global/BSACooldown = 0
-var/global/nologevent = 0
+GLOBAL_VAR_INIT(BSACooldown, 0)
+GLOBAL_VAR_INIT(nologevent, 0)
 
 ////////////////////////////////
 /proc/message_admins(var/msg)
 	msg = "<span class=\"admin\"><span class=\"prefix\">ADMIN LOG:</span> <span class=\"message\">[msg]</span></span>"
-	for(var/client/C in admins)
+	for(var/client/C in GLOB.admins)
 		if(R_ADMIN & C.holder.rights)
 			if(C.prefs && !(C.prefs.toggles & CHAT_NO_ADMINLOGS))
 				to_chat(C, msg)
 
 /proc/msg_admin_attack(var/text, var/loglevel)
-	if(!nologevent)
+	if(!GLOB.nologevent)
 		var/rendered = "<span class=\"admin\"><span class=\"prefix\">ATTACK:</span> <span class=\"message\">[text]</span></span>"
-		for(var/client/C in admins)
+		for(var/client/C in GLOB.admins)
 			if(R_ADMIN & C.holder.rights)
 				if(C.prefs.atklog == ATKLOG_NONE)
 					continue
@@ -21,18 +21,40 @@ var/global/nologevent = 0
 					to_chat(C, msg)
 
 
-/proc/message_adminTicket(var/msg)
-	msg = "<span class='adminticket'><span class='prefix'>ADMIN TICKET:</span> [msg]</span>"
-	for(var/client/C in admins)
+/proc/message_adminTicket(var/msg, var/alt = FALSE)
+	if(alt)
+		msg = "<span class=admin_channel>ADMIN TICKET: [msg]</span>"
+	else
+		msg = "<span class=adminticket><span class='prefix'>ADMIN TICKET:</span> [msg]</span>"
+	for(var/client/C in GLOB.admins)
 		if(R_ADMIN & C.holder.rights)
 			if(C.prefs && !(C.prefs.toggles & CHAT_NO_TICKETLOGS))
 				to_chat(C, msg)
 
+/proc/message_mentorTicket(var/msg)
+	for(var/client/C in GLOB.admins)
+		if(check_rights(R_ADMIN | R_MENTOR | R_MOD, 0, C.mob))
+			if(C.prefs && !(C.prefs.toggles & CHAT_NO_MENTORTICKETLOGS))
+				to_chat(C, msg)
+
+/proc/admin_ban_mobsearch(var/mob/M, var/ckey_to_find, var/mob/admin_to_notify)
+	if(!M || !M.ckey)
+		if(ckey_to_find)
+			for(var/mob/O in GLOB.mob_list)
+				if(O.ckey && O.ckey == ckey_to_find)
+					if(admin_to_notify)
+						to_chat(admin_to_notify, "<span class='warning'>admin_ban_mobsearch: Player [ckey_to_find] is now in mob [O]. Pulling data from new mob.</span>")
+						return O
+			if(admin_to_notify)
+				to_chat(admin_to_notify, "<span class='warning'>admin_ban_mobsearch: Player [ckey_to_find] does not seem to have any mob, anywhere. This is probably an error.</span>")
+		else if(admin_to_notify)
+			to_chat(admin_to_notify, "<span class='warning'>admin_ban_mobsearch: No mob or ckey detected.</span>")
+	return M
 
 ///////////////////////////////////////////////////////////////////////////////////////////////Panels
 
-/datum/admins/proc/show_player_panel(var/mob/M in mob_list)
-	set category = "Admin"
+/datum/admins/proc/show_player_panel(var/mob/M in GLOB.mob_list)
+	set category = null
 	set name = "Show Player Panel"
 	set desc="Edit player (respawn, ban, heal, etc)"
 
@@ -48,18 +70,19 @@ var/global/nologevent = 0
 	if(M.client)
 		body += " played by <b>[M.client]</b> "
 		body += "\[<A href='?_src_=holder;editrights=rank;ckey=[M.ckey]'>[M.client.holder ? M.client.holder.rank : "Player"]</A>\] "
-		body += "\[<A href='?_src_=holder;getplaytimewindow=[M.UID()]'>" + M.client.get_exp_living() + "</a>\]"
+		body += "\[<A href='?_src_=holder;getplaytimewindow=[M.UID()]'>" + M.client.get_exp_type(EXP_TYPE_CREW) + " as [EXP_TYPE_CREW]</a>\]"
 
 	if(istype(M, /mob/new_player))
 		body += " <B>Hasn't Entered Game</B> "
 	else
-		body += " \[<A href='?_src_=holder;revive=\ref[M]'>Heal</A>\] "
+		body += " \[<A href='?_src_=holder;revive=[M.UID()]'>Heal</A>\] "
 
 	body += "<br><br>\[ "
 	body += "<a href='?_src_=vars;Vars=[M.UID()]'>VV</a> - "
-	body += "<a href='?_src_=holder;traitor=\ref[M]'>TP</a> - "
-	body += "<a href='?src=[usr.UID()];priv_msg=\ref[M]'>PM</a> - "
-	body += "<a href='?_src_=holder;subtlemessage=\ref[M]'>SM</a> - "
+	body += "[ADMIN_TP(M,"TP")] - "
+	if(M.client)
+		body += "<a href='?src=[usr.UID()];priv_msg=[M.client.UID()]'>PM</a> - "
+		body += "[ADMIN_SM(M,"SM")] - "
 	if(ishuman(M) && M.mind)
 		body += "<a href='?_src_=holder;HeadsetMessage=[M.UID()]'>HM</a> -"
 	body += "[admin_jump_link(M)]\] </b><br>"
@@ -70,52 +93,57 @@ var/global/nologevent = 0
 		if(M.client.related_accounts_ip.len)
 			body += "<b>Related accounts by IP:</b> [jointext(M.client.related_accounts_ip, " - ")]<br><br>"
 
-	body += "<A href='?_src_=holder;boot2=\ref[M]'>Kick</A> | "
-	body += "<A href='?_src_=holder;warn=[M.ckey]'>Warn</A> | "
-	body += "<A href='?_src_=holder;newban=\ref[M]'>Ban</A> | "
-	body += "<A href='?_src_=holder;jobban2=\ref[M]'>Jobban</A> | "
-	body += "<A href='?_src_=holder;appearanceban=\ref[M]'>Appearance Ban</A> | "
-	body += "<A href='?_src_=holder;shownoteckey=[M.ckey]'>Notes</A> | "
+	if(M.ckey)
+		body += "<A href='?_src_=holder;boot2=[M.UID()]'>Kick</A> | "
+		body += "<A href='?_src_=holder;warn=[M.ckey]'>Warn</A> | "
+		body += "<A href='?_src_=holder;newban=[M.UID()];dbbanaddckey=[M.ckey]'>Ban</A> | "
+		body += "<A href='?_src_=holder;jobban2=[M.UID()];dbbanaddckey=[M.ckey]'>Jobban</A> | "
+		body += "<A href='?_src_=holder;appearanceban=[M.UID()];dbbanaddckey=[M.ckey]'>Appearance Ban</A> | "
+		body += "<A href='?_src_=holder;shownoteckey=[M.ckey]'>Notes</A> | "
+		if(config.forum_playerinfo_url)
+			body += "<A href='?_src_=holder;webtools=[M.ckey]'>WebInfo</A> | "
 	if(M.client)
-		if(M.client.check_watchlist(M.client.ckey))
+		if(check_watchlist(M.client.ckey))
 			body += "<A href='?_src_=holder;watchremove=[M.ckey]'>Remove from Watchlist</A> | "
 			body += "<A href='?_src_=holder;watchedit=[M.ckey]'>Edit Watchlist Reason</A> "
 		else
-			body += "<A href='?_src_=holder;watchadd=\ref[M.ckey]'>Add to Watchlist</A> "
+			body += "<A href='?_src_=holder;watchadd=[M.ckey]'>Add to Watchlist</A> "
 
 	if(M.client)
-		body += "| <A HREF='?_src_=holder;sendtoprison=\ref[M]'>Prison</A> | "
-		body += "\ <A href='?_src_=holder;sendbacktolobby=\ref[M]'>Send back to Lobby</A> | "
+		body += "| <A href='?_src_=holder;sendtoprison=[M.UID()]'>Prison</A> | "
+		body += "\ <A href='?_src_=holder;sendbacktolobby=[M.UID()]'>Send back to Lobby</A> | "
 		var/muted = M.client.prefs.muted
 		body += {"<br><b>Mute: </b>
-			\[<A href='?_src_=holder;mute=\ref[M];mute_type=[MUTE_IC]'><font color='[(muted & MUTE_IC)?"red":"blue"]'>IC</font></a> |
-			<A href='?_src_=holder;mute=\ref[M];mute_type=[MUTE_OOC]'><font color='[(muted & MUTE_OOC)?"red":"blue"]'>OOC</font></a> |
-			<A href='?_src_=holder;mute=\ref[M];mute_type=[MUTE_PRAY]'><font color='[(muted & MUTE_PRAY)?"red":"blue"]'>PRAY</font></a> |
-			<A href='?_src_=holder;mute=\ref[M];mute_type=[MUTE_ADMINHELP]'><font color='[(muted & MUTE_ADMINHELP)?"red":"blue"]'>ADMINHELP</font></a> |
-			<A href='?_src_=holder;mute=\ref[M];mute_type=[MUTE_DEADCHAT]'><font color='[(muted & MUTE_DEADCHAT)?"red":"blue"]'>DEADCHAT</font></a>\]
-			(<A href='?_src_=holder;mute=\ref[M];mute_type=[MUTE_ALL]'><font color='[(muted & MUTE_ALL)?"red":"blue"]'>toggle all</font></a>)
+			\[<A href='?_src_=holder;mute=[M.UID()];mute_type=[MUTE_IC]'><font color='[(muted & MUTE_IC)?"red":"blue"]'>IC</font></a> |
+			<A href='?_src_=holder;mute=[M.UID()];mute_type=[MUTE_OOC]'><font color='[(muted & MUTE_OOC)?"red":"blue"]'>OOC</font></a> |
+			<A href='?_src_=holder;mute=[M.UID()];mute_type=[MUTE_PRAY]'><font color='[(muted & MUTE_PRAY)?"red":"blue"]'>PRAY</font></a> |
+			<A href='?_src_=holder;mute=[M.UID()];mute_type=[MUTE_ADMINHELP]'><font color='[(muted & MUTE_ADMINHELP)?"red":"blue"]'>ADMINHELP</font></a> |
+			<A href='?_src_=holder;mute=[M.UID()];mute_type=[MUTE_DEADCHAT]'><font color='[(muted & MUTE_DEADCHAT)?"red":"blue"]'>DEADCHAT</font></a>\]
+			(<A href='?_src_=holder;mute=[M.UID()];mute_type=[MUTE_ALL]'><font color='[(muted & MUTE_ALL)?"red":"blue"]'>toggle all</font></a>)
 		"}
 
 	var/jumptoeye = ""
 	if(isAI(M))
 		var/mob/living/silicon/ai/A = M
 		if(A.client && A.eyeobj) // No point following clientless AI eyes
-			jumptoeye = " <b>(<A href='?_src_=holder;jumpto=\ref[A.eyeobj]'>Eye</A>)</b>"
+			jumptoeye = " <b>(<A href='?_src_=holder;jumpto=[A.eyeobj.UID()]'>Eye</A>)</b>"
 	body += {"<br><br>
-		<A href='?_src_=holder;jumpto=\ref[M]'><b>Jump to</b></A>[jumptoeye] |
-		<A href='?_src_=holder;getmob=\ref[M]'>Get</A> |
-		<A href='?_src_=holder;sendmob=\ref[M]'>Send To</A>
+		<A href='?_src_=holder;jumpto=[M.UID()]'><b>Jump to</b></A>[jumptoeye] |
+		<A href='?_src_=holder;getmob=[M.UID()]'>Get</A> |
+		<A href='?_src_=holder;sendmob=[M.UID()]'>Send To</A>
 		<br><br>
-		[check_rights(R_ADMIN,0) ? "<A href='?_src_=holder;traitor=\ref[M]'>Traitor panel</A> | " : "" ]
-		<A href='?_src_=holder;narrateto=\ref[M]'>Narrate to</A> |
-		<A href='?_src_=holder;subtlemessage=\ref[M]'>Subtle message</A>
+		[check_rights(R_ADMIN,0) ? "[ADMIN_TP(M,"Traitor panel")] | " : "" ]
+		<A href='?_src_=holder;narrateto=[M.UID()]'>Narrate to</A> |
+		[ADMIN_SM(M,"Subtle message")]
 	"}
 
 	if(check_rights(R_EVENT, 0))
 		body += {" | <A href='?_src_=holder;Bless=[M.UID()]'>Bless</A> | <A href='?_src_=holder;Smite=[M.UID()]'>Smite</A>"}
 
 	if(isLivingSSD(M))
-		if(!istype(M.loc, /obj/machinery/cryopod))
+		if(istype(M.loc, /obj/machinery/cryopod))
+			body += {" | <A href='?_src_=holder;cryossd=[M.UID()]'>De-Spawn</A> "}
+		else
 			body += {" | <A href='?_src_=holder;cryossd=[M.UID()]'>Cryo</A> "}
 
 	if(M.client)
@@ -128,39 +156,38 @@ var/global/nologevent = 0
 			if(issmall(M))
 				body += "<B>Monkeyized</B> | "
 			else
-				body += "<A href='?_src_=holder;monkeyone=\ref[M]'>Monkeyize</A> | "
+				body += "<A href='?_src_=holder;monkeyone=[M.UID()]'>Monkeyize</A> | "
 
 			//Corgi
 			if(iscorgi(M))
 				body += "<B>Corgized</B> | "
 			else
-				body += "<A href='?_src_=holder;corgione=\ref[M]'>Corgize</A> | "
+				body += "<A href='?_src_=holder;corgione=[M.UID()]'>Corgize</A> | "
 
 			//AI / Cyborg
 			if(isAI(M))
 				body += "<B>Is an AI</B> "
 			else if(ishuman(M))
-				body += {"<A href='?_src_=holder;makeai=\ref[M]'>Make AI</A> |
-					<A href='?_src_=holder;makemask=\ref[M]'>Make Mask</A> |
-					<A href='?_src_=holder;makerobot=\ref[M]'>Make Robot</A> |
-					<A href='?_src_=holder;makealien=\ref[M]'>Make Alien</A> |
-					<A href='?_src_=holder;makeslime=\ref[M]'>Make Slime</A> |
-					<A href='?_src_=holder;makesuper=\ref[M]'>Make Superhero</A>
+				body += {"<A href='?_src_=holder;makeai=[M.UID()]'>Make AI</A> |
+					<A href='?_src_=holder;makerobot=[M.UID()]'>Make Robot</A> |
+					<A href='?_src_=holder;makealien=[M.UID()]'>Make Alien</A> |
+					<A href='?_src_=holder;makeslime=[M.UID()]'>Make Slime</A> |
+					<A href='?_src_=holder;makesuper=[M.UID()]'>Make Superhero</A>
 				"}
 
 			//Simple Animals
 			if(isanimal(M))
-				body += "<A href='?_src_=holder;makeanimal=\ref[M]'>Re-Animalize</A> | "
+				body += "<A href='?_src_=holder;makeanimal=[M.UID()]'>Re-Animalize</A> | "
 			else
-				body += "<A href='?_src_=holder;makeanimal=\ref[M]'>Animalize</A> | "
+				body += "<A href='?_src_=holder;makeanimal=[M.UID()]'>Animalize</A> | "
 
 			if(istype(M, /mob/dead/observer))
-				body += "<a href='?_src_=holder;incarn_ghost=\ref[M]'>Re-incarnate</a> | "
+				body += "<A href='?_src_=holder;incarn_ghost=[M.UID()]'>Re-incarnate</a> | "
 
 			if(ispAI(M))
 				body += "<B>Is a pAI</B> "
 			else
-				body += "<A href='?_src_=holder;makePAI=\ref[M]'>Make pAI</A> | "
+				body += "<A href='?_src_=holder;makePAI=[M.UID()]'>Make pAI</A> | "
 
 			// DNA2 - Admin Hax
 			if(M.dna && iscarbon(M))
@@ -170,12 +197,12 @@ var/global/nologevent = 0
 				for(var/block=1;block<=DNA_SE_LENGTH;block++)
 					if(((block-1)%5)==0)
 						body += "</tr><tr><th>[block-1]</th>"
-					bname = assigned_blocks[block]
+					bname = GLOB.assigned_blocks[block]
 					body += "<td>"
 					if(bname)
 						var/bstate=M.dna.GetSEState(block)
 						var/bcolor="[(bstate)?"#006600":"#ff0000"]"
-						body += "<A href='?_src_=holder;togmutate=\ref[M];block=[block]' style='color:[bcolor];'>[bname]</A><sub>[block]</sub>"
+						body += "<A href='?_src_=holder;togmutate=[M.UID()];block=[block]' style='color:[bcolor];'>[bname]</A><sub>[block]</sub>"
 					else
 						body += "[block]"
 					body+="</td>"
@@ -183,39 +210,39 @@ var/global/nologevent = 0
 
 			body += {"<br><br>
 				<b>Rudimentary transformation:</b><font size=2><br>These transformations only create a new mob type and copy stuff over. They do not take into account MMIs and similar mob-specific things. The buttons in 'Transformations' are preferred, when possible.</font><br>
-				<A href='?_src_=holder;simplemake=observer;mob=\ref[M]'>Observer</A> |
-				\[ Alien: <A href='?_src_=holder;simplemake=drone;mob=\ref[M]'>Drone</A>,
-				<A href='?_src_=holder;simplemake=hunter;mob=\ref[M]'>Hunter</A>,
-				<A href='?_src_=holder;simplemake=queen;mob=\ref[M]'>Queen</A>,
-				<A href='?_src_=holder;simplemake=sentinel;mob=\ref[M]'>Sentinel</A>,
-				<A href='?_src_=holder;simplemake=larva;mob=\ref[M]'>Larva</A> \]
-				<A href='?_src_=holder;simplemake=human;mob=\ref[M]'>Human</A>
-				\[ slime: <A href='?_src_=holder;simplemake=slime;mob=\ref[M]'>Baby</A>,
-				<A href='?_src_=holder;simplemake=adultslime;mob=\ref[M]'>Adult</A> \]
-				<A href='?_src_=holder;simplemake=monkey;mob=\ref[M]'>Monkey</A> |
-				<A href='?_src_=holder;simplemake=robot;mob=\ref[M]'>Cyborg</A> |
-				<A href='?_src_=holder;simplemake=cat;mob=\ref[M]'>Cat</A> |
-				<A href='?_src_=holder;simplemake=runtime;mob=\ref[M]'>Runtime</A> |
-				<A href='?_src_=holder;simplemake=corgi;mob=\ref[M]'>Corgi</A> |
-				<A href='?_src_=holder;simplemake=ian;mob=\ref[M]'>Ian</A> |
-				<A href='?_src_=holder;simplemake=crab;mob=\ref[M]'>Crab</A> |
-				<A href='?_src_=holder;simplemake=coffee;mob=\ref[M]'>Coffee</A> |
-				\[ Construct: <A href='?_src_=holder;simplemake=constructarmoured;mob=\ref[M]'>Armoured</A> ,
-				<A href='?_src_=holder;simplemake=constructbuilder;mob=\ref[M]'>Builder</A> ,
-				<A href='?_src_=holder;simplemake=constructwraith;mob=\ref[M]'>Wraith</A> \]
-				<A href='?_src_=holder;simplemake=shade;mob=\ref[M]'>Shade</A>
+				<A href='?_src_=holder;simplemake=observer;mob=[M.UID()]'>Observer</A> |
+				\[ Alien: <A href='?_src_=holder;simplemake=drone;mob=[M.UID()]'>Drone</A>,
+				<A href='?_src_=holder;simplemake=hunter;mob=[M.UID()]'>Hunter</A>,
+				<A href='?_src_=holder;simplemake=queen;mob=[M.UID()]'>Queen</A>,
+				<A href='?_src_=holder;simplemake=sentinel;mob=[M.UID()]'>Sentinel</A>,
+				<A href='?_src_=holder;simplemake=larva;mob=[M.UID()]'>Larva</A> \]
+				<A href='?_src_=holder;simplemake=human;mob=[M.UID()]'>Human</A>
+				\[ slime: <A href='?_src_=holder;simplemake=slime;mob=[M.UID()]'>Baby</A>,
+				<A href='?_src_=holder;simplemake=adultslime;mob=[M.UID()]'>Adult</A> \]
+				<A href='?_src_=holder;simplemake=monkey;mob=[M.UID()]'>Monkey</A> |
+				<A href='?_src_=holder;simplemake=robot;mob=[M.UID()]'>Cyborg</A> |
+				<A href='?_src_=holder;simplemake=cat;mob=[M.UID()]'>Cat</A> |
+				<A href='?_src_=holder;simplemake=runtime;mob=[M.UID()]'>Runtime</A> |
+				<A href='?_src_=holder;simplemake=corgi;mob=[M.UID()]'>Corgi</A> |
+				<A href='?_src_=holder;simplemake=ian;mob=[M.UID()]'>Ian</A> |
+				<A href='?_src_=holder;simplemake=crab;mob=[M.UID()]'>Crab</A> |
+				<A href='?_src_=holder;simplemake=coffee;mob=[M.UID()]'>Coffee</A> |
+				\[ Construct: <A href='?_src_=holder;simplemake=constructarmoured;mob=[M.UID()]'>Armoured</A> ,
+				<A href='?_src_=holder;simplemake=constructbuilder;mob=[M.UID()]'>Builder</A> ,
+				<A href='?_src_=holder;simplemake=constructwraith;mob=[M.UID()]'>Wraith</A> \]
+				<A href='?_src_=holder;simplemake=shade;mob=[M.UID()]'>Shade</A>
 			"}
 
 	if(M.client)
 		body += {"<br><br>
 			<b>Other actions:</b>
 			<br>
-			<A href='?_src_=holder;forcespeech=\ref[M]'>Forcesay</A> |
-			<A href='?_src_=holder;aroomwarp=\ref[M]'>Admin Room</A> |
-			<A href='?_src_=holder;tdome1=\ref[M]'>Thunderdome 1</A> |
-			<A href='?_src_=holder;tdome2=\ref[M]'>Thunderdome 2</A> |
-			<A href='?_src_=holder;tdomeadmin=\ref[M]'>Thunderdome Admin</A> |
-			<A href='?_src_=holder;tdomeobserve=\ref[M]'>Thunderdome Observer</A> |
+			<A href='?_src_=holder;forcespeech=[M.UID()]'>Forcesay</A> |
+			<A href='?_src_=holder;aroomwarp=[M.UID()]'>Admin Room</A> |
+			<A href='?_src_=holder;tdome1=[M.UID()]'>Thunderdome 1</A> |
+			<A href='?_src_=holder;tdome2=[M.UID()]'>Thunderdome 2</A> |
+			<A href='?_src_=holder;tdomeadmin=[M.UID()]'>Thunderdome Admin</A> |
+			<A href='?_src_=holder;tdomeobserve=[M.UID()]'>Thunderdome Observer</A> |
 		"}
 
 	body += {"<br>
@@ -250,6 +277,15 @@ var/global/nologevent = 0
 
 	show_note(key)
 
+/datum/admins/proc/vpn_whitelist()
+	set category = "Admin"
+	set name = "VPN Ckey Whitelist"
+	if(!check_rights(R_ADMIN))
+		return
+	var/key = stripped_input(usr, "Enter ckey to add/remove, or leave blank to cancel:", "VPN Whitelist add/remove", max_length=32)
+	if(key)
+		vpn_whitelist_panel(key)
+
 /datum/admins/proc/access_news_network() //MARKER
 	set category = "Event"
 	set name = "Access Newscaster Network"
@@ -270,7 +306,7 @@ var/global/nologevent = 0
 				<BR>Feed channels and stories entered through here will be uneditable and handled as official news by the rest of the units.
 				<BR>Note that this panel allows full freedom over the news network, there are no constrictions except the few basic ones. Don't break things!</FONT>
 			"}
-			if(news_network.wanted_issue)
+			if(GLOB.news_network.wanted_issue)
 				dat+= "<HR><A href='?src=[UID()];ac_view_wanted=1'>Read Wanted Issue</A>"
 
 			dat+= {"<HR><BR><A href='?src=[UID()];ac_create_channel=1'>Create Feed Channel</A>
@@ -280,7 +316,7 @@ var/global/nologevent = 0
 			"}
 
 			var/wanted_already = 0
-			if(news_network.wanted_issue)
+			if(GLOB.news_network.wanted_issue)
 				wanted_already = 1
 
 			dat+={"<HR><B>Feed Security functions:</B><BR>
@@ -291,14 +327,14 @@ var/global/nologevent = 0
 			"}
 		if(1)
 			dat+= "Station Feed Channels<HR>"
-			if( isemptylist(news_network.network_channels) )
+			if( isemptylist(GLOB.news_network.network_channels) )
 				dat+="<I>No active channels found...</I>"
 			else
-				for(var/datum/feed_channel/CHANNEL in news_network.network_channels)
+				for(var/datum/feed_channel/CHANNEL in GLOB.news_network.network_channels)
 					if(CHANNEL.is_admin_channel)
 						dat+="<B><FONT style='BACKGROUND-COLOR: LightGreen'><A href='?src=[UID()];ac_show_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A></FONT></B><BR>"
 					else
-						dat+="<B><A href='?src=[UID()];ac_show_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : ()]<BR></B>"
+						dat+="<B><A href='?src=[UID()];ac_show_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : ""]<BR></B>"
 			dat+={"<BR><HR><A href='?src=[UID()];ac_refresh=1'>Refresh</A>
 				<BR><A href='?src=[UID()];ac_setScreen=[0]'>Back</A>
 			"}
@@ -341,7 +377,7 @@ var/global/nologevent = 0
 			if(src.admincaster_feed_channel.channel_name =="" || src.admincaster_feed_channel.channel_name == "\[REDACTED\]")
 				dat+="<FONT COLOR='maroon'>Invalid channel name.</FONT><BR>"
 			var/check = 0
-			for(var/datum/feed_channel/FC in news_network.network_channels)
+			for(var/datum/feed_channel/FC in GLOB.news_network.network_channels)
 				if(FC.channel_name == src.admincaster_feed_channel.channel_name)
 					check = 1
 					break
@@ -378,11 +414,11 @@ var/global/nologevent = 0
 				Keep in mind that users attempting to view a censored feed will instead see the \[REDACTED\] tag above it.</FONT>
 				<HR>Select Feed channel to get Stories from:<BR>
 			"}
-			if(isemptylist(news_network.network_channels))
+			if(isemptylist(GLOB.news_network.network_channels))
 				dat+="<I>No feed channels found active...</I><BR>"
 			else
-				for(var/datum/feed_channel/CHANNEL in news_network.network_channels)
-					dat+="<A href='?src=[UID()];ac_pick_censor_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : ()]<BR>"
+				for(var/datum/feed_channel/CHANNEL in GLOB.news_network.network_channels)
+					dat+="<A href='?src=[UID()];ac_pick_censor_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : ""]<BR>"
 			dat+="<BR><A href='?src=[UID()];ac_setScreen=[0]'>Cancel</A>"
 		if(11)
 			dat+={"
@@ -391,11 +427,11 @@ var/global/nologevent = 0
 				morale, integrity or disciplinary behaviour. A D-Notice will render a channel unable to be updated by anyone, without deleting any feed
 				stories it might contain at the time. You can lift a D-Notice if you have the required access at any time.</FONT><HR>
 			"}
-			if(isemptylist(news_network.network_channels))
+			if(isemptylist(GLOB.news_network.network_channels))
 				dat+="<I>No feed channels found active...</I><BR>"
 			else
-				for(var/datum/feed_channel/CHANNEL in news_network.network_channels)
-					dat+="<A href='?src=[UID()];ac_pick_d_notice=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : ()]<BR>"
+				for(var/datum/feed_channel/CHANNEL in GLOB.news_network.network_channels)
+					dat+="<A href='?src=[UID()];ac_pick_d_notice=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : ""]<BR>"
 
 			dat+="<BR><A href='?src=[UID()];ac_setScreen=[0]'>Back</A>"
 		if(12)
@@ -434,7 +470,7 @@ var/global/nologevent = 0
 			dat+="<B>Wanted Issue Handler:</B>"
 			var/wanted_already = 0
 			var/end_param = 1
-			if(news_network.wanted_issue)
+			if(GLOB.news_network.wanted_issue)
 				wanted_already = 1
 				end_param = 2
 			if(wanted_already)
@@ -445,7 +481,7 @@ var/global/nologevent = 0
 				<A href='?src=[UID()];ac_set_wanted_desc=1'>Description</A>: [src.admincaster_feed_message.body] <BR>
 			"}
 			if(wanted_already)
-				dat+="<B>Wanted Issue created by:</B><FONT COLOR='green'> [news_network.wanted_issue.backup_author]</FONT><BR>"
+				dat+="<B>Wanted Issue created by:</B><FONT COLOR='green'> [GLOB.news_network.wanted_issue.backup_author]</FONT><BR>"
 			else
 				dat+="<B>Wanted Issue will be created under prosecutor:</B><FONT COLOR='green'> [src.admincaster_signature]</FONT><BR>"
 			dat+="<BR><A href='?src=[UID()];ac_submit_wanted=[end_param]'>[(wanted_already) ? ("Edit Issue") : ("Submit")]</A>"
@@ -471,13 +507,13 @@ var/global/nologevent = 0
 			"}
 		if(18)
 			dat+={"
-				<B><FONT COLOR ='maroon'>-- STATIONWIDE WANTED ISSUE --</B></FONT><BR><FONT SIZE=2>\[Submitted by: <FONT COLOR='green'>[news_network.wanted_issue.backup_author]</FONT>\]</FONT><HR>
-				<B>Criminal</B>: [news_network.wanted_issue.author]<BR>
-				<B>Description</B>: [news_network.wanted_issue.body]<BR>
+				<B><FONT COLOR ='maroon'>-- STATIONWIDE WANTED ISSUE --</B></FONT><BR><FONT SIZE=2>\[Submitted by: <FONT COLOR='green'>[GLOB.news_network.wanted_issue.backup_author]</FONT>\]</FONT><HR>
+				<B>Criminal</B>: [GLOB.news_network.wanted_issue.author]<BR>
+				<B>Description</B>: [GLOB.news_network.wanted_issue.body]<BR>
 				<B>Photo:</B>:
 			"}
-			if(news_network.wanted_issue.img)
-				usr << browse_rsc(news_network.wanted_issue.img, "tmp_photow.png")
+			if(GLOB.news_network.wanted_issue.img)
+				usr << browse_rsc(GLOB.news_network.wanted_issue.img, "tmp_photow.png")
 				dat+="<BR><img src='tmp_photow.png' width = '180'>"
 			else
 				dat+="None"
@@ -500,7 +536,7 @@ var/global/nologevent = 0
 		return
 
 	var/dat = "<B>Job Bans!</B><HR><table>"
-	for(var/t in jobban_keylist)
+	for(var/t in GLOB.jobban_keylist)
 		var/r = t
 		if( findtext(r,"##") )
 			r = copytext( r, 1, findtext(r,"##") )//removes the description
@@ -516,7 +552,7 @@ var/global/nologevent = 0
 		<center><B>Game Panel</B></center><hr>\n
 		<A href='?src=[UID()];c_mode=1'>Change Game Mode</A><br>
 		"}
-	if(master_mode == "secret")
+	if(GLOB.master_mode == "secret")
 		dat += "<A href='?src=[UID()];f_secret=1'>(Force Secret Mode)</A><br>"
 
 	dat += {"
@@ -549,7 +585,7 @@ var/global/nologevent = 0
 		delay = delay * 10
 	message_admins("[key_name_admin(usr)] has initiated a server restart with a delay of [delay/10] seconds")
 	log_admin("[key_name(usr)] has initiated a server restart with a delay of [delay/10] seconds")
-	ticker.delay_end = 0
+	SSticker.delay_end = 0
 	feedback_add_details("admin_verb","R") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 	world.Reboot("Initiated by [usr.client.holder.fakekey ? "Admin" : usr.key].", "end_error", "admin reboot - by [usr.key] [usr.client.holder.fakekey ? "(stealth)" : ""]", delay)
 
@@ -649,18 +685,26 @@ var/global/nologevent = 0
 	if(!check_rights(R_SERVER))
 		return
 
-	if(!ticker)
+	if(!SSticker)
 		alert("Unable to start the game as it is not set up.")
 		return
-	if(ticker.current_state == GAME_STATE_PREGAME)
-		ticker.current_state = GAME_STATE_SETTING_UP
-		log_admin("[key_name(usr)] has started the game.")
-		message_admins("[key_name_admin(usr)] has started the game.")
+
+	if(config.start_now_confirmation)
+		if(alert(usr, "This is a live server. Are you sure you want to start now?", "Start game", "Yes", "No") != "Yes")
+			return
+
+	if(SSticker.current_state == GAME_STATE_PREGAME || SSticker.current_state == GAME_STATE_STARTUP)
+		SSticker.force_start = TRUE
+		log_admin("[usr.key] has started the game.")
+		var/msg = ""
+		if(SSticker.current_state == GAME_STATE_STARTUP)
+			msg = " (The server is still setting up, but the round will be started as soon as possible.)"
+		message_admins("<font color='blue'>[usr.key] has started the game.[msg]</font>")
 		feedback_add_details("admin_verb","SN") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 		return 1
 	else
 		to_chat(usr, "<font color='red'>Error: Start Now: Game has already started.</font>")
-		return 0
+		return
 
 /datum/admins/proc/toggleenter()
 	set category = "Server"
@@ -670,8 +714,8 @@ var/global/nologevent = 0
 	if(!check_rights(R_SERVER))
 		return
 
-	enter_allowed = !( enter_allowed )
-	if(!( enter_allowed ))
+	GLOB.enter_allowed = !( GLOB.enter_allowed )
+	if(!( GLOB.enter_allowed ))
 		to_chat(world, "<B>New players may no longer enter the game.</B>")
 	else
 		to_chat(world, "<B>New players may now enter the game.</B>")
@@ -706,13 +750,13 @@ var/global/nologevent = 0
 	if(!check_rights(R_SERVER))
 		return
 
-	abandon_allowed = !( abandon_allowed )
-	if(abandon_allowed)
+	GLOB.abandon_allowed = !( GLOB.abandon_allowed )
+	if(GLOB.abandon_allowed)
 		to_chat(world, "<B>You may now respawn.</B>")
 	else
 		to_chat(world, "<B>You may no longer respawn :(</B>")
-	message_admins("[key_name_admin(usr)] toggled respawn to [abandon_allowed ? "On" : "Off"].", 1)
-	log_admin("[key_name(usr)] toggled respawn to [abandon_allowed ? "On" : "Off"].")
+	message_admins("[key_name_admin(usr)] toggled respawn to [GLOB.abandon_allowed ? "On" : "Off"].", 1)
+	log_admin("[key_name(usr)] toggled respawn to [GLOB.abandon_allowed ? "On" : "Off"].")
 	world.update_status()
 	feedback_add_details("admin_verb","TR") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
@@ -724,9 +768,9 @@ var/global/nologevent = 0
 	if(!check_rights(R_EVENT))
 		return
 
-	aliens_allowed = !aliens_allowed
-	log_admin("[key_name(usr)] toggled aliens to [aliens_allowed].")
-	message_admins("[key_name_admin(usr)] toggled aliens [aliens_allowed ? "on" : "off"].")
+	GLOB.aliens_allowed = !GLOB.aliens_allowed
+	log_admin("[key_name(usr)] toggled aliens to [GLOB.aliens_allowed].")
+	message_admins("[key_name_admin(usr)] toggled aliens [GLOB.aliens_allowed ? "on" : "off"].")
 	feedback_add_details("admin_verb","TA") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /datum/admins/proc/delay()
@@ -737,16 +781,18 @@ var/global/nologevent = 0
 	if(!check_rights(R_SERVER))
 		return
 
-	if(!ticker || ticker.current_state != GAME_STATE_PREGAME)
-		ticker.delay_end = !ticker.delay_end
-		log_admin("[key_name(usr)] [ticker.delay_end ? "delayed the round end" : "has made the round end normally"].")
-		message_admins("[key_name(usr)] [ticker.delay_end ? "delayed the round end" : "has made the round end normally"].", 1)
+	if(!SSticker || SSticker.current_state != GAME_STATE_PREGAME)
+		SSticker.delay_end = !SSticker.delay_end
+		log_admin("[key_name(usr)] [SSticker.delay_end ? "delayed the round end" : "has made the round end normally"].")
+		message_admins("[key_name(usr)] [SSticker.delay_end ? "delayed the round end" : "has made the round end normally"].", 1)
 		return //alert("Round end delayed", null, null, null, null, null)
-	going = !( going )
-	if(!( going ))
+	if(SSticker.ticker_going)
+		SSticker.ticker_going = FALSE
+		SSticker.delay_end = TRUE
 		to_chat(world, "<b>The game start has been delayed.</b>")
 		log_admin("[key_name(usr)] delayed the game.")
 	else
+		SSticker.ticker_going = TRUE
 		to_chat(world, "<b>The game will start soon.</b>")
 		log_admin("[key_name(usr)] removed the delay.")
 	feedback_add_details("admin_verb","DELAY") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
@@ -754,32 +800,32 @@ var/global/nologevent = 0
 ////////////////////////////////////////////////////////////////////////////////////////////////ADMIN HELPER PROCS
 
 /proc/is_special_character(mob/M as mob) // returns 1 for specail characters and 2 for heroes of gamemode
-	if(!ticker || !ticker.mode)
+	if(!SSticker || !SSticker.mode)
 		return 0
 	if(!istype(M))
 		return 0
-	if((M.mind in ticker.mode.head_revolutionaries) || (M.mind in ticker.mode.revolutionaries))
-		if(ticker.mode.config_tag == "revolution")
+	if((M.mind in SSticker.mode.head_revolutionaries) || (M.mind in SSticker.mode.revolutionaries))
+		if(SSticker.mode.config_tag == "revolution")
 			return 2
 		return 1
-	if(M.mind in ticker.mode.cult)
-		if(ticker.mode.config_tag == "cult")
+	if(M.mind in SSticker.mode.cult)
+		if(SSticker.mode.config_tag == "cult")
 			return 2
 		return 1
-	if(M.mind in ticker.mode.syndicates)
-		if(ticker.mode.config_tag == "nuclear")
+	if(M.mind in SSticker.mode.syndicates)
+		if(SSticker.mode.config_tag == "nuclear")
 			return 2
 		return 1
-	if(M.mind in ticker.mode.wizards)
-		if(ticker.mode.config_tag == "wizard")
+	if(M.mind in SSticker.mode.wizards)
+		if(SSticker.mode.config_tag == "wizard")
 			return 2
 		return 1
-	if(M.mind in ticker.mode.changelings)
-		if(ticker.mode.config_tag == "changeling")
+	if(M.mind in SSticker.mode.changelings)
+		if(SSticker.mode.config_tag == "changeling")
 			return 2
 		return 1
-	if(M.mind in ticker.mode.abductors)
-		if(ticker.mode.config_tag == "abduction")
+	if(M.mind in SSticker.mode.abductors)
+		if(SSticker.mode.config_tag == "abduction")
 			return 2
 		return 1
 	if(isrobot(M))
@@ -827,7 +873,7 @@ var/global/nologevent = 0
 	log_admin("[key_name(usr)] spawned [chosen] at ([usr.x],[usr.y],[usr.z])")
 	feedback_add_details("admin_verb","SA") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
-/datum/admins/proc/show_traitor_panel(var/mob/M in mob_list)
+/datum/admins/proc/show_traitor_panel(var/mob/M in GLOB.mob_list)
 	set category = "Admin"
 	set desc = "Edit mobs's memory and role"
 	set name = "Show Traitor Panel"
@@ -853,18 +899,18 @@ var/global/nologevent = 0
 	if(!check_rights(R_SERVER))
 		return
 
-	guests_allowed = !( guests_allowed )
-	if(!( guests_allowed ))
+	GLOB.guests_allowed = !( GLOB.guests_allowed )
+	if(!( GLOB.guests_allowed ))
 		to_chat(world, "<B>Guests may no longer enter the game.</B>")
 	else
 		to_chat(world, "<B>Guests may now enter the game.</B>")
-	log_admin("[key_name(usr)] toggled guests game entering [guests_allowed ? "" : "dis"]allowed.")
-	message_admins("<span class='notice'>[key_name_admin(usr)] toggled guests game entering [guests_allowed ? "" : "dis"]allowed.</span>", 1)
+	log_admin("[key_name(usr)] toggled guests game entering [GLOB.guests_allowed ? "" : "dis"]allowed.")
+	message_admins("<span class='notice'>[key_name_admin(usr)] toggled guests game entering [GLOB.guests_allowed ? "" : "dis"]allowed.</span>", 1)
 	feedback_add_details("admin_verb","TGU") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /datum/admins/proc/output_ai_laws()
 	var/ai_number = 0
-	for(var/mob/living/silicon/S in mob_list)
+	for(var/mob/living/silicon/S in GLOB.mob_list)
 		ai_number++
 		if(isAI(S))
 			to_chat(usr, "<b>AI [key_name(S, TRUE)]'s laws:</b>")
@@ -893,9 +939,9 @@ var/global/nologevent = 0
 	message_admins("[key_name_admin(usr)] checked the AI laws")
 
 /client/proc/update_mob_sprite(mob/living/carbon/human/H as mob)
-	set category = "Admin"
 	set name = "Update Mob Sprite"
 	set desc = "Should fix any mob sprite update errors."
+	set category = null
 
 	if(!check_rights(R_ADMIN))
 		return
@@ -908,12 +954,12 @@ var/global/nologevent = 0
 //ALL DONE
 //*********************************************************************************************************
 
-var/gamma_ship_location = 1 // 0 = station , 1 = space
+GLOBAL_VAR_INIT(gamma_ship_location, 1) // 0 = station , 1 = space
 
 /proc/move_gamma_ship()
 	var/area/fromArea
 	var/area/toArea
-	if(gamma_ship_location == 1)
+	if(GLOB.gamma_ship_location == 1)
 		fromArea = locate(/area/shuttle/gamma/space)
 		toArea = locate(/area/shuttle/gamma/station)
 	else
@@ -924,13 +970,10 @@ var/gamma_ship_location = 1 // 0 = station , 1 = space
 	for(var/obj/machinery/mech_bay_recharge_port/P in toArea)
 		P.update_recharge_turf()
 
-	for(var/obj/machinery/power/apc/A in toArea)
-		A.init()
-
-	if(gamma_ship_location)
-		gamma_ship_location = 0
+	if(GLOB.gamma_ship_location)
+		GLOB.gamma_ship_location = 0
 	else
-		gamma_ship_location = 1
+		GLOB.gamma_ship_location = 1
 	return
 
 /proc/formatJumpTo(var/location,var/where="")
@@ -953,14 +996,14 @@ var/gamma_ship_location = 1 // 0 = station , 1 = space
 	return "[A.name] - [loc.x],[loc.y],[loc.z]"
 
 /proc/formatPlayerPanel(var/mob/U,var/text="PP")
-	return "<A HREF='?_src_=holder;adminplayeropts=\ref[U]'>[text]</A>"
+	return "[ADMIN_PP(U,"[text]")]"
 
 //Kicks all the clients currently in the lobby. The second parameter (kick_only_afk) determins if an is_afk() check is ran, or if all clients are kicked
 //defaults to kicking everyone (afk + non afk clients in the lobby)
 //returns a list of ckeys of the kicked clients
 /proc/kick_clients_in_lobby(message, kick_only_afk = 0)
 	var/list/kicked_client_names = list()
-	for(var/client/C in clients)
+	for(var/client/C in GLOB.clients)
 		if(istype(C.mob, /mob/new_player))
 			if(kick_only_afk && !C.is_afk())	//Ignore clients who are not afk
 				continue
@@ -1037,7 +1080,7 @@ var/gamma_ship_location = 1 // 0 = station , 1 = space
 // result[3] is the number of staff that match the rank mask and are inactive
 /proc/staff_countup(rank_mask = R_BAN)
 	var/list/result = list(0, 0, 0)
-	for(var/client/X in admins)
+	for(var/client/X in GLOB.admins)
 		if(rank_mask && !check_rights_for(X, rank_mask))
 			result[2]++
 			continue

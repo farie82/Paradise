@@ -89,7 +89,7 @@
 	icon_state = "default"
 	name = "Alert"
 	desc = "Something seems to have gone wrong with this alert, so report this bug please"
-	mouse_opacity = 1
+	mouse_opacity = MOUSE_OPACITY_ICON
 	var/timeout = 0 //If set to a number, this alert will clear itself after that many deciseconds
 	var/severity = 0
 	var/alerttooltipstyle = ""
@@ -176,6 +176,41 @@
 	name = "Starving"
 	desc = "You're severely malnourished. The hunger pains make moving around a chore."
 	icon_state = "starving"
+
+///Vampire "hunger"
+
+/obj/screen/alert/fat/vampire
+	name = "Fat"
+	desc = "You somehow drank too much blood, lardass. Run around the station and lose some weight."
+	icon_state = "v_fat"
+
+/obj/screen/alert/full/vampire
+	name = "Full"
+	desc = "You feel full and satisfied, but you know you will thirst for more blood soon..."
+	icon_state = "v_full"
+
+/obj/screen/alert/well_fed/vampire
+	name = "Well Fed"
+	desc = "You feel quite satisfied, but you could do with a bit more blood."
+	icon_state = "v_well_fed"
+
+/obj/screen/alert/fed/vampire
+	name = "Fed"
+	desc = "You feel moderately satisfied, but a bit more blood wouldn't hurt."
+	icon_state = "v_fed"
+
+/obj/screen/alert/hungry/vampire
+	name = "Hungry"
+	desc = "You currently thirst for blood."
+	icon_state = "v_hungry"
+
+/obj/screen/alert/starving/vampire
+	name = "Starving"
+	desc = "You're severely thirsty. The thirst pains make moving around a chore."
+	icon_state = "v_starving"
+
+//End of Vampire "hunger"
+
 
 /obj/screen/alert/hot
 	name = "Too Hot"
@@ -315,6 +350,18 @@ Recharging stations are available in robotics, the dormitory bathrooms, and the 
 	desc = "Unit's power cell is running low. Recharging stations are available in robotics, the dormitory bathrooms, and the AI satellite."
 	icon_state = "lowcell"
 
+//Diona Nymph
+/obj/screen/alert/nymph
+	name = "Gestalt merge"
+	desc = "You have merged with a diona gestalt and are now part of it's biomass. You can still wiggle yourself free though."
+
+/obj/screen/alert/nymph/Click()
+	if(!usr || !usr.client)
+		return
+	if(isnymph(usr))
+		var/mob/living/simple_animal/diona/D = usr
+		return D.resist()
+
 //Need to cover all use cases - emag, illegal upgrade module, malf AI hack, traitor cyborg
 /obj/screen/alert/hacked
 	name = "Hacked"
@@ -358,11 +405,67 @@ so as to remain in compliance with the most up-to-date laws."
 		AI.eyeobj.setLoc(T)
 
 //MECHS
-
 /obj/screen/alert/low_mech_integrity
 	name = "Mech Damaged"
 	desc = "Mech integrity is low."
 	icon_state = "low_mech_integrity"
+
+/obj/screen/alert/mech_port_available
+	name = "Connect to Port"
+	desc = "Click here to connect to an air port and refill your oxygen!"
+	icon_state = "mech_port"
+	var/obj/machinery/atmospherics/unary/portables_connector/target = null
+
+/obj/screen/alert/mech_port_available/Destroy()
+	target = null
+	return ..()
+
+/obj/screen/alert/mech_port_available/Click()
+	if(!usr || !usr.client)
+		return
+	if(!istype(usr.loc, /obj/mecha) || !target)
+		return
+	var/obj/mecha/M = usr.loc
+	if(M.connect(target))
+		to_chat(usr, "<span class='notice'>[M] connects to the port.</span>")
+	else
+		to_chat(usr, "<span class='notice'>[M] failed to connect to the port.</span>")
+
+/obj/screen/alert/mech_port_disconnect
+	name = "Disconnect from Port"
+	desc = "Click here to disconnect from your air port."
+	icon_state = "mech_port_x"
+
+/obj/screen/alert/mech_port_disconnect/Click()
+	if(!usr || !usr.client)
+		return
+	if(!istype(usr.loc, /obj/mecha))
+		return
+	var/obj/mecha/M = usr.loc
+	if(M.disconnect())
+		to_chat(usr, "<span class='notice'>[M] disconnects from the port.</span>")
+	else
+		to_chat(usr, "<span class='notice'>[M] is not connected to a port at the moment.</span>")
+
+/obj/screen/alert/mech_nocell
+	name = "Missing Power Cell"
+	desc = "Mech has no power cell."
+	icon_state = "nocell"
+
+/obj/screen/alert/mech_emptycell
+	name = "Out of Power"
+	desc = "Mech is out of power."
+	icon_state = "emptycell"
+
+/obj/screen/alert/mech_lowcell
+	name = "Low Charge"
+	desc = "Mech is running out of power."
+	icon_state = "lowcell"
+
+/obj/screen/alert/mech_maintenance
+	name = "Maintenance Protocols"
+	desc = "Maintenance protocols are currently in effect, most actions disabled."
+	icon_state = "locked"
 
 //GUARDIANS
 /obj/screen/alert/cancharge
@@ -454,6 +557,7 @@ so as to remain in compliance with the most up-to-date laws."
 /obj/screen/alert/restrained/buckled
 	name = "Buckled"
 	desc = "You've been buckled to something. Click the alert to unbuckle unless you're handcuffed."
+	icon_state = "buckled"
 
 /obj/screen/alert/restrained/handcuffed
 	name = "Handcuffed"
@@ -467,6 +571,15 @@ so as to remain in compliance with the most up-to-date laws."
 	if(isliving(usr))
 		var/mob/living/L = usr
 		return L.resist()
+
+/obj/screen/alert/restrained/buckled/Click()
+	var/mob/living/L = usr
+	if(!istype(L) || !L.can_resist())
+		return
+	L.changeNext_move(CLICK_CD_RESIST)
+	if(L.last_special <= world.time)
+		return L.resist_buckle()
+
 // PRIVATE = only edit, use, or override these if you're editing the system as a whole
 
 // Re-render all alerts - also called in /datum/hud/show_hud() because it's needed there

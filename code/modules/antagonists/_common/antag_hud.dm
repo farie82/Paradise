@@ -1,5 +1,5 @@
 /datum/atom_hud/antag
-	hud_icons = list(SPECIALROLE_HUD,NATIONS_HUD)
+	hud_icons = list(SPECIALROLE_HUD)
 	var/self_visible = TRUE
 
 /datum/atom_hud/antag/hidden
@@ -38,16 +38,6 @@
 	if(M.mind || new_icon_state) //in mindless mobs, only null is acceptable, otherwise we're antagging a mindless mob, meaning we should runtime
 		M.mind.antag_hud_icon_state = new_icon_state
 
-//Nations Icons
-/proc/set_nations_hud(mob/M, new_icon_state)
-	if(!istype(M))
-		CRASH("set_antag_hud(): [M] ([M.type]) is not a mob!")
-	var/image/holder = M.hud_list[NATIONS_HUD]
-	if(holder)
-		holder.icon_state = new_icon_state
-	if(M.mind || new_icon_state) //in mindless mobs, only null is acceptable, otherwise we're antagging a mindless mob, meaning we should runtime
-		M.mind.antag_hud_icon_state = new_icon_state
-
 //MIND PROCS
 //these are called by mind.transfer_to()
 /datum/mind/proc/transfer_antag_huds(datum/atom_hud/antag/newhud)
@@ -57,11 +47,11 @@
 		newhud.join_hud(current)
 
 /datum/mind/proc/leave_all_huds()
-	for(var/datum/atom_hud/antag/hud in huds)
+	for(var/datum/atom_hud/antag/hud in GLOB.huds)
 		if(current in hud.hudusers)
 			hud.leave_hud(current)
 
-	for(var/datum/atom_hud/data/hud in huds)
+	for(var/datum/atom_hud/data/hud in GLOB.huds)
 		if(current in hud.hudusers)
 			hud.remove_hud_from(current)
 

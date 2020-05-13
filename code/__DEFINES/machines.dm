@@ -32,11 +32,6 @@
 
 #define HYDRO_SPEED_MULTIPLIER 1
 
-// multitool_topic() shit
-#define MT_ERROR  -1
-#define MT_UPDATE 1
-#define MT_REINIT 2
-
 //Modular computer/NTNet defines
 
 //Modular computer part defines
@@ -93,3 +88,7 @@
 #define SUPERMATTER_DANGER 4		// Integrity < 75%
 #define SUPERMATTER_EMERGENCY 5		// Integrity < 50%
 #define SUPERMATTER_DELAMINATING 6	// Pretty obvious, Integrity < 25%
+
+// Firelock states
+#define FD_OPEN 1
+#define FD_CLOSED 2

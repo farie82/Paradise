@@ -29,6 +29,12 @@
 	icon_state = "r-casing"
 	projectile_type = /obj/item/projectile/bullet/weakbullet2
 
+/obj/item/ammo_casing/c38/invisible
+	projectile_type = /obj/item/projectile/bullet/weakbullet2/invisible
+
+/obj/item/ammo_casing/c38/invisible/fake
+	projectile_type = /obj/item/projectile/bullet/weakbullet2/invisible/fake
+
 /obj/item/ammo_casing/c10mm
 	desc = "A 10mm bullet casing."
 	caliber = "10mm"
@@ -87,7 +93,7 @@
 	desc = "A .45 rubber bullet casing."
 	caliber = ".45"
 	icon_state = "r-casing"
-	projectile_type = /obj/item/projectile/bullet/weakbullet4
+	projectile_type = /obj/item/projectile/bullet/midbullet_r
 
 /obj/item/ammo_casing/c45
 	desc = "A .45 bullet casing."
@@ -118,6 +124,7 @@
 	desc = "A 12 gauge lead slug."
 	icon_state = "blshell"
 	caliber = "shotgun"
+	drop_sound = 'sound/weapons/gun_interactions/shotgun_fall.ogg'
 	projectile_type = /obj/item/projectile/bullet
 	materials = list(MAT_METAL=4000)
 
@@ -242,11 +249,11 @@
 	name = "shotgun dart"
 	desc = "A dart for use in shotguns. Can be injected with up to 30 units of any chemical."
 	icon_state = "cshell"
+	container_type = OPENCONTAINER
 	projectile_type = /obj/item/projectile/bullet/dart
 
 /obj/item/ammo_casing/shotgun/dart/New()
 	..()
-	flags |= OPENCONTAINER
 	create_reagents(30)
 
 /obj/item/ammo_casing/shotgun/dart/attackby()
@@ -291,7 +298,7 @@
 /obj/item/ammo_casing/caseless
 	desc = "A caseless bullet casing."
 
-/obj/item/ammo_casing/caseless/fire(atom/target as mob|obj|turf, mob/living/user as mob|obj, params, distro, quiet)
+/obj/item/ammo_casing/caseless/fire(atom/target as mob|obj|turf, mob/living/user as mob|obj, params, distro, quiet, zone_override = "", spread)
 	if(..())
 		loc = null
 		return 1
@@ -318,6 +325,7 @@
 	icon = 'icons/obj/guns/toy.dmi'
 	icon_state = "foamdart"
 	var/modified = 0
+	harmful = FALSE
 
 /obj/item/ammo_casing/caseless/foam_dart/update_icon()
 	..()
@@ -341,7 +349,9 @@
 	else if((istype(A, /obj/item/pen)) && modified && !FD.pen)
 		if(!user.unEquip(A))
 			return
+		harmful = TRUE
 		A.loc = FD
+		FD.log_override = FALSE
 		FD.pen = A
 		FD.damage = 5
 		FD.nodamage = 0
@@ -363,16 +373,43 @@
 	projectile_type = /obj/item/projectile/bullet/reusable/foam_dart/riot
 	icon_state = "foamdart_riot"
 
-/obj/item/ammo_casing/shotgun/dart/assassination
-	desc = "A specialist shotgun dart designed to inncapacitate and kill the target over time, so you can get very far away from your target"
+/obj/item/ammo_casing/caseless/foam_dart/sniper
+	name = "foam sniper dart"
+	desc = "For the big nerf! Ages 8 and up."
+	caliber = "foam_force_sniper"
+	projectile_type = /obj/item/projectile/bullet/reusable/foam_dart/sniper
+	icon_state = "foamdartsniper"
 
-/obj/item/ammo_casing/shotgun/dart/assassination/New()
+/obj/item/ammo_casing/caseless/foam_dart/sniper/update_icon()
 	..()
-	reagents.add_reagent("neurotoxin", 6)
+	if(modified)
+		icon_state = "foamdartsniper_empty"
+		desc = "Its nerf or nothing! ... Although, this one doesn't look too safe."
+		if(BB)
+			BB.icon_state = "foamdartsniper_empty"
+	else
+		icon_state = initial(icon_state)
+		if(BB)
+			BB.icon_state = initial(BB.icon_state)
+
+/obj/item/ammo_casing/caseless/foam_dart/sniper/riot
+	name = "riot foam sniper dart"
+	desc = "For the bigger brother of the crowd control toy. Ages 18 and up."
+	caliber = "foam_force_sniper"
+	projectile_type = /obj/item/projectile/bullet/reusable/foam_dart/sniper/riot
+	icon_state = "foamdartsniper_riot"
+
+/obj/item/ammo_casing/shotgun/assassination
+	name = "assassination shell"
+	desc = "A specialist shrapnel shell that has been laced with a silencing toxin."
+	projectile_type = /obj/item/projectile/bullet/pellet/assassination
+	icon_state = "gshell"
+	pellets = 6
+	variance = 25
 
 /obj/item/ammo_casing/cap
 	desc = "A cap for children toys."
-	caliber = "caps"
+	caliber = "cap"
 	projectile_type = /obj/item/projectile/bullet/cap
 
 /obj/item/ammo_casing/laser

@@ -63,7 +63,7 @@
 //Sleeping in here prevents future fires until returned.
 /datum/controller/subsystem/proc/fire(resumed = 0)
 	flags |= SS_NO_FIRE
-	throw EXCEPTION("Subsystem [src]([type]) does not fire() but did not set the SS_NO_FIRE flag. Please add the SS_NO_FIRE flag to any subsystem that doesn't fire so it doesn't get added to the processing list and waste cpu.")
+	CRASH("Subsystem [src]([type]) does not fire() but did not set the SS_NO_FIRE flag. Please add the SS_NO_FIRE flag to any subsystem that doesn't fire so it doesn't get added to the processing list and waste cpu.")
 
 /datum/controller/subsystem/Destroy()
 	dequeue()
@@ -168,7 +168,9 @@
 //hook for printing stats to the "MC" statuspanel for admins to see performance and related stats etc.
 /datum/controller/subsystem/stat_entry(msg)
 	if(!statclick)
-		statclick = new/obj/effect/statclick/debug(src, "Initializing...")
+		statclick = new/obj/effect/statclick/debug(null, "Initializing...", src)
+
+
 
 	if(can_fire && !(SS_NO_FIRE & flags))
 		msg = "[round(cost, 1)]ms | [round(tick_usage, 1)]%([round(tick_overrun, 1)]%) | [round(ticks, 0.1)]\t[msg]"
@@ -177,7 +179,7 @@
 
 	var/title = name
 	if(can_fire)
-		title = "\[[state_letter()]][title]"
+		title = "[state_colour()]\[[state_letter()]][title]</font>"
 
 	stat(title, statclick.update(msg))
 
@@ -194,6 +196,18 @@
 		if(SS_IDLE)
 			. = "  "
 
+/datum/controller/subsystem/proc/state_colour()
+	switch(state)
+		if(SS_RUNNING) // If its actively processing, colour it green
+			. = "<font color='#32a852'>"
+		if(SS_QUEUED) // If its in the running queue, but delayed, colour it orange
+			. = "<font color='#fcba03'>"
+		if(SS_PAUSED, SS_PAUSING) // If its being paused due to lag, colour it red
+			. = "<font color='#eb4034'>"
+		if(SS_SLEEPING) // If fire() slept, colour it blue
+			. = "<font color='#4287f5'>"
+		if(SS_IDLE) // Leave it default if the SS is idle
+			. = "<font>"
 //could be used to postpone a costly subsystem for (default one) var/cycles, cycles
 //for instance, during cpu intensive operations like explosions
 /datum/controller/subsystem/proc/postpone(cycles = 1)

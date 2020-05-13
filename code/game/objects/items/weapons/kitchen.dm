@@ -8,11 +8,16 @@
  *		Butcher's cleaver
  *		Rolling Pins
  *		Candy Moulds
+ *		Sushi Mat
+ *		Circular cutter
  */
 
 /obj/item/kitchen
 	icon = 'icons/obj/kitchen.dmi'
 	origin_tech = "materials=1"
+
+
+
 
 /*
  * Utensils
@@ -26,22 +31,23 @@
 	flags = CONDUCT
 	attack_verb = list("attacked", "stabbed", "poked")
 	hitsound = 'sound/weapons/bladeslice.ogg'
+	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 30)
 	sharp = 0
 	var/max_contents = 1
 
 /obj/item/kitchen/utensil/New()
+	..()
 	if(prob(60))
 		src.pixel_y = rand(0, 4)
 
 	create_reagents(5)
-	return
 
 /obj/item/kitchen/utensil/attack(mob/living/carbon/M as mob, mob/living/carbon/user as mob)
 	if(!istype(M))
 		return ..()
 
 	if(user.a_intent != INTENT_HELP)
-		if(user.zone_sel.selecting == "head" || user.zone_sel.selecting == "eyes")
+		if(user.zone_selected == "head" || user.zone_selected == "eyes")
 			if((CLUMSY in user.mutations) && prob(50))
 				M = user
 			return eyestab(M,user)
@@ -110,13 +116,15 @@
 	throw_range = 6
 	materials = list(MAT_METAL=12000)
 	attack_verb = list("slashed", "stabbed", "sliced", "torn", "ripped", "diced", "cut")
-	sharp = 1
+	sharp = TRUE
+	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 50)
+	var/bayonet = FALSE	//Can this be attached to a gun?
 
 /obj/item/kitchen/knife/suicide_act(mob/user)
 	user.visible_message(pick("<span class='suicide'>[user] is slitting [user.p_their()] wrists with the [src.name]! It looks like [user.p_theyre()] trying to commit suicide.</span>", \
 						"<span class='suicide'>[user] is slitting [user.p_their()] throat with the [src.name]! It looks like [user.p_theyre()] trying to commit suicide.</span>", \
 						"<span class='suicide'>[user] is slitting [user.p_their()] stomach open with the [name]! It looks like [user.p_theyre()] trying to commit seppuku.</span>"))
-	return (BRUTELOSS)
+	return BRUTELOSS
 
 /obj/item/kitchen/knife/plastic
 	name = "plastic knife"
@@ -143,12 +151,11 @@
 	w_class = WEIGHT_CLASS_NORMAL
 
 /obj/item/kitchen/knife/butcher/meatcleaver
-	name = "Meat Cleaver"
+	name = "meat cleaver"
 	icon_state = "mcleaver"
 	item_state = "butch"
-	desc = "A huge thing used for chopping and chopping up meat. This includes clowns and clown-by-products."
-	force = 25.0
-	throwforce = 15.0
+	force = 25
+	throwforce = 15
 
 /obj/item/kitchen/knife/combat
 	name = "combat knife"
@@ -159,6 +166,23 @@
 	throwforce = 20
 	origin_tech = "materials=3;combat=4"
 	attack_verb = list("slashed", "stabbed", "sliced", "torn", "ripped", "cut")
+	bayonet = TRUE
+
+/obj/item/kitchen/knife/combat/survival
+	name = "survival knife"
+	icon_state = "survivalknife"
+	desc = "A hunting grade survival knife."
+	force = 15
+	throwforce = 15
+
+/obj/item/kitchen/knife/combat/survival/bone
+	name = "bone dagger"
+	item_state = "bone_dagger"
+	icon_state = "bone_dagger"
+	lefthand_file = 'icons/mob/inhands/items_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/items_righthand.dmi'
+	desc = "A sharpened bone. The bare minimum in survival."
+	materials = list()
 
 /obj/item/kitchen/knife/combat/cyborg
 	name = "cyborg knife"
@@ -177,6 +201,8 @@
 	materials = list()
 	origin_tech = "biotech=3;combat=2"
 	attack_verb = list("shanked", "shivved")
+	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 0, "acid" = 0)
+
 
 /*
  * Rolling Pins
@@ -249,3 +275,33 @@
 	name = "sucker mould"
 	desc = "It has the shape of a sucker imprinted into it."
 	icon_state = "mould_loli"
+
+/*
+ * Sushi Mat
+ */
+/obj/item/kitchen/sushimat
+	name = "Sushi Mat"
+	desc = "A wooden mat used for efficient sushi crafting."
+	icon_state = "sushi_mat"
+	force = 5
+	throwforce = 5
+	throw_speed = 3
+	throw_range = 3
+	w_class = WEIGHT_CLASS_SMALL
+	attack_verb = list("rolled", "cracked", "battered", "thrashed")
+
+
+
+/// circular cutter by Ume
+
+/obj/item/kitchen/cutter
+	name = "generic circular cutter"
+	desc = "A generic circular cutter for cookies and other things."
+	icon = 'icons/obj/kitchen.dmi'
+	icon_state = "circular_cutter"
+	force = 5
+	throwforce = 5
+	throw_speed = 3
+	throw_range = 3
+	w_class = WEIGHT_CLASS_SMALL
+	attack_verb = list("bashed", "slashed", "pricked", "thrashed")

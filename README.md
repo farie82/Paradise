@@ -8,7 +8,7 @@
 [![forthebadge](http://forthebadge.com/images/badges/contains-technical-debt.svg)](http://forthebadge.com)
 [![forthebadge](http://forthebadge.com/images/badges/fuck-it-ship-it.svg)](http://forthebadge.com)
 
-[Website](https://nanotrasen.se/) - [Code](https://github.com/ParadiseSS13/Paradise) - [Discord](https://discordapp.com/invite/gXZMc?utm_source=Discord%20Widget&utm_medium=Connect)
+[Website](https://www.paradisestation.org/) - [Code](https://github.com/ParadiseSS13/Paradise) - [Discord](https://discordapp.com/invite/YJDsXFE)
 
 ---
 
@@ -70,6 +70,16 @@ Make sure to set the port to the one you specified in the config.txt,
 and set the Security box to 'Trusted'.  
 Then press GO and the server should start up and be ready to join.
 
+### Installation (Linux)
+
+The code is able to run on Linux server side, however the libraries for MySQL and logging do require extra packages.
+
+For MySQL, run the following: `apt-get install libmysqlclient-dev:i386`
+
+For RustG, run the following: `apt-get install libssl-dev:i386 pkg-config:i386 zlib1g-dev:i386`
+
+After installing these packages, these libraries should function as intended.
+
 ---
 
 ### UPDATING
@@ -103,7 +113,8 @@ The SQL backend for the library and stats tracking requires a MySQL server.
 Your server details go in /config/dbconfig.txt,
 and the SQL schema is in /SQL/paradise_schema.sql or /SQL/paradise_schema_prefix.sql,
 depending on if you want table prefixes.  
-More detailed setup instructions are located on /tg/station's wiki: http://www.tgstation13.org/wiki/Downloading_the_source_code#Setting_up_the_database
+More detailed setup instructions are located on our wiki:
+https://www.paradisestation.org/wiki/index.php/Setting_up_the_Database
 
 ---
 
@@ -139,6 +150,3 @@ Creative Commons 3.0 BY-NC-SA license
 All other assets including icons and sound files are licensed under the
 Creative Commons 3.0 BY-SA license (https://creativecommons.org/licenses/by-sa/3.0/),
 unless otherwise indicated.
-
-
-

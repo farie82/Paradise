@@ -1,8 +1,8 @@
 //This file was auto-corrected by findeclaration.exe on 25.5.2012 20:42:31
 
-var/hsboxspawn = 1
-var/list
-		hrefs = list(
+// Someone needs to properly path this file, or just delete it since its unticked and was last properly touched >4 years ago
+GLOBAL_VAR_INIT(hsboxspawn, 1)
+GLOBAL_LIST_INIT(sandbox_hrefs, list(
 					"hsbsuit" = "Suit Up (Space Travel Gear)",
 					"hsbmetal" = "Spawn 50 Metal",
 					"hsbglass" = "Spawn 50 Glass",
@@ -13,7 +13,7 @@ var/list
 					"hsbfueltank" = "Spawn Welding Fuel Tank",
 					"hsbwater	tank" = "Spawn Water Tank",
 					"hsbtoolbox" = "Spawn Toolbox",
-					"hsbmedkit" = "Spawn Medical Kit")
+					"hsbmedkit" = "Spawn Medical Kit"))
 
 mob
 	var/datum/hSB/sandbox = null
@@ -39,8 +39,8 @@ datum/hSB
 				hsbpanel += "<b>Administration Tools:</b><br>"
 				hsbpanel += "- <a href=\"?src=[UID()];hsb=hsbtobj\">Toggle Object Spawning</a><br><br>"
 			hsbpanel += "<b>Regular Tools:</b><br>"
-			for(var/T in hrefs)
-				hsbpanel += "- <a href=\"?src=[UID()];hsb=[T]\">[hrefs[T]]</a><br>"
+			for(var/T in GLOB.sandbox_hrefs)
+				hsbpanel += "- <a href=\"?src=[UID()];hsb=[T]\">[GLOB.sandbox_hrefs[T]]</a><br>"
 			if(hsboxspawn)
 				hsbpanel += "- <a href=\"?src=[UID()];hsb=hsbobj\">Spawn Object</a><br><br>"
 			usr << browse(hsbpanel, "window=hsbpanel")
@@ -67,32 +67,32 @@ datum/hSB
 						P.wear_suit.plane = initial(P.wear_suit.plane)
 						P.wear_suit = null
 					P.wear_suit = new/obj/item/clothing/suit/space(P)
-					P.wear_suit.layer = 20
-					P.wear_suit.plane = HUD_PLANE
+					P.wear_suit.layer = ABOVE_HUD_LAYER
+					P.wear_suit.plane = ABOVE_HUD_PLANE
 					if(P.head)
 						P.head.loc = P.loc
 						P.head.layer = initial(P.head.layer)
 						P.head.plane = initial(P.head.plane)
 						P.head = null
 					P.head = new/obj/item/clothing/head/helmet/space(P)
-					P.head.layer = 20
-					P.head.plane = HUD_PLANE
+					P.head.layer = ABOVE_HUD_LAYER
+					P.head.plane = ABOVE_HUD_PLANE
 					if(P.wear_mask)
 						P.wear_mask.loc = P.loc
 						P.wear_mask.layer = initial(P.wear_mask.layer)
 						P.wear_mask.plane = initial(P.wear_mask.plane)
 						P.wear_mask = null
 					P.wear_mask = new/obj/item/clothing/mask/gas(P)
-					P.wear_mask.layer = 20
-					P.wear_mask.plane = HUD_PLANE
+					P.wear_mask.layer = ABOVE_HUD_LAYER
+					P.wear_mask.plane = ABOVE_HUD_PLANE
 					if(P.back)
 						P.back.loc = P.loc
 						P.back.layer = initial(P.back.layer)
 						P.back.plane = initial(P.back.plane)
 						P.back = null
 					P.back = new/obj/item/tank/jetpack(P)
-					P.back.layer = 20
-					P.back.plane = HUD_PLANE
+					P.back.layer = ABOVE_HUD_LAYER
+					P.back.plane = ABOVE_HUD_PLANE
 					P.internal = P.back
 				if("hsbmetal")
 					var/obj/item/stack/sheet/hsb = new/obj/item/stack/sheet/metal

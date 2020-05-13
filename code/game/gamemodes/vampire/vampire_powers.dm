@@ -76,8 +76,8 @@
 	//Vampires who have reached their full potential can affect nearly everything
 	if(user.mind.vampire.get_ability(/datum/vampire_passive/full))
 		return 1
-	//Chaplains are resistant to vampire powers
-	if(target.mind && target.mind.assigned_role == "Chaplain")
+	//Holy characters are resistant to vampire powers
+	if(target.mind && target.mind.isholy)
 		return 0
 	return 1
 
@@ -156,6 +156,7 @@
 	user.SetWeakened(0)
 	user.SetStunned(0)
 	user.SetParalysis(0)
+	user.SetSleeping(0)
 	U.adjustStaminaLoss(-75)
 	to_chat(user, "<span class='notice'>You flush your system with clean blood and remove any incapacitating effects.</span>")
 	spawn(1)
@@ -226,6 +227,7 @@
 		target.Weaken(5)
 		target.stuttering = 20
 		to_chat(target, "<span class='warning'>You are blinded by [user]'s glare.</span>")
+		add_attack_logs(user, target, "(Vampire) Glared at")
 
 /obj/effect/proc_holder/spell/vampire/self/shapeshift
 	name = "Shapeshift (50)"
@@ -245,6 +247,7 @@
 		H.reset_hair() //No more winding up with hairstyles you're not supposed to have, and blowing your cover.
 		H.reset_markings() //...Or markings.
 		H.dna.ResetUIFrom(H)
+		H.flavor_text = ""
 	user.update_icons()
 
 /obj/effect/proc_holder/spell/vampire/self/screech
@@ -259,13 +262,15 @@
 	for(var/mob/living/carbon/C in hearers(4))
 		if(C == user)
 			continue
-		if(ishuman(C) && (C:l_ear || C:r_ear) && istype((C:l_ear || C:r_ear), /obj/item/clothing/ears/earmuffs))
-			continue
+		if(ishuman(C))
+			var/mob/living/carbon/human/H = C
+			if(istype(H.l_ear, /obj/item/clothing/ears/earmuffs) || istype(H.r_ear, /obj/item/clothing/ears/earmuffs))
+				continue
 		if(!affects(C))
 			continue
 		to_chat(C, "<span class='warning'><font size='3'><b>You hear a ear piercing shriek and your senses dull!</font></b></span>")
 		C.Weaken(4)
-		C.AdjustEarDeaf(20)
+		C.MinimumDeafTicks(20)
 		C.Stuttering(20)
 		C.Stun(4)
 		C.Jitter(150)
@@ -275,7 +280,7 @@
 
 
 /proc/isvampirethrall(mob/living/M as mob)
-	return istype(M) && M.mind && ticker && ticker.mode && (M.mind in ticker.mode.vampire_enthralled)
+	return istype(M) && M.mind && SSticker && SSticker.mode && (M.mind in SSticker.mode.vampire_enthralled)
 
 /obj/effect/proc_holder/spell/vampire/targetted/enthrall
 	name = "Enthrall (300)"
@@ -314,11 +319,11 @@
 	if(!C.mind)
 		to_chat(user, "<span class='warning'>[C.name]'s mind is not there for you to enthrall.</span>")
 		return 0
-	if(enthrall_safe || ( C.mind in ticker.mode.vampires )||( C.mind.vampire )||( C.mind in ticker.mode.vampire_enthralled ))
+	if(enthrall_safe || ( C.mind in SSticker.mode.vampires )||( C.mind.vampire )||( C.mind in SSticker.mode.vampire_enthralled ))
 		C.visible_message("<span class='warning'>[C] seems to resist the takeover!</span>", "<span class='notice'>You feel a familiar sensation in your skull that quickly dissipates.</span>")
 		return 0
 	if(!affects(C))
-		C.visible_message("<span class='warning'>[C] seems to resist the takeover!</span>", "<span class='notice'>Your faith of [ticker.Bible_deity_name] has kept your mind clear of all evil.</span>")
+		C.visible_message("<span class='warning'>[C] seems to resist the takeover!</span>", "<span class='notice'>Your faith of [SSticker.Bible_deity_name] has kept your mind clear of all evil.</span>")
 		return 0
 	if(!ishuman(C))
 		to_chat(user, "<span class='warning'>You can only enthrall humans!</span>")
@@ -329,24 +334,32 @@
 	if(!istype(H))
 		return 0
 	var/ref = "\ref[user.mind]"
-	if(!(ref in ticker.mode.vampire_thralls))
-		ticker.mode.vampire_thralls[ref] = list(H.mind)
+	if(!(ref in SSticker.mode.vampire_thralls))
+		SSticker.mode.vampire_thralls[ref] = list(H.mind)
 	else
-		ticker.mode.vampire_thralls[ref] += H.mind
+		SSticker.mode.vampire_thralls[ref] += H.mind
 
-	ticker.mode.update_vampire_icons_added(H.mind)
-	ticker.mode.update_vampire_icons_added(user.mind)
+	SSticker.mode.update_vampire_icons_added(H.mind)
+	SSticker.mode.update_vampire_icons_added(user.mind)
 	var/datum/mindslaves/slaved = user.mind.som
 	H.mind.som = slaved
 	slaved.serv += H
 	slaved.add_serv_hud(user.mind, "vampire")//handles master servent icons
 	slaved.add_serv_hud(H.mind, "vampthrall")
 
-	ticker.mode.vampire_enthralled.Add(H.mind)
-	ticker.mode.vampire_enthralled[H.mind] = user.mind
+	SSticker.mode.vampire_enthralled.Add(H.mind)
+	SSticker.mode.vampire_enthralled[H.mind] = user.mind
 	H.mind.special_role = SPECIAL_ROLE_VAMPIRE_THRALL
-	to_chat(H, "<span class='danger'>You have been Enthralled by [user]. Follow [user.p_their()] every command.</span>")
+
+	var/datum/objective/protect/serve_objective = new
+	serve_objective.owner = user.mind
+	serve_objective.target = H.mind
+	serve_objective.explanation_text = "You have been Enthralled by [user]. Follow [user.p_their()] every command."
+	H.mind.objectives += serve_objective
+
+	to_chat(H, "<span class='biggerdanger'>You have been Enthralled by [user]. Follow [user.p_their()] every command.</span>")
 	to_chat(user, "<span class='warning'>You have successfully Enthralled [H]. <i>If [H.p_they()] refuse[H.p_s()] to do as you say just adminhelp.</i></span>")
+	H.Stun(2)
 	add_attack_logs(user, H, "Vampire-thralled")
 
 
@@ -384,7 +397,7 @@
 
 /obj/effect/proc_holder/spell/vampire/bats/choose_targets(mob/user = usr)
 	var/list/turf/locs = new
-	for(var/direction in alldirs) //looking for bat spawns
+	for(var/direction in GLOB.alldirs) //looking for bat spawns
 		if(locs.len == num_bats) //we found 2 locations and thats all we need
 			break
 		var/turf/T = get_step(usr, direction) //getting a loc in that direction
@@ -412,8 +425,6 @@
 	var/jaunt_duration = 50 //in deciseconds
 
 /obj/effect/proc_holder/spell/vampire/self/jaunt/cast(list/targets, mob/user = usr)
-	if(user.buckled)
-		user.buckled.unbuckle_mob()
 	spawn(0)
 		var/mob/living/U = user
 		var/originalloc = get_turf(user.loc)
@@ -427,8 +438,6 @@
 		animation.layer = 5
 		animation.master = holder
 		U.ExtinguishMob()
-		if(user.buckled)
-			user.buckled.unbuckle_mob()
 		flick("liquify", animation)
 		user.forceMove(holder)
 		user.client.eye = holder
@@ -437,9 +446,6 @@
 		steam.start()
 		sleep(jaunt_duration)
 		var/mobloc = get_turf(user.loc)
-		if(get_area(mobloc) == /area/security/armoury/gamma)
-			to_chat(user, "A strange energy repels you!")
-			mobloc = originalloc
 		animation.loc = mobloc
 		steam.location = mobloc
 		steam.start()
@@ -504,8 +510,6 @@
 	perform(turfs, user = user)
 
 /obj/effect/proc_holder/spell/vampire/shadowstep/cast(list/targets, mob/user = usr)
-	if(usr.buckled)
-		user.buckled.unbuckle_mob()
 	spawn(0)
 		var/turf/picked = pick(targets)
 
@@ -513,8 +517,6 @@
 			return
 		var/mob/living/U = user
 		U.ExtinguishMob()
-		if(user.buckled)
-			user.buckled.unbuckle_mob()
 		var/atom/movable/overlay/animation = new /atom/movable/overlay(get_turf(user))
 		animation.name = user.name
 		animation.density = 0
@@ -535,3 +537,73 @@
 
 /datum/vampire_passive/full
 	gain_desc = "You have reached your full potential and are no longer weak to the effects of anything holy and your vision has been improved greatly."
+
+
+/obj/effect/proc_holder/spell/targeted/raise_vampires
+	name = "Raise Vampires"
+	desc = "Summons deadly vampires from bluespace."
+	school = "transmutation"
+	charge_max = 100
+	clothes_req = 0
+	human_req = 1
+	invocation = "none"
+	invocation_type = "none"
+	max_targets = 0
+	range = 3
+	cooldown_min = 20
+	action_icon_state = "revive_thrall"
+	sound = 'sound/magic/wandodeath.ogg'
+
+/obj/effect/proc_holder/spell/targeted/raise_vampires/cast(list/targets, mob/user = usr)
+	new /obj/effect/temp_visual/cult/sparks(user.loc)
+	var/turf/T = get_turf(user)
+	to_chat(user, "<span class='warning'>You call out within bluespace, summoning more vampiric spirits to aid you!</span>")
+	for(var/mob/living/carbon/human/H in targets)
+		T.Beam(H, "sendbeam", 'icons/effects/effects.dmi', time=30, maxdistance=7, beam_type=/obj/effect/ebeam)
+		new /obj/effect/temp_visual/cult/sparks(H.loc)
+		H.raise_vampire(user)
+
+
+/mob/living/carbon/human/proc/raise_vampire(var/mob/M)
+	if(!istype(M))
+		log_debug("human/proc/raise_vampire called with invalid argument.")
+		return
+	if(!mind)
+		visible_message("[src] looks to be too stupid to understand what is going on.")
+		return
+	if(dna && (NO_BLOOD in dna.species.species_traits) || dna.species.exotic_blood || !blood_volume)
+		visible_message("[src] looks unfazed!")
+		return
+	if(mind.vampire || mind.special_role == SPECIAL_ROLE_VAMPIRE || mind.special_role == SPECIAL_ROLE_VAMPIRE_THRALL)
+		visible_message("<span class='notice'>[src] looks refreshed!</span>")
+		adjustBruteLoss(-60)
+		adjustFireLoss(-60)
+		for(var/obj/item/organ/external/E in bodyparts)
+			if(prob(25))
+				E.mend_fracture()
+
+		return
+	if(stat != DEAD)
+		if(IsWeakened())
+			visible_message("<span class='warning'>[src] looks to be in pain!</span>")
+			adjustBrainLoss(60)
+		else
+			visible_message("<span class='warning'>[src] looks to be stunned by the energy!</span>")
+			Weaken(20)
+		return
+	for(var/obj/item/implant/mindshield/L in src)
+		if(L && L.implanted)
+			qdel(L)
+	for(var/obj/item/implant/traitor/T in src)
+		if(T && T.implanted)
+			qdel(T)
+	visible_message("<span class='warning'>[src] gets an eerie red glow in their eyes!</span>")
+	var/datum/objective/protect/protect_objective = new
+	protect_objective.owner = mind
+	protect_objective.target = M.mind
+	protect_objective.explanation_text = "Protect [M.real_name]."
+	mind.objectives += protect_objective
+	add_attack_logs(M, src, "Vampire-sired")
+	mind.make_Vampire()
+	revive()
+	Weaken(20)

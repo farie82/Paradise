@@ -96,7 +96,8 @@ Class Procs:
 /obj/machinery
 	name = "machinery"
 	icon = 'icons/obj/stationobjs.dmi'
-	pressure_resistance = 10
+	pressure_resistance = 15
+	max_integrity = 200
 	layer = BELOW_OBJ_LAYER
 	var/stat = 0
 	var/emagged = 0
@@ -118,54 +119,47 @@ Class Procs:
 	var/use_log = list()
 	var/list/settagwhitelist = list()//WHITELIST OF VARIABLES THAT THE set_tag HREF CAN MODIFY, DON'T PUT SHIT YOU DON'T NEED ON HERE, AND IF YOU'RE GONNA USE set_tag (format_tag() proc), ADD TO THIS LIST.
 	atom_say_verb = "beeps"
-	var/defer_process = 0
+	var/siemens_strength = 0.7 // how badly will it shock you?
 
-/obj/machinery/Initialize()
-	addAtProcessing()
+/obj/machinery/Initialize(mapload)
+	if(!armor)
+		armor = list(melee = 25, bullet = 10, laser = 10, energy = 0, bomb = 0, bio = 0, rad = 0, fire = 50, acid = 70)
 	. = ..()
-	power_change()
+	GLOB.machines += src
 
-/obj/machinery/proc/addAtProcessing()
 	if(use_power)
 		myArea = get_area(src)
 	if(!speed_process)
-		if(!defer_process)
-			START_PROCESSING(SSmachines, src)
-		else
-			START_DEFERRED_PROCESSING(SSmachines, src)
+		START_PROCESSING(SSmachines, src)
 	else
-		fast_processing += src
-		isprocessing = TRUE // all of these  isprocessing = TRUE  can be removed when the PS is dead
+		START_PROCESSING(SSfastprocess, src)
+
+	power_change()
 
 // gotta go fast
 /obj/machinery/makeSpeedProcess()
 	if(speed_process)
 		return
-	speed_process = 1
+	speed_process = TRUE
 	STOP_PROCESSING(SSmachines, src)
-	fast_processing += src
-	isprocessing = TRUE
+	START_PROCESSING(SSfastprocess, src)
 
 // gotta go slow
 /obj/machinery/makeNormalProcess()
 	if(!speed_process)
 		return
-	speed_process = 0
+	speed_process = FALSE
+	STOP_PROCESSING(SSfastprocess, src)
 	START_PROCESSING(SSmachines, src)
-	fast_processing -= src
-
-/obj/machinery/New() //new
-	if(!armor)
-		armor = list(melee = 25, bullet = 10, laser = 10, energy = 0, bomb = 0, bio = 0, rad = 0)
-	machines += src
-	..()
 
 /obj/machinery/Destroy()
 	if(myArea)
 		myArea = null
-	fast_processing -= src
-	STOP_PROCESSING(SSmachines, src)
-	machines -= src
+	GLOB.machines.Remove(src)
+	if(!speed_process)
+		STOP_PROCESSING(SSmachines, src)
+	else
+		STOP_PROCESSING(SSfastprocess, src)
 	return ..()
 
 /obj/machinery/proc/locate_machinery()
@@ -182,26 +176,10 @@ Class Procs:
 		use_power(7500/severity)
 		new /obj/effect/temp_visual/emp(loc)
 	..()
-
-/obj/machinery/ex_act(severity)
-	switch(severity)
-		if(1.0)
-			qdel(src)
-			return
-		if(2.0)
-			if(prob(50))
-				qdel(src)
-				return
-		if(3.0)
-			if(prob(25))
-				qdel(src)
-				return
-		else
-	return
-
-/obj/machinery/blob_act()
-	if(prob(50))
-		qdel(src)
+/obj/machinery/default_welder_repair(mob/user, obj/item/I)
+	. = ..()
+	if(.)
+		stat &= ~BROKEN
 
 //sets the use_power var and then forces an area power update
 /obj/machinery/proc/update_use_power(var/new_use_power)
@@ -223,11 +201,11 @@ Class Procs:
 		var/newid = copytext(reject_bad_text(input(usr, "Specify the new ID tag for this machine", src, src:id_tag) as null|text),1,MAX_MESSAGE_LEN)
 		if(newid)
 			src:id_tag = newid
-			return MT_UPDATE|MT_REINIT
+			return TRUE
 	if("set_freq" in href_list)
 		if(!("frequency" in vars))
 			warning("set_freq: [type] has no frequency var.")
-			return 0
+			return FALSE
 		var/newfreq=src:frequency
 		if(href_list["set_freq"]!="-1")
 			newfreq=text2num(href_list["set_freq"])
@@ -236,92 +214,83 @@ Class Procs:
 		if(newfreq)
 			if(findtext(num2text(newfreq), "."))
 				newfreq *= 10 // shift the decimal one place
-			if(newfreq < 10000)
-				src:frequency = newfreq
-				return MT_UPDATE|MT_REINIT
-	return 0
+			src:frequency = sanitize_frequency(newfreq, RADIO_LOW_FREQ, RADIO_HIGH_FREQ)
+			return TRUE
+	return FALSE
 
 /obj/machinery/proc/handle_multitool_topic(var/href, var/list/href_list, var/mob/user)
 	if(!allowed(user))//no, not even HREF exploits
-		return 0
+		return FALSE
 	var/obj/item/multitool/P = get_multitool(usr)
 	if(P && istype(P))
-		var/update_mt_menu=0
-		var/re_init=0
+		var/update_mt_menu = FALSE
 		if("set_tag" in href_list)
 			if(!(href_list["set_tag"] in settagwhitelist))//I see you're trying Href exploits, I see you're failing, I SEE ADMIN WARNING. (seriously though, this is a powerfull HREF, I originally found this loophole, I'm not leaving it in on my PR)
 				message_admins("set_tag HREF (var attempted to edit: [href_list["set_tag"]]) exploit attempted by [key_name_admin(user)] on [src] (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[x];Y=[y];Z=[z]'>JMP</a>)")
-				return 1
+				return FALSE
 			if(!(href_list["set_tag"] in vars))
 				to_chat(usr, "<span class='warning'>Something went wrong: Unable to find [href_list["set_tag"]] in vars!</span>")
-				return 1
+				return FALSE
 			var/current_tag = vars[href_list["set_tag"]]
 			var/newid = copytext(reject_bad_text(input(usr, "Specify the new value", src, current_tag) as null|text),1,MAX_MESSAGE_LEN)
 			if(newid)
 				vars[href_list["set_tag"]] = newid
-				re_init=1
+				update_mt_menu = TRUE
 
 		if("unlink" in href_list)
 			var/idx = text2num(href_list["unlink"])
 			if(!idx)
-				return 1
+				return FALSE
 
 			var/obj/O = getLink(idx)
 			if(!O)
-				return 1
+				return FALSE
 			if(!canLink(O))
 				to_chat(usr, "<span class='warning'>You can't link with that device.</span>")
-				return 1
+				return FALSE
 
 			if(unlinkFrom(usr, O))
 				to_chat(usr, "<span class='notice'>A green light flashes on \the [P], confirming the link was removed.</span>")
 			else
 				to_chat(usr, "<span class='warning'>A red light flashes on \the [P].  It appears something went wrong when unlinking the two devices.</span>")
-			update_mt_menu=1
+			update_mt_menu = TRUE
 
 		if("link" in href_list)
 			var/obj/O = P.buffer
 			if(!O)
-				return 1
+				return FALSE
 			if(!canLink(O,href_list))
 				to_chat(usr, "<span class='warning'>You can't link with that device.</span>")
-				return 1
+				return FALSE
 			if(isLinkedWith(O))
 				to_chat(usr, "<span class='warning'>A red light flashes on \the [P]. The two devices are already linked.</span>")
-				return 1
+				return FALSE
 
 			if(linkWith(usr, O, href_list))
 				to_chat(usr, "<span class='notice'>A green light flashes on \the [P], confirming the link was added.</span>")
 			else
 				to_chat(usr, "<span class='warning'>A red light flashes on \the [P].  It appears something went wrong when linking the two devices.</span>")
-			update_mt_menu=1
+			update_mt_menu = TRUE
 
 		if("buffer" in href_list)
 			P.buffer = src
 			to_chat(usr, "<span class='notice'>A green light flashes, and the device appears in the multitool buffer.</span>")
-			update_mt_menu=1
+			update_mt_menu = TRUE
 
 		if("flush" in href_list)
 			to_chat(usr, "<span class='notice'>A green light flashes, and the device disappears from the multitool buffer.</span>")
 			P.buffer = null
-			update_mt_menu=1
+			update_mt_menu = TRUE
 
 		var/ret = multitool_topic(usr,href_list,P.buffer)
-		if(ret == MT_ERROR)
-			return 1
-		if(ret & MT_UPDATE)
-			update_mt_menu=1
-		if(ret & MT_REINIT)
-			re_init=1
+		if(ret)
+			update_mt_menu = TRUE
 
-		if(re_init)
-			Initialize()
 		if(update_mt_menu)
-			//usr.set_machine(src)
 			update_multitool_menu(usr)
-			return 1
+			return TRUE
 
-/obj/machinery/Topic(href, href_list, var/nowindow = 0, var/datum/topic_state/state = default_state)
+/obj/machinery/Topic(href, href_list, var/nowindow = 0, var/datum/topic_state/state = GLOB.default_state)
 	if(..(href, href_list, nowindow, state))
 		return 1
 
@@ -364,32 +333,35 @@ Class Procs:
 		return attack_hand(user)
 
 /obj/machinery/attack_hand(mob/user as mob)
-	if(user.lying || user.stat)
-		return 1
+	if(user.incapacitated())
+		return TRUE
 
 	if(!user.IsAdvancedToolUser())
 		to_chat(user, "<span class='warning'>You don't have the dexterity to do this!</span>")
-		return 1
+		return TRUE
 
 	if(ishuman(user))
 		var/mob/living/carbon/human/H = user
 		if(H.getBrainLoss() >= 60)
 			visible_message("<span class='warning'>[H] stares cluelessly at [src] and drools.</span>")
-			return 1
+			return TRUE
 		else if(prob(H.getBrainLoss()))
 			to_chat(user, "<span class='warning'>You momentarily forget how to use [src].</span>")
-			return 1
+			return TRUE
 
 	if(panel_open)
 		add_fingerprint(user)
-		return 0
+		return FALSE
 
 	if(!interact_offline && stat & (NOPOWER|BROKEN|MAINT))
-		return 1
+		return TRUE
 
 	add_fingerprint(user)
 
 	return ..()
+
+/obj/machinery/proc/is_operational()
+	return !(stat & (NOPOWER|BROKEN|MAINT))
 
 /obj/machinery/CheckParts(list/parts_list)
 	..()
@@ -403,20 +375,14 @@ Class Procs:
 	uid = gl_uid
 	gl_uid++
 
-/obj/machinery/proc/default_deconstruction_crowbar(var/obj/item/crowbar/C, var/ignore_panel = 0)
-	if(istype(C) && (panel_open || ignore_panel))
-		playsound(loc, C.usesound, 50, 1)
-		deconstruct()
-		return 1
-	return 0
-
 /obj/machinery/deconstruct(disassembled = TRUE)
-	if(can_deconstruct)
+	if(!(flags & NODECONSTRUCT))
 		on_deconstruction()
 		if(component_parts && component_parts.len)
-			spawn_frame()
+			spawn_frame(disassembled)
 			for(var/obj/item/I in component_parts)
 				I.forceMove(loc)
+			component_parts.Cut()
 	qdel(src)
 
 /obj/machinery/proc/spawn_frame(disassembled)
@@ -430,12 +396,27 @@ Class Procs:
 	M.icon_state = "box_1"
 
 /obj/machinery/obj_break(damage_flag)
-	if(can_deconstruct)
+	if(!(flags & NODECONSTRUCT))
 		stat |= BROKEN
 
-/obj/machinery/proc/default_deconstruction_screwdriver(var/mob/user, var/icon_state_open, var/icon_state_closed, var/obj/item/screwdriver/S)
-	if(istype(S))
-		playsound(loc, S.usesound, 50, 1)
+/obj/machinery/proc/default_deconstruction_crowbar(user, obj/item/I, ignore_panel = 0)
+	if(I.tool_behaviour != TOOL_CROWBAR)
+		return FALSE
+	if(!I.use_tool(src, user, 0, volume = 0))
+		return FALSE
+	if((panel_open || ignore_panel) && !(flags & NODECONSTRUCT))
+		deconstruct(TRUE)
+		to_chat(user, "<span class='notice'>You disassemble [src].</span>")
+		I.play_tool_sound(user, I.tool_volume)
+		return 1
+	return 0
+
+/obj/machinery/proc/default_deconstruction_screwdriver(mob/user, icon_state_open, icon_state_closed, obj/item/I)
+	if(I.tool_behaviour != TOOL_SCREWDRIVER)
+		return FALSE
+	if(!I.use_tool(src, user, 0, volume = 0))
+		return FALSE
+	if(!(flags & NODECONSTRUCT))
 		if(!panel_open)
 			panel_open = 1
 			icon_state = icon_state_open
@@ -444,39 +425,37 @@ Class Procs:
 			panel_open = 0
 			icon_state = icon_state_closed
 			to_chat(user, "<span class='notice'>You close the maintenance hatch of [src].</span>")
+		I.play_tool_sound(user, I.tool_volume)
 		return 1
 	return 0
 
-/obj/machinery/proc/default_change_direction_wrench(var/mob/user, var/obj/item/wrench/W)
-	if(panel_open && istype(W))
-		playsound(loc, W.usesound, 50, 1)
+/obj/machinery/proc/default_change_direction_wrench(mob/user, obj/item/I)
+	if(I.tool_behaviour != TOOL_WRENCH)
+		return FALSE
+	if(!I.use_tool(src, user, 0, volume = 0))
+		return FALSE
+	if(panel_open)
 		dir = turn(dir,-90)
 		to_chat(user, "<span class='notice'>You rotate [src].</span>")
-		return 1
-	return 0
+		I.play_tool_sound(user, I.tool_volume)
+		return TRUE
+	return FALSE
 
-/obj/proc/default_unfasten_wrench(mob/user, obj/item/wrench/W, time = 20)
-	if(istype(W))
-		to_chat(user, "<span class='notice'>Now [anchored ? "un" : ""]securing [name].</span>")
-		playsound(loc, W.usesound, 50, 1)
-		if(do_after(user, time * W.toolspeed, target = src))
-			to_chat(user, "<span class='notice'>You've [anchored ? "un" : ""]secured [name].</span>")
-			anchored = !anchored
-			if(istype(src, /obj/machinery))
-				var/obj/machinery/M = src
-				M.power_change() //Turn on or off the machine depending on the status of power in the new area.
-			playsound(loc, W.usesound, 50, 1)
-		return 1
-	return 0
+/obj/machinery/default_unfasten_wrench(mob/user, obj/item/I, time)
+	. = ..()
+	if(.)
+		power_change()
 
 /obj/machinery/proc/exchange_parts(mob/user, obj/item/storage/part_replacer/W)
 	var/shouldplaysound = 0
+	if((flags & NODECONSTRUCT))
+		return FALSE
 	if(istype(W) && component_parts)
 		if(panel_open || W.works_from_distance)
 			var/obj/item/circuitboard/CB = locate(/obj/item/circuitboard) in component_parts
 			var/P
 			if(W.works_from_distance)
-				display_parts(user)
+				to_chat(user, display_parts(user))
 			for(var/obj/item/stock_parts/A in component_parts)
 				for(var/D in CB.req_components)
 					if(ispath(A.type, D))
@@ -495,7 +474,7 @@ Class Procs:
 							break
 			RefreshParts()
 		else
-			display_parts(user)
+			to_chat(user, display_parts(user))
 		if(shouldplaysound)
 			W.play_rped_sound()
 		return 1
@@ -503,27 +482,28 @@ Class Procs:
 		return 0
 
 /obj/machinery/proc/display_parts(mob/user)
-	to_chat(user, "<span class='notice'>Following parts detected in the machine:</span>")
+	. = list("<span class='notice'>Following parts detected in the machine:</span>")
 	for(var/obj/item/C in component_parts)
-		to_chat(user, "<span class='notice'>[bicon(C)] [C.name]</span>")
+		. += "<span class='notice'>[bicon(C)] [C.name]</span>"
+	. = jointext(., "\n")
 
 /obj/machinery/examine(mob/user)
-	..()
+	. = ..()
 	if(stat & BROKEN)
-		to_chat(user, "<span class='notice'>It looks broken and non-functional.</span>")
+		. += "<span class='notice'>It looks broken and non-functional.</span>"
 	if(!(resistance_flags & INDESTRUCTIBLE))
-		if(burn_state == ON_FIRE)
-			to_chat(user, "<span class='warning'>It's on fire!</span>")
+		if(resistance_flags & ON_FIRE)
+			. += "<span class='warning'>It's on fire!</span>"
 		var/healthpercent = (obj_integrity/max_integrity) * 100
 		switch(healthpercent)
 			if(50 to 99)
-				to_chat(user,  "It looks slightly damaged.")
+				. +=  "It looks slightly damaged."
 			if(25 to 50)
-				to_chat(user,  "It appears heavily damaged.")
+				. +=  "It appears heavily damaged."
 			if(0 to 25)
-				to_chat(user,  "<span class='warning'>It's falling apart!</span>")
+				. +=  "<span class='warning'>It's falling apart!</span>"
 	if(user.research_scanner && component_parts)
-		display_parts(user)
+		. += display_parts(user)
 
 /obj/machinery/proc/on_assess_perp(mob/living/carbon/human/perp)
 	return 0
@@ -566,9 +546,7 @@ Class Procs:
 			threatcount += 2
 
 	if(check_records || check_arrest)
-		var/perpname = perp.name
-		if(id)
-			perpname = id.registered_name
+		var/perpname = perp.get_visible_name(TRUE)
 
 		var/datum/data/record/R = find_security_record("name", perpname)
 		if(check_records && !R)
@@ -580,20 +558,15 @@ Class Procs:
 	return threatcount
 
 
-/obj/machinery/proc/shock(mob/user, prb)
-	if(inoperable())
-		return 0
+/obj/machinery/proc/shock(mob/living/user, prb)
+	if(!istype(user) || inoperable())
+		return FALSE
 	if(!prob(prb))
-		return 0
-	if((TK in user.mutations) && !Adjacent(user))
-		return 0
-	var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread
-	s.set_up(5, 1, src)
-	s.start()
-	if(electrocute_mob(user, get_area(src), src, 0.7))
-		if(user.stunned)
-			return 1
-	return 0
+		return FALSE
+	do_sparks(5, 1, src)
+	if(electrocute_mob(user, get_area(src), src, siemens_strength, TRUE))
+		return TRUE
+	return FALSE
 
 //called on machinery construction (i.e from frame to machinery) but not on initialization
 /obj/machinery/proc/on_construction()
@@ -613,3 +586,11 @@ Class Procs:
 		emp_act(EMP_LIGHT)
 	else
 		ex_act(EXPLODE_HEAVY)
+
+/obj/machinery/proc/adjust_item_drop_location(atom/movable/AM)	// Adjust item drop location to a 3x3 grid inside the tile, returns slot id from 0 to 8
+	var/md5 = md5(AM.name)										// Oh, and it's deterministic too. A specific item will always drop from the same slot.
+	for (var/i in 1 to 32)
+		. += hex2num(md5[i])
+	. = . % 9
+	AM.pixel_x = -8 + ((.%3)*8)
+	AM.pixel_y = -8 + (round( . / 3)*8)

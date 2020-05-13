@@ -15,15 +15,16 @@
 
 	allow_spin = 0			// No spinning. Spinning breaks our floating animation.
 	no_spin_thrown = 1
+	del_on_death = TRUE
 
 	var/obj/item/possessed_item
 
 /mob/living/simple_animal/possessed_object/examine(mob/user)
-	possessed_item.examine(user)
+	. = possessed_item.examine(user)
 	if(health > (maxHealth / 30))
-		to_chat(usr, "<span class='warning'>[src] appears to be floating without any support!</span>")
+		. += "<span class='warning'>[src] appears to be floating without any support!</span>"
 	else
-		to_chat(usr, "<span class='warning'>[src] appears to be having trouble staying afloat!</span>")
+		. += "<span class='warning'>[src] appears to be having trouble staying afloat!</span>"
 
 
 /mob/living/simple_animal/possessed_object/do_attack_animation(atom/A, visual_effect_icon, used_item, no_effect, end_pixel_y)
@@ -39,26 +40,19 @@
 	var/response = alert(src, "End your possession of this object? (It will not stop you from respawning later)","Are you sure you want to ghost?","Ghost","Stay in body")
 	if(response != "Ghost")
 		return
-	resting = 1
+	StartResting()
 	var/mob/dead/observer/ghost = ghostize(1)
 	ghost.timeofdeath = world.time
 	death(0) // Turn back into a regular object.
 
-
 /mob/living/simple_animal/possessed_object/death(gibbed)
-	var/mob/dead/observer/ghost = ghostize(1)
-	..()
-
-	if(gibbed) // Leave no trace.
-		ghost.timeofdeath = world.time
-		qdel(src)
-		return
-
-	if(possessed_item.loc == src)
-		possessed_item.forceMove(loc) // Put the normal item back once the EVIL SPIRIT has been vanquished from it. If it's not already in place
-
-	qdel(src)
-
+	if(can_die())
+		ghostize(GHOST_CAN_REENTER)
+		// if gibbed, the item goes with the ghost
+		if(!gibbed && possessed_item.loc == src)
+			// Put the normal item back once the EVIL SPIRIT has been vanquished from it. If it's not already in place
+			possessed_item.forceMove(loc)
+	return ..()
 
 /mob/living/simple_animal/possessed_object/Life(seconds, times_fired)
 	..()
@@ -101,8 +95,6 @@
 	forceMove( possessed_loc )
 	possessed_item.forceMove(src) // We'll keep the actual item inside of us until we die.
 
-	zone_sel = new /obj/screen/zone_sel(src) // Create a new zone selection item so the human attacks have something to reference. Horrifying and ugly hack, do not look directly at this.
-
 	update_icon(1)
 
 	visible_message("<span class='shadowling'>[src] rises into the air and begins to float!</span>") // Inform those around us that shit's gettin' spooky.
@@ -114,7 +106,7 @@
 
 
 /mob/living/simple_animal/possessed_object/IsAdvancedToolUser() // So we can shoot guns (Mostly ourselves), among other things.
-	return 1
+	return TRUE
 
 
 /mob/living/simple_animal/possessed_object/get_access() // If we've possessed an ID card we've got access to lots of fun things!

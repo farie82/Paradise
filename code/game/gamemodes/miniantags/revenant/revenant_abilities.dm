@@ -110,8 +110,6 @@
 	message = "<span class='revennotice'>You toggle your night vision.</span>"
 	action_icon_state = "r_nightvision"
 	action_background_icon_state = "bg_revenant"
-	non_night_vision = INVISIBILITY_REVENANT
-	night_vision = SEE_INVISIBLE_OBSERVER_NOLIGHTING
 
 //Transmit: the revemant's only direct way to communicate. Sends a single message silently to a single mob
 /obj/effect/proc_holder/spell/targeted/revenant_transmit
@@ -209,22 +207,18 @@
 						if(!L.on)
 							return
 						L.visible_message("<span class='warning'><b>\The [L] suddenly flares brightly and begins to spark!</span>")
-						var/datum/effect_system/spark_spread/s = new /datum/effect_system/spark_spread/
-						s.set_up(4, 0, L)
-						s.start()
+						do_sparks(4, 0, L)
 						new/obj/effect/temp_visual/revenant(L.loc)
 						sleep(20)
 						if(!L.on) //wait, wait, don't shock me
 							return
 						flick("[L.base_state]2", L)
-						for(var/mob/living/carbon/human/M in view(shock_range, L))
+						for(var/mob/living/M in view(shock_range, L))
 							if(M == user)
 								return
 							M.Beam(L,icon_state="purple_lightning",icon='icons/effects/effects.dmi',time=5)
-							M.electrocute_act(shock_damage, "[L.name]", safety=1)
-							var/datum/effect_system/spark_spread/z = new /datum/effect_system/spark_spread/
-							z.set_up(4, 0, M)
-							z.start()
+							M.electrocute_act(shock_damage, L, safety = TRUE)
+							do_sparks(4, 0, M)
 							playsound(M, 'sound/machines/defib_zap.ogg', 50, 1, -1)
 
 //Defile: Corrupts nearby stuff, unblesses floor tiles.

@@ -6,21 +6,27 @@
 
 /datum/event/grid_check/start()
 	power_failure(0)
+	var/sound/S = sound('sound/effects/powerloss.ogg')
+	for(var/mob/living/M in GLOB.player_list)
+		var/turf/T = get_turf(M)
+		if(!M.client || !is_station_level(T.z))
+			continue
+		SEND_SOUND(M, S)
 
 /datum/event/grid_check/announce()
-	event_announcement.Announce("Abnormal activity detected in [station_name()]'s powernet. As a precautionary measure, the station's power will be shut off for an indeterminate duration.", "Automated Grid Check", new_sound = 'sound/AI/poweroff.ogg')
+	GLOB.event_announcement.Announce("Abnormal activity detected in [station_name()]'s powernet. As a precautionary measure, the station's power will be shut off for an indeterminate duration.", "Automated Grid Check", new_sound = 'sound/AI/poweroff.ogg')
 
 /datum/event/grid_check/end()
 	power_restore()
 
 /proc/power_failure(var/announce = 1)
 	if(announce)
-		event_announcement.Announce("Abnormal activity detected in [station_name()]'s powernet. As a precautionary measure, the station's power will be shut off for an indeterminate duration.", "Critical Power Failure", new_sound = 'sound/AI/poweroff.ogg')
+		GLOB.event_announcement.Announce("Abnormal activity detected in [station_name()]'s powernet. As a precautionary measure, the station's power will be shut off for an indeterminate duration.", "Critical Power Failure", new_sound = 'sound/AI/poweroff.ogg')
 
 	var/list/skipped_areas = list(/area/turret_protected/ai)
 	var/list/skipped_areas_apc = list(/area/engine/engineering)
 
-	for(var/obj/machinery/power/smes/S in machines)
+	for(var/obj/machinery/power/smes/S in GLOB.machines)
 		var/area/current_area = get_area(S)
 		if((current_area.type in skipped_areas) || !is_station_level(S.z))
 			continue
@@ -33,7 +39,7 @@
 		S.update_icon()
 		S.power_change()
 
-	for(var/obj/machinery/power/apc/C in apcs)
+	for(var/obj/machinery/power/apc/C in GLOB.apcs)
 		var/area/current_area = get_area(C)
 		if((current_area.type in skipped_areas_apc) || !is_station_level(C.z))
 			continue
@@ -45,14 +51,14 @@
 	var/list/skipped_areas_apc = list(/area/engine/engineering)
 
 	if(announce)
-		event_announcement.Announce("Power has been restored to [station_name()]. We apologize for the inconvenience.", "Power Systems Nominal", new_sound = 'sound/AI/poweron.ogg')
-	for(var/obj/machinery/power/apc/C in apcs)
+		GLOB.event_announcement.Announce("Power has been restored to [station_name()]. We apologize for the inconvenience.", "Power Systems Nominal", new_sound = 'sound/AI/poweron.ogg')
+	for(var/obj/machinery/power/apc/C in GLOB.apcs)
 		var/area/current_area = get_area(C)
 		if((current_area.type in skipped_areas_apc) || !is_station_level(C.z))
 			continue
 		if(C.cell)
 			C.cell.charge = C.cell.maxcharge
-	for(var/obj/machinery/power/smes/S in machines)
+	for(var/obj/machinery/power/smes/S in GLOB.machines)
 		var/area/current_area = get_area(S)
 		if((current_area.type in skipped_areas) || !is_station_level(S.z))
 			continue
@@ -64,8 +70,8 @@
 
 /proc/power_restore_quick(var/announce = 1)
 	if(announce)
-		event_announcement.Announce("All SMESs on [station_name()] have been recharged. We apologize for the inconvenience.", "Power Systems Nominal", new_sound = 'sound/AI/poweron.ogg')
-	for(var/obj/machinery/power/smes/S in machines)
+		GLOB.event_announcement.Announce("All SMESs on [station_name()] have been recharged. We apologize for the inconvenience.", "Power Systems Nominal", new_sound = 'sound/AI/poweron.ogg')
+	for(var/obj/machinery/power/smes/S in GLOB.machines)
 		if(!is_station_level(S.z))
 			continue
 		S.charge = S.capacity

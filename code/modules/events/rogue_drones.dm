@@ -6,7 +6,7 @@
 /datum/event/rogue_drone/start()
 	//spawn them at the same place as carp
 	var/list/possible_spawns = list()
-	for(var/obj/effect/landmark/C in landmarks_list)
+	for(var/obj/effect/landmark/C in GLOB.landmarks_list)
 		if(C.name == "carpspawn")
 			possible_spawns.Add(C)
 
@@ -30,7 +30,7 @@
 		msg = "Contact has been lost with a combat drone wing operating out of the NSV Icarus. If any are sighted in the area, approach with caution."
 	else
 		msg = "Unidentified hackers have targetted a combat drone wing deployed from the NSV Icarus. If any are sighted in the area, approach with caution."
-	event_announcement.Announce(msg, "Rogue drone alert")
+	GLOB.event_announcement.Announce(msg, "Rogue drone alert")
 
 /datum/event/rogue_drone/tick()
 	return
@@ -38,9 +38,7 @@
 /datum/event/rogue_drone/end()
 	var/num_recovered = 0
 	for(var/mob/living/simple_animal/hostile/retaliate/malf_drone/D in drones_list)
-		var/datum/effect_system/spark_spread/sparks = new /datum/effect_system/spark_spread()
-		sparks.set_up(3, 0, D.loc)
-		sparks.start()
+		do_sparks(3, 0, D.loc)
 		D.z = level_name_to_num(CENTCOMM)
 		D.has_loot = 0
 
@@ -48,6 +46,6 @@
 		num_recovered++
 
 	if(num_recovered > drones_list.len * 0.75)
-		event_announcement.Announce("Icarus drone control reports the malfunctioning wing has been recovered safely.", "Rogue drone alert")
+		GLOB.event_announcement.Announce("Icarus drone control reports the malfunctioning wing has been recovered safely.", "Rogue drone alert")
 	else
-		event_announcement.Announce("Icarus drone control registers disappointment at the loss of the drones, but the survivors have been recovered.", "Rogue drone alert")
+		GLOB.event_announcement.Announce("Icarus drone control registers disappointment at the loss of the drones, but the survivors have been recovered.", "Rogue drone alert")

@@ -11,7 +11,7 @@
 	Look at radio.dm for the prequel to this code.
 */
 
-var/global/list/obj/machinery/telecomms/telecomms_list = list()
+GLOBAL_LIST_EMPTY(telecomms_list)
 
 /obj/machinery/telecomms
 	var/list/links = list() // list of machines this machine is linked to
@@ -93,7 +93,7 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 
 /obj/machinery/telecomms/proc/receive_information(datum/signal/signal, obj/machinery/telecomms/machine_from)
 	// receive information from linked machinery
-	..()
+	return
 
 /obj/machinery/telecomms/proc/is_freq_listening(datum/signal/signal)
 	// return 1 if found, 0 if not found
@@ -106,7 +106,7 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 
 
 /obj/machinery/telecomms/New()
-	telecomms_list += src
+	GLOB.telecomms_list += src
 	..()
 
 	//Set the listening_level if there's none.
@@ -124,13 +124,13 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 			for(var/obj/machinery/telecomms/T in orange(20, src))
 				add_link(T)
 		else
-			for(var/obj/machinery/telecomms/T in telecomms_list)
+			for(var/obj/machinery/telecomms/T in GLOB.telecomms_list)
 				add_link(T)
 
 
 /obj/machinery/telecomms/Destroy()
-	telecomms_list -= src
-	for(var/obj/machinery/telecomms/comm in telecomms_list)
+	GLOB.telecomms_list -= src
+	for(var/obj/machinery/telecomms/comm in GLOB.telecomms_list)
 		comm.links -= src
 	links.Cut()
 	return ..()
@@ -435,37 +435,24 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 	var/logs = 0 // number of logs
 	var/totaltraffic = 0 // gigabytes (if > 1024, divide by 1024 -> terrabytes)
 
-	var/list/memory = list()	// stored memory
-	var/list/rawcode = list() // the code to compile (list of characters)
-	var/datum/TCS_Compiler/Compiler	// the compiler that compiles and runs the code
-	var/autoruncode = 0		// 1 if the code is set to run every time a signal is picked up
-
 	var/encryption = "null" // encryption key: ie "password"
 	var/salt = "null"		// encryption salt: ie "123comsat"
 							// would add up to md5("password123comsat")
-	var/language = "human"
 	var/obj/item/radio/headset/server_radio = null
 
-/obj/machinery/telecomms/server/New()
+/obj/machinery/telecomms/server/Initialize()
 	..()
-	Compiler = new()
-	Compiler.Holder = src
 	server_radio = new()
 
 /obj/machinery/telecomms/server/receive_information(datum/signal/signal, obj/machinery/telecomms/machine_from)
-
 	if(signal.data["message"])
-
 		if(is_freq_listening(signal))
-
 			if(traffic > 0)
 				totaltraffic += traffic // add current traffic to total traffic
 
 			//Is this a test signal? Bypass logging
 			if(signal.data["type"] != 4)
-
 				// If signal has a message and appropriate frequency
-
 				update_logs()
 
 				var/datum/comm_log_entry/log = new
@@ -475,11 +462,10 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 				log.parameters["mobtype"] = signal.data["mobtype"]
 				log.parameters["race"] = signal.data["race"]
 				log.parameters["job"] = signal.data["job"]
-				log.parameters["language"] = signal.data["language"]
 				log.parameters["key"] = signal.data["key"]
-				log.parameters["vmessage"] = signal.data["message"]
+				log.parameters["vmessage"] = multilingual_to_message(signal.data["message"])
 				log.parameters["vname"] = signal.data["vname"]
-				log.parameters["message"] = signal.data["message"]
+				log.parameters["message"] = multilingual_to_message(signal.data["message"])
 				log.parameters["name"] = signal.data["name"]
 				log.parameters["realname"] = signal.data["realname"]
 
@@ -490,7 +476,7 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 
 				// If the signal is still compressed, make the log entry gibberish
 				if(signal.data["compression"] > 0)
-					log.parameters["message"] = Gibberish(signal.data["message"], signal.data["compression"] + 50)
+					log.parameters["message"] = Gibberish(multilingual_to_message(signal.data["message"]), signal.data["compression"] + 50)
 					log.parameters["job"] = Gibberish(signal.data["job"], signal.data["compression"] + 50)
 					log.parameters["name"] = Gibberish(signal.data["name"], signal.data["compression"] + 50)
 					log.parameters["realname"] = Gibberish(signal.data["realname"], signal.data["compression"] + 50)
@@ -508,22 +494,13 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 				var/identifier = num2text( rand(-1000,1000) + world.time )
 				log.name = "data packet ([md5(identifier)])"
 
-				if(Compiler && autoruncode)
-					Compiler.Run(signal)	// execute the code
+				// Run NTTC against the signal
+				if(GLOB.nttc_config)
+					GLOB.nttc_config.modify_signal(signal)
 
 			var/can_send = relay_information(signal, "/obj/machinery/telecomms/hub")
 			if(!can_send)
 				relay_information(signal, "/obj/machinery/telecomms/broadcaster")
-
-
-/obj/machinery/telecomms/server/proc/setcode(var/list/code)
-	if(istype(code))
-		rawcode = code
-
-/obj/machinery/telecomms/server/proc/compile(mob/user as mob)
-	if(Compiler)
-		admin_log(user)
-		return Compiler.Compile(rawcode)
 
 /obj/machinery/telecomms/server/proc/update_logs()
 	// start deleting the very first log entry
@@ -544,16 +521,7 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 	log_entries.Add(log)
 	update_logs()
 
-/obj/machinery/telecomms/server/proc/admin_log(var/mob/mob)
-	var/msg="[key_name(mob)] has compiled a script to server [src]:"
-	log_game("NTSL: [msg]")
-	log_game("NTSL: [rawcode.Join("")]")
-	src.investigate_log("[msg]<br>[rawcode.Join("")]", "ntsl")
-	if(length(rawcode)) // Let's not bother the admins for empty code.
-		message_admins("[key_name_admin(mob)] has compiled and uploaded a NTSL script to [src.id] (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[x];Y=[y];Z=[z]'>JMP</a>)")
-
 // Simple log entry datum
-
 /datum/comm_log_entry
 	var/parameters = list() // carbon-copy to signal.data[]
 	var/name = "data packet (#)"

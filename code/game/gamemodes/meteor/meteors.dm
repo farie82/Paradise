@@ -1,18 +1,18 @@
 //Meteors probability of spawning during a given wave
-/var/list/meteors_normal = list(/obj/effect/meteor/dust=3, /obj/effect/meteor/medium=8, /obj/effect/meteor/big=3, \
-						  /obj/effect/meteor/flaming=1, /obj/effect/meteor/irradiated=3) //for normal meteor event
+GLOBAL_LIST_INIT(meteors_normal, list(/obj/effect/meteor/dust=3, /obj/effect/meteor/medium=8, /obj/effect/meteor/big=3, \
+						  /obj/effect/meteor/flaming=1, /obj/effect/meteor/irradiated=3)) //for normal meteor event
 
-/var/list/meteors_threatening = list(/obj/effect/meteor/medium=4, /obj/effect/meteor/big=8, \
-						  /obj/effect/meteor/flaming=3, /obj/effect/meteor/irradiated=3) //for threatening meteor event
+GLOBAL_LIST_INIT(meteors_threatening, list(/obj/effect/meteor/medium=4, /obj/effect/meteor/big=8, \
+						  /obj/effect/meteor/flaming=3, /obj/effect/meteor/irradiated=3)) //for threatening meteor event
 
-/var/list/meteors_catastrophic = list(/obj/effect/meteor/medium=5, /obj/effect/meteor/big=75, \
-						  /obj/effect/meteor/flaming=10, /obj/effect/meteor/irradiated=10, /obj/effect/meteor/tunguska = 1) //for catastrophic meteor event
+GLOBAL_LIST_INIT(meteors_catastrophic, list(/obj/effect/meteor/medium=5, /obj/effect/meteor/big=75, \
+						  /obj/effect/meteor/flaming=10, /obj/effect/meteor/irradiated=10, /obj/effect/meteor/tunguska = 1)) //for catastrophic meteor event
 
-/var/list/meteors_dust = list(/obj/effect/meteor/dust) //for space dust event
+GLOBAL_LIST_INIT(meteors_dust, list(/obj/effect/meteor/dust)) //for space dust event
 
-/var/list/meteors_gore = list(/obj/effect/meteor/gore) //Meaty Gore
+GLOBAL_LIST_INIT(meteors_gore, list(/obj/effect/meteor/gore)) //Meaty Gore
 
-/var/list/meteors_ops = list(/obj/effect/meteor/goreops) //Meaty Ops
+GLOBAL_LIST_INIT(meteors_ops, list(/obj/effect/meteor/goreops)) //Meaty Ops
 
 
 ///////////////////////////////
@@ -27,7 +27,7 @@
 	var/turf/pickedgoal
 	var/max_i = 10//number of tries to spawn meteor.
 	while(!istype(pickedstart, /turf/space))
-		var/startSide = pick(cardinal)
+		var/startSide = pick(GLOB.cardinal)
 		pickedstart = spaceDebrisStartLoc(startSide, 1)
 		pickedgoal = spaceDebrisFinishLoc(startSide, 1)
 		max_i--
@@ -98,7 +98,7 @@
 	var/meteorsound = 'sound/effects/meteorimpact.ogg'
 	var/z_original = 1
 
-	var/meteordrop = /obj/item/ore/iron
+	var/meteordrop = /obj/item/stack/ore/iron
 	var/dropamt = 2
 
 /obj/effect/meteor/Move()
@@ -118,13 +118,13 @@
 	return .
 
 /obj/effect/meteor/Destroy()
-	meteor_list -= src
+	GLOB.meteor_list -= src
 	walk(src,0) //this cancels the walk_towards() proc
 	return ..()
 
 /obj/effect/meteor/New()
 	..()
-	meteor_list += src
+	GLOB.meteor_list += src
 	SpinAnimation()
 
 /obj/effect/meteor/Bump(atom/A)
@@ -160,9 +160,10 @@
 
 /obj/effect/meteor/attackby(obj/item/W as obj, mob/user as mob, params)
 	if(istype(W, /obj/item/pickaxe))
+		make_debris()
 		qdel(src)
 		return
-	..()
+	return ..()
 
 /obj/effect/meteor/proc/make_debris()
 	for(var/throws = dropamt, throws > 0, throws--)
@@ -174,7 +175,7 @@
 		var/sound/meteor_sound = sound(meteorsound)
 		var/random_frequency = get_rand_frequency()
 
-		for(var/P in player_list)
+		for(var/P in GLOB.player_list)
 			var/mob/M = P
 			var/turf/T = get_turf(M)
 			if(!T || T.z != src.z)
@@ -196,7 +197,7 @@
 	hits = 1
 	hitpwr = 3
 	meteorsound = 'sound/weapons/tap.ogg'
-	meteordrop = /obj/item/ore/glass
+	meteordrop = /obj/item/stack/ore/glass
 
 //Medium-sized
 /obj/effect/meteor/medium
@@ -226,7 +227,7 @@
 	hits = 5
 	heavy = 1
 	meteorsound = 'sound/effects/bamf.ogg'
-	meteordrop = /obj/item/ore/plasma
+	meteordrop = /obj/item/stack/ore/plasma
 
 /obj/effect/meteor/flaming/meteor_effect()
 	..(heavy)
@@ -237,7 +238,7 @@
 	name = "glowing meteor"
 	icon_state = "glowing"
 	heavy = 1
-	meteordrop = /obj/item/ore/uranium
+	meteordrop = /obj/item/stack/ore/uranium
 
 
 /obj/effect/meteor/irradiated/meteor_effect()
@@ -256,7 +257,7 @@
 	hitpwr = 1
 	heavy = 1
 	meteorsound = 'sound/effects/bamf.ogg'
-	meteordrop = /obj/item/ore/plasma
+	meteordrop = /obj/item/stack/ore/plasma
 
 /obj/effect/meteor/tunguska/meteor_effect()
 	..(heavy)
