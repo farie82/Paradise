@@ -44426,7 +44426,7 @@
 /obj/item/reagent_containers/food/drinks/bottle/absinthe/premium,
 /obj/item/lighter/zippo/nt_rep,
 /obj/item/storage/fancy/cigarettes/cigpack_robustgold,
-/obj/item/toy/figure/captain,
+/obj/item/toy/figure/crew/captain,
 /turf/simulated/floor/carpet,
 /area/crew_quarters/captain{
 	name = "\improper Captain's Quarters"
@@ -58690,7 +58690,7 @@
 /area/crew_quarters/theatre)
 "bXq" = (
 /obj/machinery/light/small,
-/obj/item/toy/prize/honk{
+/obj/item/toy/figure/mech/honk{
 	pixel_y = 12
 	},
 /obj/structure/table/wood,

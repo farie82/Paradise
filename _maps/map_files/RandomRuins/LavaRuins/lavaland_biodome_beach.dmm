@@ -189,7 +189,7 @@
 /obj/structure/closet/crate,
 /obj/item/tank/emergency_oxygen,
 /obj/item/trash/candy,
-/obj/item/toy/owl,
+/obj/item/toy/figure/owl,
 /obj/effect/turf_decal/sand,
 /turf/simulated/floor/plasteel,
 /area/ruin/powered/beach)
