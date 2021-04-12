@@ -303,7 +303,7 @@
 			for(var/i in 1 to butcher_results[path])
 				new path(Tsec)
 	if(pcollar)
-		pcollar.forceMove(drop_location())
+		qdel(pcollar)
 		pcollar = null
 	..()
 
